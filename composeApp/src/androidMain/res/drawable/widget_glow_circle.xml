@@ -1,0 +1,13 @@
+<!-- res/drawable/widget_glow_circle.xml -->
+
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <shape android:shape="oval" />
+
+    <gradient
+        android:type="radial"
+        android:gradientRadius="140dp"
+        android:startColor="#55FFFFFF"
+        android:endColor="#00FFFFFF" />
+
+</shape>

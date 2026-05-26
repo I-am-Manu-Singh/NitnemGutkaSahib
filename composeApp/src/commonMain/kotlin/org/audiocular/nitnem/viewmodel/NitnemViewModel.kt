@@ -1,0 +1,1401 @@
+package org.audiocular.nitnem.viewmodel
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import java.time.LocalDate
+import org.audiocular.nitnem.app.audio.StreamAudioController
+import org.audiocular.nitnem.app.models.AppTab
+import org.audiocular.nitnem.app.models.DisplayLanguage
+import org.audiocular.nitnem.app.models.ExperienceTab
+import org.audiocular.nitnem.data.analytics.AnalyticsRepository
+import org.audiocular.nitnem.data.bookmarks.BookmarksRepository
+import org.audiocular.nitnem.data.playback.PlaybackRepository
+import org.audiocular.nitnem.data.preferences.SettingsRepository
+import org.audiocular.nitnem.models.Bani
+import org.audiocular.nitnem.models.NitnemUiState
+import org.audiocular.nitnem.models.PlaybackSnapshot
+import org.audiocular.nitnem.data.Hukamnama
+class NitnemViewModel(
+
+    private val settingsRepository:
+        SettingsRepository,
+
+    private val analyticsRepository:
+        AnalyticsRepository,
+
+    private val playbackRepository:
+        PlaybackRepository,
+
+    private val bookmarksRepository:
+        BookmarksRepository
+
+) : ViewModel() {
+
+    private var restoredBaniId: String? = null
+
+    private val _uiState =
+        MutableStateFlow(
+            NitnemUiState()
+        )
+
+    val uiState:
+        StateFlow<NitnemUiState> =
+        _uiState.asStateFlow()
+
+    init {
+
+        observeSettings()
+
+        observeAnalytics()
+
+        observePlayback()
+
+        observeBookmarks()
+    }
+   fun setHukamnama(
+    data: Hukamnama
+) {
+
+    _uiState.update {
+
+        it.copy(
+            hukamnama = data
+        )
+    }
+}
+    /*
+     * LOAD BANIS
+     */
+
+    fun loadBanis(
+        items: List<Bani>
+    ) {
+
+        _uiState.update { state ->
+
+            val resolvedBani = items.firstOrNull { it.id == restoredBaniId }
+                ?: state.currentBani
+                ?: items.firstOrNull()
+
+            state.copy(
+
+                banis = items,
+
+                currentBani = resolvedBani
+            )
+        }
+    }
+
+    /*
+     * OBSERVERS
+     */
+
+    private fun observeSettings() {
+
+        viewModelScope.launch {
+
+            settingsRepository
+                .preferencesFlow
+                .collectLatest { settings ->
+
+                    _uiState.update {
+
+                        it.copy(
+
+                            /*
+                             * LANGUAGE
+                             */
+
+                            displayLanguage =
+                                settings.displayLanguage,
+
+                            /*
+                             * VISIBILITY
+                             */
+
+                            showTranslation =
+                                settings.showTranslation,
+
+                            showEnglishTranslation =
+                                settings.showEnglishTranslation,
+
+                            showPunjabiTranslation =
+                                settings.showPunjabiTranslation,
+
+                            showRomanTransliteration =
+                                settings.showRomanTransliteration,
+
+                            showDevanagariTransliteration =
+                                settings.showDevanagariTransliteration,
+
+                            showWordMeaning =
+                                settings.showWordMeaning,
+                            amritTime =
+    settings.amritTime,
+
+rehrasTime =
+    settings.rehrasTime,
+
+sohilaTime =
+    settings.sohilaTime,
+                            /*
+                             * STYLE
+                             */
+
+                            boldGurmukhi =
+                                settings.boldGurmukhi,
+
+                            italicRomanTransliteration =
+                                settings.italicRomanTransliteration,
+
+                            centerGurmukhi =
+                                settings.centerGurmukhi,
+
+                             compactMode =
+                                 settings.compactMode,
+
+                             larivaarMode =
+                                 settings.larivaarMode,
+
+                            highlightActiveLine =
+                                settings.highlightActiveLine,
+
+                            /*
+                             * TYPOGRAPHY
+                             */
+
+                            lineSpacing =
+                                settings.lineSpacing,
+
+                            gurmukhiFontSize =
+                                settings.gurmukhiFontSize,
+
+                            translationFontSize =
+                                settings.translationFontSize,
+
+                            romanTransliterationFontSize =
+                                settings.romanTransliterationFontSize,
+
+                            wordMeaningFontSize =
+                                settings.wordMeaningFontSize,
+
+                            /*
+                             * THEME
+                             */
+
+                            darkMode =
+                                settings.darkMode,
+
+                            amoledMode =
+                                settings.amoledMode,
+
+                            elderMode =
+                                settings.elderMode,
+
+                            /*
+                             * PLAYBACK
+                             */
+
+                            autoScroll =
+                                settings.autoScroll,
+
+                            playbackSpeed =
+                                settings.playbackSpeed,
+
+                            miniPlayerVisible =
+                                settings.showMiniPlayer,
+
+                            /*
+                             * REMINDERS
+                             */
+
+                            notifications =
+                                settings.notifications,
+
+                            /*
+                             * COLOR CUSTOMIZATIONS
+                             */
+
+                            gurmukhiColorMode =
+                                settings.gurmukhiColorMode,
+
+                            romanTransliterationColorMode =
+                                settings.romanTransliterationColorMode,
+
+                            translationColorMode =
+                                settings.translationColorMode,
+
+                            wordMeaningColorMode =
+                                settings.wordMeaningColorMode
+                        )
+                    }
+                }
+        }
+    }
+
+    private fun observeAnalytics() {
+
+        viewModelScope.launch {
+
+            analyticsRepository
+                .analyticsFlow
+                .collectLatest { analytics ->
+
+                    val today =
+                        LocalDate.now()
+                            .toString()
+
+                    val todayCompleted =
+
+                        analytics.history
+                            .firstOrNull {
+                                it.date == today
+                            }
+
+                    _uiState.update {
+
+                        it.copy(
+
+                            completedBanis =
+                                todayCompleted
+                                    ?.completedBanis
+                                    ?: emptySet(),
+
+                            streakDays =
+                                analyticsRepository
+                                    .calculateCurrentStreak(
+                                        analytics.history
+                                    ),
+
+                            monthlyConsistencyDays =
+                                analyticsRepository
+                                    .monthlyConsistency(
+                                        analytics.history
+                                    )
+                        )
+                    }
+                }
+        }
+    }
+
+    private fun observeBookmarks() {
+
+        viewModelScope.launch {
+
+            bookmarksRepository
+                .bookmarksFlow
+                .collectLatest { bookmarks ->
+
+                    _uiState.update {
+
+                        it.copy(
+                            bookmarkedLineIds =
+                                bookmarks
+                        )
+                    }
+                }
+        }
+    }
+
+    private fun observePlayback() {
+
+        viewModelScope.launch {
+
+            playbackRepository
+                .playbackFlow
+                .collectLatest { playback ->
+
+                    restoredBaniId = playback.baniId
+
+                    val bani =
+                        _uiState.value.banis
+                            .firstOrNull {
+                                it.id == playback.baniId
+                            }
+
+                    _uiState.update {
+
+                        it.copy(
+
+                            currentBani = bani ?: it.currentBani,
+
+                            playbackSpeed =
+                                playback.speed,
+
+                            playback =
+                                it.playback.copy(
+
+                                    positionMs =
+                                        playback.position,
+
+                                    speed =
+                                        playback.speed
+                                )
+                        )
+                    }
+                }
+        }
+    }
+
+    /*
+     * NAVIGATION
+     */
+
+    fun selectTab(
+        tab: AppTab
+    ) {
+
+        _uiState.update {
+
+            val updatedExperienceTab = if (tab == AppTab.Experience) {
+                ExperienceTab.Listen
+            } else {
+                it.selectedExperienceTab
+            }
+            it.copy(
+                selectedTab = tab,
+                selectedExperienceTab = updatedExperienceTab
+            )
+        }
+    }
+
+    fun selectExperienceTab(
+        tab: ExperienceTab
+    ) {
+
+        _uiState.update {
+
+            it.copy(
+                selectedExperienceTab = tab
+            )
+        }
+    }
+
+    /*
+     * BANI
+     */
+
+    fun selectBani(
+        baniId: String
+    ) {
+
+        val bani =
+            _uiState.value.banis
+                .firstOrNull {
+                    it.id == baniId
+                }
+
+        _uiState.update {
+
+            it.copy(
+                currentBani = bani,
+                selectedExperienceTab = ExperienceTab.Listen
+            )
+        }
+    }
+
+    fun markComplete(
+        bani: Bani
+    ) {
+
+        viewModelScope.launch {
+
+            analyticsRepository
+                .markCompleted(
+
+                    baniId = bani.id,
+
+                    readingMinutes =
+                        bani.estimatedMinutes
+                )
+        }
+    }
+
+    /*
+     * PLAYBACK
+     */
+
+    fun updatePlayback(
+        snapshot: PlaybackSnapshot
+    ) {
+
+        _uiState.update {
+
+            it.copy(
+                playback = snapshot
+            )
+        }
+
+        val baniId =
+            _uiState.value.currentBani?.id
+                ?: return
+
+        viewModelScope.launch {
+
+            playbackRepository
+                .savePlayback(
+
+                    baniId = baniId,
+
+                    position =
+                        snapshot.positionMs,
+
+                    speed =
+                        snapshot.speed
+                )
+        }
+    }
+
+    fun resetPlayback() {
+
+        _uiState.update {
+
+            it.copy(
+                playback =
+                    PlaybackSnapshot()
+            )
+        }
+    }
+
+    fun toggleMiniPlayer(
+        visible: Boolean
+    ) {
+
+        _uiState.update {
+
+            it.copy(
+                miniPlayerVisible =
+                    visible
+            )
+        }
+
+        viewModelScope.launch {
+
+            settingsRepository
+                .setShowMiniPlayer(
+                    visible
+                )
+        }
+    }
+
+    fun setRepeatMode(
+        enabled: Boolean
+    ) {
+
+        _uiState.update {
+
+            it.copy(
+                repeatMode = enabled
+            )
+        }
+    }
+
+    fun setPlaybackSpeed(
+        speed: Float
+    ) {
+
+        _uiState.update {
+
+            it.copy(
+                playbackSpeed = speed
+            )
+        }
+
+        viewModelScope.launch {
+
+            settingsRepository
+                .setPlaybackSpeed(
+                    speed
+                )
+        }
+    }
+
+    fun setAutoScroll(
+        enabled: Boolean
+    ) {
+
+        _uiState.update {
+
+            it.copy(
+                autoScroll = enabled
+            )
+        }
+
+        viewModelScope.launch {
+
+            settingsRepository
+                .setAutoScroll(
+                    enabled
+                )
+        }
+    }
+
+    fun setAutoScrollSpeed(
+        speed: Float
+    ) {
+
+        _uiState.update {
+
+            it.copy(
+                autoScrollSpeed = speed
+            )
+        }
+
+        viewModelScope.launch {
+
+            settingsRepository
+                .setAutoScrollSpeed(
+                    speed
+                )
+        }
+    }
+
+    fun setSleepTimer(
+        minutes: Int
+    ) {
+
+        _uiState.update {
+
+            it.copy(
+                sleepTimerMinutes =
+                    minutes
+            )
+        }
+    }
+
+    /*
+     * LANGUAGE
+     */
+
+    fun setDisplayLanguage(
+        language: DisplayLanguage
+    ) {
+
+        _uiState.update {
+
+            it.copy(
+                displayLanguage =
+                    language
+            )
+        }
+
+        viewModelScope.launch {
+
+            settingsRepository
+                .setDisplayLanguage(
+                    language
+                )
+        }
+    }
+
+    /*
+     * TYPOGRAPHY
+     */
+
+    fun setLineSpacing(
+        spacing: Float
+    ) {
+
+        _uiState.update {
+
+            it.copy(
+                lineSpacing = spacing
+            )
+        }
+
+        viewModelScope.launch {
+
+            settingsRepository
+                .setLineSpacing(
+                    spacing
+                )
+        }
+    }
+
+    fun setGurmukhiFontSize(
+        size: Float
+    ) {
+
+        _uiState.update {
+
+            it.copy(
+                gurmukhiFontSize = size
+            )
+        }
+
+        viewModelScope.launch {
+
+            settingsRepository
+                .setGurmukhiSize(
+                    size
+                )
+        }
+    }
+
+    fun setGurmukhiColorMode(mode: String) {
+        _uiState.update {
+            it.copy(gurmukhiColorMode = mode)
+        }
+        viewModelScope.launch {
+            settingsRepository.setGurmukhiColorMode(mode)
+        }
+    }
+
+    fun setRomanTransliterationColorMode(mode: String) {
+        _uiState.update {
+            it.copy(romanTransliterationColorMode = mode)
+        }
+        viewModelScope.launch {
+            settingsRepository.setRomanColorMode(mode)
+        }
+    }
+
+    fun setTranslationColorMode(mode: String) {
+        _uiState.update {
+            it.copy(translationColorMode = mode)
+        }
+        viewModelScope.launch {
+            settingsRepository.setTranslationColorMode(mode)
+        }
+    }
+
+    fun setWordMeaningColorMode(mode: String) {
+        _uiState.update {
+            it.copy(wordMeaningColorMode = mode)
+        }
+        viewModelScope.launch {
+            settingsRepository.setWordMeaningColorMode(mode)
+        }
+    }
+
+    fun setTranslationFontSize(
+        size: Float
+    ) {
+
+        _uiState.update {
+
+            it.copy(
+                translationFontSize =
+                    size
+            )
+        }
+
+        viewModelScope.launch {
+
+            settingsRepository
+                .setTranslationFontSize(
+                    size
+                )
+        }
+    }
+
+    fun setRomanTransliterationFontSize(
+        size: Float
+    ) {
+
+        _uiState.update {
+
+            it.copy(
+                romanTransliterationFontSize =
+                    size
+            )
+        }
+
+        viewModelScope.launch {
+
+            settingsRepository
+                .setRomanFontSize(
+                    size
+                )
+        }
+    }
+
+    fun setWordMeaningFontSize(
+        size: Float
+    ) {
+
+        _uiState.update {
+
+            it.copy(
+                wordMeaningFontSize =
+                    size
+            )
+        }
+
+        viewModelScope.launch {
+
+            settingsRepository
+                .setWordMeaningFontSize(
+                    size
+                )
+        }
+    }
+
+    /*
+     * VISIBILITY
+     */
+
+    fun setShowTranslation(
+        enabled: Boolean
+    ) {
+
+        _uiState.update {
+
+            it.copy(
+                showTranslation =
+                    enabled
+            )
+        }
+
+        viewModelScope.launch {
+
+            settingsRepository
+                .setShowTranslation(
+                    enabled
+                )
+        }
+    }
+
+    fun setShowRomanTransliteration(
+        enabled: Boolean
+    ) {
+
+        _uiState.update {
+
+            it.copy(
+                showRomanTransliteration =
+                    enabled
+            )
+        }
+
+        viewModelScope.launch {
+
+            settingsRepository
+                .setShowRomanTransliteration(
+                    enabled
+                )
+        }
+    }
+
+    fun setShowEnglishTranslation(
+        enabled: Boolean
+    ) {
+
+        _uiState.update {
+
+            it.copy(
+                showEnglishTranslation =
+                    enabled
+            )
+        }
+
+        viewModelScope.launch {
+
+            settingsRepository
+                .setShowEnglishTranslation(
+                    enabled
+                )
+        }
+    }
+
+    fun setShowPunjabiTranslation(
+        enabled: Boolean
+    ) {
+
+        _uiState.update {
+
+            it.copy(
+                showPunjabiTranslation =
+                    enabled
+            )
+        }
+
+        viewModelScope.launch {
+
+            settingsRepository
+                .setShowPunjabiTranslation(
+                    enabled
+                )
+        }
+    }
+
+    fun setShowDevanagariTransliteration(
+        enabled: Boolean
+    ) {
+
+        _uiState.update {
+
+            it.copy(
+                showDevanagariTransliteration =
+                    enabled
+            )
+        }
+
+        viewModelScope.launch {
+
+            settingsRepository
+                .setShowDevanagariTransliteration(
+                    enabled
+                )
+        }
+    }
+
+    fun setShowWordMeaning(
+        enabled: Boolean
+    ) {
+
+        _uiState.update {
+
+            it.copy(
+                showWordMeaning =
+                    enabled
+            )
+        }
+
+        viewModelScope.launch {
+
+            settingsRepository
+                .setShowWordMeaning(
+                    enabled
+                )
+        }
+    }
+fun setAmritTime(time: String) {
+
+    _uiState.update {
+
+        it.copy(
+            amritTime = time
+        )
+    }
+
+    viewModelScope.launch {
+
+        settingsRepository.setAmritTime(time)
+    }
+}
+
+fun setRehrasTime(time: String) {
+
+    _uiState.update {
+
+        it.copy(
+            rehrasTime = time
+        )
+    }
+
+    viewModelScope.launch {
+
+        settingsRepository.setRehrasTime(time)
+    }
+}
+fun setSohilaTime(time: String) {
+
+    _uiState.update {
+
+        it.copy(
+            sohilaTime = time
+        )
+    }
+
+    viewModelScope.launch {
+
+        settingsRepository.setSohilaTime(time)
+    }
+}
+    /*
+     * STYLE
+     */
+
+    fun setBoldGurmukhi(
+        enabled: Boolean
+    ) {
+
+        _uiState.update {
+
+            it.copy(
+                boldGurmukhi =
+                    enabled
+            )
+        }
+
+        viewModelScope.launch {
+
+            settingsRepository
+                .setBoldGurmukhi(
+                    enabled
+                )
+        }
+    }
+
+    fun setItalicRomanTransliteration(
+        enabled: Boolean
+    ) {
+
+        _uiState.update {
+
+            it.copy(
+                italicRomanTransliteration =
+                    enabled
+            )
+        }
+
+        viewModelScope.launch {
+
+            settingsRepository
+                .setItalicRoman(
+                    enabled
+                )
+        }
+    }
+
+    fun setCenterGurmukhi(
+        enabled: Boolean
+    ) {
+
+        _uiState.update {
+
+            it.copy(
+                centerGurmukhi =
+                    enabled
+            )
+        }
+
+        viewModelScope.launch {
+
+            settingsRepository
+                .setCenterGurmukhi(
+                    enabled
+                )
+        }
+    }
+
+    fun setHighlightActiveLine(
+        enabled: Boolean
+    ) {
+
+        _uiState.update {
+
+            it.copy(
+                highlightActiveLine =
+                    enabled
+            )
+        }
+
+        viewModelScope.launch {
+
+            settingsRepository
+                .setHighlightActiveLine(
+                    enabled
+                )
+        }
+    }
+
+    fun setShowLineProgress(
+        enabled: Boolean
+    ) {
+
+        _uiState.update {
+
+            it.copy(
+                showLineProgress =
+                    enabled
+            )
+        }
+
+        viewModelScope.launch {
+
+            settingsRepository
+                .setShowLineProgress(
+                    enabled
+                )
+        }
+    }
+
+    fun setCompactMode(
+        enabled: Boolean
+    ) {
+
+        _uiState.update {
+
+            it.copy(
+                compactMode =
+                    enabled
+            )
+        }
+
+        viewModelScope.launch {
+
+            settingsRepository
+                .setCompactMode(
+                    enabled
+                )
+        }
+    }
+
+    fun setLarivaarMode(
+        enabled: Boolean
+    ) {
+
+        _uiState.update {
+
+            it.copy(
+                larivaarMode =
+                    enabled
+            )
+        }
+
+        viewModelScope.launch {
+
+            settingsRepository
+                .setLarivaarMode(
+                    enabled
+                )
+        }
+    }
+
+    fun setFocusMode(
+        enabled: Boolean
+    ) {
+
+        _uiState.update {
+
+            it.copy(
+                focusMode =
+                    enabled
+            )
+        }
+
+        viewModelScope.launch {
+
+            settingsRepository
+                .setFocusMode(
+                    enabled
+                )
+        }
+    }
+
+    /*
+     * THEME
+     */
+
+    fun setDarkMode(
+        enabled: Boolean
+    ) {
+
+        _uiState.update {
+
+            it.copy(
+                darkMode =
+                    enabled
+            )
+        }
+
+        viewModelScope.launch {
+
+            settingsRepository
+                .setDarkMode(
+                    enabled
+                )
+        }
+    }
+
+    fun setAmoledMode(
+        enabled: Boolean
+    ) {
+
+        _uiState.update {
+
+            it.copy(
+                amoledMode =
+                    enabled
+            )
+        }
+
+        viewModelScope.launch {
+
+            settingsRepository
+                .setAmoledMode(
+                    enabled
+                )
+        }
+    }
+
+    fun setElderMode(
+        enabled: Boolean
+    ) {
+
+        _uiState.update {
+
+            it.copy(
+                elderMode =
+                    enabled
+            )
+        }
+
+        viewModelScope.launch {
+
+            settingsRepository
+                .setElderMode(
+                    enabled
+                )
+        }
+    }
+
+    /*
+     * REMINDERS
+     */
+
+    fun setNotifications(
+        enabled: Boolean
+    ) {
+
+        _uiState.update {
+
+            it.copy(
+                notifications =
+                    enabled
+            )
+        }
+
+        viewModelScope.launch {
+
+            settingsRepository
+                .setNotifications(
+                    enabled
+                )
+        }
+    }
+
+    fun setSmartReminders(
+        enabled: Boolean
+    ) {
+
+        _uiState.update {
+
+            it.copy(
+                smartReminders =
+                    enabled
+            )
+        }
+    }
+
+    fun setAmbientMode(
+        enabled: Boolean
+    ) {
+
+        _uiState.update {
+
+            it.copy(
+                ambientMode =
+                    enabled
+            )
+        }
+    }
+
+    /*
+     * DOWNLOADS
+     */
+
+    fun setDownloadedBanis(
+        ids: Set<String>
+    ) {
+
+        _uiState.update {
+
+            it.copy(
+                downloadedBaniIds =
+                    ids
+            )
+        }
+    }
+
+    fun startDownload(
+
+        baniId: String,
+
+        remoteUrl: String,
+
+        audioController:
+            StreamAudioController
+    ) {
+
+        if (
+            _uiState.value
+                .downloadingBaniIds
+                .contains(baniId)
+        ) return
+
+        _uiState.update {
+
+            it.copy(
+
+                downloadingBaniIds =
+
+                    it.downloadingBaniIds +
+                            baniId
+            )
+        }
+
+        viewModelScope.launch {
+
+            val success =
+
+                audioController
+                    .downloadAudio(
+
+                        baniId,
+                        remoteUrl
+                    )
+
+            _uiState.update {
+
+                it.copy(
+
+                    downloadingBaniIds =
+
+                        it.downloadingBaniIds -
+                                baniId,
+
+                    downloadedBaniIds =
+
+                        if (success)
+
+                            it.downloadedBaniIds +
+                                    baniId
+
+                        else
+                            it.downloadedBaniIds
+                )
+            }
+        }
+    }
+
+    fun deleteBaniAudio(
+
+        baniId: String,
+
+        audioController:
+            StreamAudioController
+    ) {
+
+        audioController.deleteAudio(
+            baniId
+        )
+
+        _uiState.update {
+
+            it.copy(
+
+                downloadedBaniIds =
+
+                    it.downloadedBaniIds -
+                            baniId
+            )
+        }
+    }
+
+    /*
+     * BOOKMARKS
+     */
+
+    fun toggleBookmark(
+        lineId: String
+    ) {
+
+        viewModelScope.launch {
+
+            bookmarksRepository
+                .toggleBookmark(
+                    lineId
+                )
+        }
+    }
+
+    fun clearAllBookmarks() {
+
+        viewModelScope.launch {
+
+            bookmarksRepository
+                .clearBookmarks()
+        }
+    }
+
+    /*
+     * SEARCH
+     */
+
+    fun setSearchQuery(
+        query: String
+    ) {
+
+        _uiState.update {
+
+            it.copy(
+                searchQuery =
+                    query
+            )
+        }
+    }
+
+    /*
+     * ACTIVE LINE
+     */
+
+    fun setActiveLine(
+        lineId: String?
+    ) {
+
+        _uiState.update {
+
+            it.copy(
+                activeLineId =
+                    lineId
+            )
+        }
+    }
+
+    /*
+     * ONBOARDING
+     */
+
+    fun completeOnboarding() {
+
+        _uiState.update {
+
+            it.copy(
+                onboardingCompleted =
+                    true
+            )
+        }
+
+        viewModelScope.launch {
+
+            settingsRepository
+                .completeOnboarding()
+        }
+    }
+
+    fun updateActiveTrackId(trackId: String) {
+        _uiState.update {
+            it.copy(activeTrackId = trackId)
+        }
+    }
+
+    fun setActiveTrackId(
+        baniId: String,
+        trackId: String,
+        audioController: StreamAudioController
+    ) {
+        audioController.setActiveTrackId(baniId, trackId)
+        _uiState.update {
+            it.copy(activeTrackId = trackId)
+        }
+    }
+}

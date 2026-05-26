@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">Nitnem Gutka Sahib</string>
+    <string name="notification_channel_reminders">Gentle reminders</string>
+    <string name="notification_channel_reminders_description">Peaceful Nitnem reminders without pressure.</string>
+    <string name="notification_channel_playback">Audio playback</string>
+    <string name="notification_channel_playback_description">Background Gurbani audio playback controls.</string>
+    <string name="widget_journey_name">Nitnem Journey</string>
+    <string name="widget_journey_title">Nitnem Journey</string>
+    <string name="widget_journey_message">Your journey continues today.</string>
+    <string name="widget_journey_progress">Morning • Evening • Night</string>
+</resources>

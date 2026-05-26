@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "@shabados/database": "^5.0.0-next.0"
+  }
+}

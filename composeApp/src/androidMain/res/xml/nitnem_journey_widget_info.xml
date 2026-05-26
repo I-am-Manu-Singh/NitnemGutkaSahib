@@ -1,0 +1,11 @@
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/widget_journey_message"
+    android:initialLayout="@layout/widget_nitnem_journey"
+    android:minWidth="180dp"
+    android:minHeight="80dp"
+    android:previewLayout="@layout/widget_nitnem_journey"
+    android:resizeMode="horizontal|vertical"
+    android:targetCellWidth="4"
+    android:targetCellHeight="2"
+    android:updatePeriodMillis="0"
+    android:widgetCategory="home_screen" />
