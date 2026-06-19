@@ -21,7 +21,14 @@ fun OnboardingRoute(
     val scope = rememberCoroutineScope()
 
     val viewModel = remember {
-        OnboardingViewModel()
+        OnboardingViewModel().apply {
+            val currentThemeStr = when (AppTheme.themeMode) {
+                ThemeMode.Light -> "Light"
+                ThemeMode.Amoled -> "AMOLED"
+                else -> "Dark"
+            }
+            updateState { it.copy(selectedTheme = currentThemeStr) }
+        }
     }
 
     val state by

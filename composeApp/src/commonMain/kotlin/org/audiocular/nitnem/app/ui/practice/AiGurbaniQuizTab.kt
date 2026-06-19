@@ -1,89 +1,41 @@
 package org.audiocular.nitnem.app.ui.practice
 
-import org.audiocular.nitnem.app.ui.practice.PracticeColors
-import org.audiocular.nitnem.app.ui.practice.practiceColors
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.animation.fadeIn
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
 import kotlinx.coroutines.delay
-import androidx.compose.animation.AnimatedVisibility
-import org.audiocular.nitnem.app.audio.StreamAudioController
-import org.audiocular.nitnem.app.sync.SyncEditorScreen
-import org.audiocular.nitnem.app.ui.theme.*
 import org.audiocular.nitnem.models.Bani
-import org.audiocular.nitnem.models.BaniLine
 import org.audiocular.nitnem.app.models.DisplayLanguage
 import org.audiocular.nitnem.utils.translate
 import org.audiocular.nitnem.utils.translateDigits
 import org.audiocular.nitnem.utils.translateHindiTransliteration
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.foundation.border
-
-private sealed class QuizQuestion {
-
-    data class FillBlank(
-        val line: String,
-        val answer: String,
-        val chips: List<String>
-    ) : QuizQuestion()
-
-    data class Translation(
-        val line: String,
-        val answer: String,
-        val options: List<String>
-    ) : QuizQuestion()
-
-    data class NextLine(
-        val currentLine: String,
-        val answer: String,
-        val options: List<String>
-    ) : QuizQuestion()
-
-    data class TrueFalse(
-        val statement: String,
-        val answer: Boolean
-    ) : QuizQuestion()
-
-data class SequenceBuilder(
-    val originalWords: List<String>,
-    val hint: String
-) : QuizQuestion()
-}
+import org.audiocular.nitnem.models.NitnemUiState
+import org.audiocular.nitnem.viewmodel.NitnemViewModel
+import org.audiocular.nitnem.app.ui.components.MascotBani
+import org.audiocular.nitnem.app.ui.components.MascotState
+import org.audiocular.nitnem.models.QuizQuestion
+import org.audiocular.nitnem.models.QuizSession
 
 /*
  * ─────────────────────────────────────────────────────────────
@@ -92,10 +44,11 @@ data class SequenceBuilder(
  */
 
 private fun buildQuestions(
-    lines: List<BaniLine>,
+    bani: Bani,
     displayLanguage: DisplayLanguage
 ): List<QuizQuestion> {
 
+    val lines = bani.lines
     val usable =
         lines.filter {
             it.gurmukhi.isNotBlank()
@@ -103,6 +56,56 @@ private fun buildQuestions(
 
     val questions =
         mutableListOf<QuizQuestion>()
+
+    // 1. Author Question
+    if (bani.author.isNotBlank()) {
+        val commonAuthors = listOf(
+            "Guru Nanak Dev Ji",
+            "Guru Angad Dev Ji",
+            "Guru Amar Das Ji",
+            "Guru Ram Das Ji",
+            "Guru Arjan Dev Ji",
+            "Guru Teg Bahadur Ji",
+            "Guru Gobind Singh Ji",
+            "Bhagat Kabir Ji",
+            "Bhagat Ravidas Ji",
+            "Baba Farid Ji"
+        ).map { it.translate(displayLanguage) }
+
+        val actualAuthor = bani.author.translate(displayLanguage)
+        val distractors = commonAuthors
+            .filter { it != actualAuthor }
+            .shuffled()
+            .take(3)
+
+        questions.add(
+            QuizQuestion.BaniAuthor(
+                baniName = bani.title,
+                answer = actualAuthor,
+                options = (listOf(actualAuthor) + distractors).shuffled()
+            )
+        )
+    }
+
+    // 2. Ang Question
+    if (bani.ang.isNotBlank()) {
+        val actualAng = bani.ang.translate(displayLanguage)
+        val angNum = bani.ang.toIntOrNull()
+        val distractors = if (angNum != null) {
+            listOf(angNum + 5, angNum - 4, angNum + 12)
+                .map { it.coerceAtLeast(1).toString().translate(displayLanguage) }
+        } else {
+            listOf("1", "110", "1429").map { it.translate(displayLanguage) }
+        }
+
+        questions.add(
+            QuizQuestion.BaniAng(
+                baniName = bani.title,
+                answer = actualAng,
+                options = (listOf(actualAng) + distractors).shuffled()
+            )
+        )
+    }
 
     usable.forEachIndexed { index, line ->
 
@@ -178,43 +181,76 @@ private fun buildQuestions(
          */
 
         if (translationText.isNotBlank()) {
+            val distractors = usable
+                .filter { it.id != line.id }
+                .map {
+                    val dt = when (displayLanguage) {
+                        DisplayLanguage.Punjabi -> it.punjabi.ifBlank { it.translation }
+                        DisplayLanguage.Hindi -> it.hindi.translateHindiTransliteration().ifBlank { it.translation }
+                        DisplayLanguage.English -> it.translation
+                    }
+                    dt.trim()
+                }
+                .filter { it.isNotBlank() && it.take(90) != translationText.trim().take(90) }
+                .distinct()
+                .shuffled()
+                .take(3)
+                .map { it.take(90) }
+                .toMutableList()
 
-            val distractors =
-                usable
+            while (distractors.size < 3) {
+                val fallback = usable
+                    .filter { it.id != line.id && !distractors.contains(it.translation.take(90)) }
+                    .shuffled()
+                    .firstOrNull()
+                    ?.translation
+                    ?.take(90) ?: "Gurbani Translation Detail"
+                distractors.add(fallback)
+            }
+
+            questions.add(
+                QuizQuestion.Translation(
+                    line = line.gurmukhi,
+                    answer = translationText.take(90),
+                    options = (
+                        listOf(
+                            translationText.take(90)
+                        ) + distractors
+                    ).shuffled()
+                )
+            )
+        }
+
+        /*
+         * WORD MEANING
+         */
+        if (line.wordMeaning.isNotBlank()) {
+            val distractors = usable
+                .filter { it.id != line.id && it.wordMeaning.isNotBlank() }
+                .shuffled()
+                .take(3)
+                .map { it.wordMeaning.take(95) }
+                .toMutableList()
+
+            while (distractors.size < 3) {
+                val fallback = usable
                     .filter { it.id != line.id }
                     .shuffled()
-                    .take(3)
-                    .map {
-                        val dt = when (displayLanguage) {
-                            DisplayLanguage.Punjabi -> it.punjabi.ifBlank { it.translation }
-                            DisplayLanguage.Hindi -> it.hindi.translateHindiTransliteration().ifBlank { it.translation }
-                            DisplayLanguage.English -> it.translation
-                        }
-                        if (dt.isNotBlank()) dt.take(90) else it.translation.take(90)
-                    }
-
-            if (distractors.size == 3) {
-
-                questions.add(
-
-                    QuizQuestion.Translation(
-
-                        line =
-                            line.gurmukhi,
-
-                        answer =
-                            translationText.take(90),
-
-                        options =
-                            (
-                                listOf(
-                                    translationText.take(90)
-                                ) +
-                                distractors
-                            ).shuffled()
-                    )
-                )
+                    .firstOrNull()
+                    ?.let {
+                        if (it.wordMeaning.isNotBlank()) it.wordMeaning.take(95)
+                        else it.translation.take(95)
+                    } ?: "Gurbani Word Meaning Explanation"
+                distractors.add(fallback)
             }
+
+            questions.add(
+                QuizQuestion.WordMeaning(
+                    line = line.gurmukhi,
+                    answer = line.wordMeaning.take(95),
+                    options = (listOf(line.wordMeaning.take(95)) + distractors).shuffled()
+                )
+            )
         }
 
         /*
@@ -236,6 +272,17 @@ private fun buildQuestions(
                     .map {
                         it.gurmukhi.take(70)
                     }
+                    .toMutableList()
+
+            while (distractors.size < 3) {
+                val fallback = usable
+                    .filter { it.id != nextLine.id && !distractors.contains(it.gurmukhi.take(70)) }
+                    .shuffled()
+                    .firstOrNull()
+                    ?.gurmukhi
+                    ?.take(70) ?: "Gurbani Paath Line"
+                distractors.add(fallback)
+            }
 
             questions.add(
 
@@ -268,7 +315,14 @@ private fun buildQuestions(
                 listOf(true, false)
                     .random()
 
-            val otherLines = usable.filter { it.id != line.id }
+            val otherLines = usable.filter { 
+                it.id != line.id && 
+                when (displayLanguage) {
+                    DisplayLanguage.Punjabi -> it.punjabi.isNotBlank() || it.translation.isNotBlank()
+                    DisplayLanguage.Hindi -> it.hindi.isNotBlank() || it.translation.isNotBlank()
+                    DisplayLanguage.English -> it.translation.isNotBlank()
+                }
+            }
             val shownTranslation =
                 if (isCorrect || otherLines.isEmpty()) {
                     translationText
@@ -321,11 +375,20 @@ questions.add(
 fun AiGurbaniQuizTab(
     bani: Bani,
     colors: PracticeColors,
-    displayLanguage: DisplayLanguage
+    displayLanguage: DisplayLanguage,
+    uiState: NitnemUiState,
+    viewModel: NitnemViewModel
 ) {
 
-    val questions = remember(bani.id, displayLanguage) {
-        buildQuestions(bani.lines, displayLanguage)
+    val activeSession = uiState.activeQuizSession
+    var restartTrigger by remember { mutableStateOf(0) }
+
+    val questions = remember(bani.id, displayLanguage, restartTrigger) {
+        if (activeSession != null && activeSession.baniId == bani.id && restartTrigger == 0) {
+            activeSession.questions
+        } else {
+            buildQuestions(bani, displayLanguage)
+        }
     }
 
     if (questions.isEmpty()) {
@@ -335,14 +398,30 @@ fun AiGurbaniQuizTab(
             contentAlignment = Alignment.Center
         ) {
 
-            Text(
+           Column(
+    horizontalAlignment = Alignment.CenterHorizontally
+) {
 
-                text = "No quiz available".translate(displayLanguage),
+    MascotBani(
 
-                color = colors.textSecondary,
+        state = MascotState.Oops,
 
-                fontSize = 15.sp
-            )
+        modifier = Modifier.size(120.dp)
+    )
+
+    Spacer(
+        Modifier.height(12.dp)
+    )
+
+    Text(
+        text = "No quiz available"
+            .translate(displayLanguage),
+
+        color = colors.textSecondary,
+
+        fontSize = 15.sp
+    )
+}
         }
 
         return
@@ -352,25 +431,68 @@ fun AiGurbaniQuizTab(
      * STATES
      */
 
-    var questionIndex by rememberSaveable {
-        mutableStateOf(0)
+    val initialIndex = if (activeSession != null && activeSession.baniId == bani.id && restartTrigger == 0) activeSession.questionIndex else 0
+    val initialScore = if (activeSession != null && activeSession.baniId == bani.id && restartTrigger == 0) activeSession.score else 0
+    val initialMistakes = if (activeSession != null && activeSession.baniId == bani.id && restartTrigger == 0) activeSession.mistakes else 0
+    val initialHearts = if (activeSession != null && activeSession.baniId == bani.id && restartTrigger == 0) activeSession.hearts else 5
+    val initialFinished = if (activeSession != null && activeSession.baniId == bani.id && restartTrigger == 0) activeSession.quizFinished else false
+    val initialWrongs = if (activeSession != null && activeSession.baniId == bani.id && restartTrigger == 0) activeSession.wrongAnswers else emptyList()
+    val initialNoHearts = if (activeSession != null && activeSession.baniId == bani.id && restartTrigger == 0) activeSession.continueNoHeartsMode else false
+
+    var questionIndex by rememberSaveable(bani.id, restartTrigger) {
+        mutableStateOf(initialIndex)
     }
 
-    var score by rememberSaveable {
-        mutableStateOf(0)
+    var score by rememberSaveable(bani.id, restartTrigger) {
+        mutableStateOf(initialScore)
     }
 
-    var mistakes by rememberSaveable {
-        mutableStateOf(0)
+    var mistakes by rememberSaveable(bani.id, restartTrigger) {
+        mutableStateOf(initialMistakes)
     }
 
-    var quizFinished by rememberSaveable {
-        mutableStateOf(false)
+    var hearts by rememberSaveable(bani.id, restartTrigger) {
+        mutableStateOf(initialHearts)
     }
 
-    var wrongAnswers by rememberSaveable {
-        mutableStateOf<List<Pair<String, String>>>(
-            emptyList()
+    var showContinueQuizDialog by remember { mutableStateOf(false) }
+    var continueNoHeartsMode by rememberSaveable(bani.id, restartTrigger) {
+        mutableStateOf(initialNoHearts)
+    }
+
+    var quizFinished by rememberSaveable(bani.id, restartTrigger) {
+        mutableStateOf(initialFinished)
+    }
+
+    var wrongAnswers by rememberSaveable(bani.id, restartTrigger) {
+        mutableStateOf<List<String>>(
+            initialWrongs
+        )
+    }
+
+    LaunchedEffect(
+        bani.id,
+        questions,
+        questionIndex,
+        score,
+        mistakes,
+        hearts,
+        quizFinished,
+        wrongAnswers,
+        continueNoHeartsMode
+    ) {
+        viewModel.setQuizSession(
+            QuizSession(
+                baniId = bani.id,
+                questions = questions,
+                questionIndex = questionIndex,
+                score = score,
+                mistakes = mistakes,
+                hearts = hearts,
+                quizFinished = quizFinished,
+                wrongAnswers = wrongAnswers,
+                continueNoHeartsMode = continueNoHeartsMode
+            )
         )
     }
 
@@ -409,6 +531,27 @@ fun AiGurbaniQuizTab(
     val isLastQuestion =
         questionIndex == questions.lastIndex
 
+     LaunchedEffect(questionIndex, answered) {
+        if (answered) {
+            delay(1500L)
+            if (hearts <= 0 && !continueNoHeartsMode) {
+                showContinueQuizDialog = true
+            } else if (!isLastQuestion) {
+                questionIndex++
+            } else {
+                quizFinished = true
+            }
+        }
+    }
+
+    LaunchedEffect(quizFinished) {
+        if (quizFinished) {
+            val earnedXp = score * 10 + (if (score == questions.size && hearts == 5) 50 else 0)
+            viewModel.awardXp(earnedXp)
+            viewModel.updateQuizHighscore(score)
+        }
+    }
+
     /*
      * SHARED COLORS
      */
@@ -435,212 +578,251 @@ fun AiGurbaniQuizTab(
             contentPadding = PaddingValues(
                 start = 18.dp,
                 end = 18.dp,
-                top = 16.dp,
-                bottom = 120.dp
+                top = 12.dp,
+                bottom = 80.dp
             ),
 
             verticalArrangement =
-                Arrangement.spacedBy(18.dp)
+                Arrangement.spacedBy(10.dp)
         ) {
 
             item {
 
-                Surface(
+    val xpEarned =
+        score * 10 +
+                if (score == questions.size && hearts == 5) 50 else 0
 
-                    modifier =
-                        Modifier.fillMaxWidth(),
+    Surface(
 
-                    shape =
-                        RoundedCornerShape(34.dp),
+        modifier = Modifier.fillMaxWidth(),
 
-                    color = glassCard,
+        shape = RoundedCornerShape(28.dp),
 
-                    border = BorderStroke(
-                        1.dp,
-                        subtleBorder
-                    )
+        color = glassCard,
+
+        border = BorderStroke(
+            1.dp,
+            subtleBorder
+        )
+    ) {
+
+        Column(
+
+            modifier = Modifier.padding(18.dp)
+        ) {
+
+            Row(
+
+                modifier = Modifier.fillMaxWidth(),
+
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+
+                MascotBani(
+
+                    state = when {
+
+                        hearts <= 0 ->
+                            MascotState.Oops
+
+                        score == questions.size ->
+                            MascotState.Celebrating
+
+                        else ->
+                            MascotState.Happy
+                    },
+
+                    modifier = Modifier.size(64.dp)
+                )
+
+                Spacer(
+                    Modifier.width(12.dp)
+                )
+
+                Column(
+                    modifier = Modifier.weight(1f)
                 ) {
 
-                    Column(
+                    Text(
 
-                        modifier =
-                            Modifier.padding(28.dp),
+                        text = when {
 
-                        horizontalAlignment =
-                            Alignment.CenterHorizontally
-                    ) {
+                            hearts <= 0 ->
+                                "Out of Lives!"
+                                    .translate(displayLanguage)
 
-                        Text(
+                            score == questions.size ->
+                                "Perfect Score!"
+                                    .translate(displayLanguage)
 
-                            text = "Quiz Complete".translate(displayLanguage),
+                            else ->
+                                "Quiz Complete"
+                                    .translate(displayLanguage)
+                        },
 
-                            color =
-                                colors.textPrimary,
+                        color = colors.textPrimary,
 
-                            fontSize = 30.sp,
+                        fontSize = 22.sp,
 
-                            fontWeight =
-                                FontWeight.ExtraBold
-                        )
+                        fontWeight = FontWeight.Bold
+                    )
 
-                        Spacer(
-                            Modifier.height(28.dp)
-                        )
+                    Spacer(
+                        Modifier.height(2.dp)
+                    )
 
-                        /*
-                         * SCORE CIRCLE
-                         */
+                   Row(
+    horizontalArrangement = Arrangement.spacedBy(8.dp)
+) {
 
-                        Box(
+    Surface(
+        shape = RoundedCornerShape(100.dp),
+        color = colors.accent.copy(alpha = 0.15f)
+    ) {
 
-                            modifier = Modifier
-                                .size(180.dp)
-                                .clip(CircleShape)
-                                .background(
+        Text(
+            text = "${score}/${questions.size}"
+                .translateDigits(displayLanguage),
 
-                                    Brush.radialGradient(
+            modifier = Modifier.padding(
+                horizontal = 10.dp,
+                vertical = 4.dp
+            ),
 
-                                        listOf(
+            color = colors.accent,
 
-                                            colors.accent.copy(
-                                                alpha = 0.24f
-                                            ),
+            fontSize = 12.sp,
 
-                                            Color.Transparent
-                                        )
-                                    )
-                                ),
+            fontWeight = FontWeight.Bold
+        )
+    }
 
-                            contentAlignment =
-                                Alignment.Center
-                        ) {
+    Surface(
+        shape = RoundedCornerShape(100.dp),
+        color = colors.success.copy(alpha = 0.15f)
+    ) {
 
-                            Column(
+        Text(
+            text = "+$xpEarned XP"
+                .translateDigits(displayLanguage),
 
-                                horizontalAlignment =
-                                    Alignment.CenterHorizontally
-                            ) {
+            modifier = Modifier.padding(
+                horizontal = 10.dp,
+                vertical = 4.dp
+            ),
 
-                                Text(
+            color = colors.success,
 
-                                    text =
-                                        "$score/${questions.size}".translateDigits(displayLanguage),
+            fontSize = 12.sp,
 
-                                    color =
-                                        colors.accent,
-
-                                    fontSize = 46.sp,
-
-                                    fontWeight =
-                                        FontWeight.ExtraBold
-                                )
-
-                                Spacer(
-                                    Modifier.height(6.dp)
-                                )
-
-                                Text(
-
-                                    text = "Final Score".translate(displayLanguage),
-
-                                    color =
-                                        colors.textSecondary,
-
-                                    fontSize = 13.sp
-                                )
-                            }
-                        }
-
-                        Spacer(
-                            Modifier.height(28.dp)
-                        )
-
-                        Row(
-
-                            modifier =
-                                Modifier.fillMaxWidth(),
-
-                            horizontalArrangement =
-                                Arrangement.spacedBy(14.dp)
-                        ) {
-
-                            PremiumResultStat(
-
-                                modifier =
-                                    Modifier.weight(1f),
-
-                                title = "Correct".translate(displayLanguage),
-
-                                value = "$score".translateDigits(displayLanguage),
-
-                                accent =
-                                    colors.success,
-
-                                colors = colors
-                            )
-
-                            PremiumResultStat(
-
-                                modifier =
-                                    Modifier.weight(1f),
-
-                                title = "Mistakes".translate(displayLanguage),
-
-                                value = "$mistakes".translateDigits(displayLanguage),
-
-                                accent =
-                                    colors.error,
-
-                                colors = colors
-                            )
-                        }
-
-                        Spacer(
-                            Modifier.height(28.dp)
-                        )
-
-                        Button(
-
-                            modifier =
-                                Modifier.fillMaxWidth(),
-
-                            shape =
-                                RoundedCornerShape(24.dp),
-
-                            colors =
-                                ButtonDefaults.buttonColors(
-                                    containerColor =
-                                        colors.accent
-                                ),
-
-                            onClick = {
-
-                                questionIndex = 0
-                                score = 0
-                                mistakes = 0
-                                quizFinished = false
-                                wrongAnswers = emptyList()
-                            }
-                        ) {
-
-                            Text(
-
-                                text = "Restart Quiz".translate(displayLanguage),
-
-                                color = Color.White,
-
-                                modifier =
-                                    Modifier.padding(
-                                        vertical = 6.dp
-                                    ),
-
-                                fontWeight =
-                                    FontWeight.Bold
-                            )
-                        }
-                    }
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
                 }
             }
+
+            Spacer(
+                Modifier.height(14.dp)
+            )
+
+            Row(
+
+                modifier = Modifier.fillMaxWidth(),
+
+                horizontalArrangement =
+                    Arrangement.spacedBy(10.dp)
+            ) {
+
+                PremiumResultStat(
+
+                    modifier = Modifier.weight(1f),
+
+                    title =
+                        "Correct"
+                            .translate(displayLanguage),
+
+                    value =
+                        "$score"
+                            .translateDigits(displayLanguage),
+
+                    accent =
+                        colors.success,
+
+                    colors = colors
+                )
+
+                PremiumResultStat(
+
+                    modifier = Modifier.weight(1f),
+
+                    title =
+                        "Mistakes"
+                            .translate(displayLanguage),
+
+                    value =
+                        "$mistakes"
+                            .translateDigits(displayLanguage),
+
+                    accent =
+                        colors.error,
+
+                    colors = colors
+                )
+            }
+
+            Spacer(
+                Modifier.height(14.dp)
+            )
+
+            Button(
+
+                modifier =
+                    Modifier.fillMaxWidth(),
+
+                shape =
+                    RoundedCornerShape(18.dp),
+
+                colors =
+                    ButtonDefaults.buttonColors(
+                        containerColor =
+                            colors.accent
+                    ),
+
+                onClick = {
+
+                    restartTrigger++
+
+                    questionIndex = 0
+
+                    score = 0
+
+                    mistakes = 0
+
+                    hearts = 5
+
+                    continueNoHeartsMode = false
+
+                    quizFinished = false
+
+                    wrongAnswers = emptyList()
+                }
+            ) {
+
+                Text(
+
+                    text =
+                        "Restart Quiz"
+                            .translate(displayLanguage),
+
+                    color = Color.White,
+
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
 
             /*
              * WRONG ANSWERS
@@ -650,96 +832,96 @@ fun AiGurbaniQuizTab(
 
                 item {
 
-                    Text(
+             Row(
+    verticalAlignment = Alignment.CenterVertically
+) {
 
-                        text = "Review Mistakes".translate(displayLanguage),
+ 
 
-                        color =
-                            colors.error,
+    Text(
 
-                        fontSize = 22.sp,
+        text = "Review Mistakes"
+            .translate(displayLanguage),
 
-                        fontWeight =
-                            FontWeight.Bold
-                    )
+        color = colors.error,
+
+        fontSize = 22.sp,
+
+        fontWeight = FontWeight.Bold
+    )
+}
                 }
 
-                itemsIndexed(wrongAnswers) { _, pair ->
+                itemsIndexed(wrongAnswers) { _, entry ->
+                    val parts = entry.split(":::")
+                    val questionText = parts.getOrNull(0).orEmpty()
+                    val correctAnswerText = parts.getOrNull(1).orEmpty()
 
                     Surface(
+    modifier = Modifier.fillMaxWidth(),
+    shape = RoundedCornerShape(20.dp),
+    color = glassCard,
+    border = BorderStroke(1.dp, subtleBorder)
+) {
 
-                        modifier =
-                            Modifier.fillMaxWidth(),
+    Column(
+        modifier = Modifier.padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
 
-                        shape =
-                            RoundedCornerShape(28.dp),
+        // Question Row
 
-                        color =
-                            glassCard,
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.Top
+        ) {
 
-                        border = BorderStroke(
-                            1.dp,
-                            subtleBorder
-                        )
-                    ) {
+            Text(
+                text = "Q: ".translate(displayLanguage),
+                color = colors.error,
+                fontWeight = FontWeight.Bold,
+                fontSize = 13.sp
+            )
 
-                        Column(
+            Text(
+                text = questionText,
+                modifier = Modifier.weight(1f),
+                color = colors.textPrimary,
+                fontSize = 14.sp,
+                lineHeight = 20.sp,
+                fontWeight = FontWeight.Medium
+            )
+        }
 
-                            modifier =
-                                Modifier.padding(20.dp)
-                        ) {
+        HorizontalDivider(
+            color = colors.textSecondary.copy(alpha = 0.1f)
+        )
 
-                            QuizSectionLabel(
-                                title = "Question".translate(displayLanguage),
-                                color = colors.error
-                            )
+        // Answer Row
 
-                            Spacer(
-                                Modifier.height(10.dp)
-                            )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.Top
+        ) {
 
-                            Text(
+            Text(
+                text = "A: ".translate(displayLanguage),
+                color = colors.success,
+                fontWeight = FontWeight.Bold,
+                fontSize = 13.sp
+            )
 
-                                text =
-                                    pair.first,
-
-                                color =
-                                    colors.textPrimary,
-
-                                lineHeight = 30.sp,
-
-                                fontWeight =
-                                    FontWeight.SemiBold
-                            )
-
-                            Spacer(
-                                Modifier.height(22.dp)
-                            )
-
-                            QuizSectionLabel(
-                                title = "Correct Answer".translate(displayLanguage),
-                                color = colors.success
-                            )
-
-                            Spacer(
-                                Modifier.height(10.dp)
-                            )
-
-                            Text(
-
-                                text =
-                                    pair.second,
-
-                                color =
-                                    colors.textPrimary,
-
-                                lineHeight = 30.sp,
-
-                                fontWeight =
-                                    FontWeight.Bold
-                            )
-                        }
-                    }
+            Text(
+                text = correctAnswerText,
+                modifier = Modifier.weight(1f),
+                color = colors.textPrimary,
+                fontSize = 14.sp,
+                lineHeight = 20.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+    }
+}
                 }
             }
         }
@@ -752,412 +934,358 @@ fun AiGurbaniQuizTab(
      */
 
     LazyColumn(
-
-        modifier =
-            Modifier.fillMaxSize(),
-
+        modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(
             start = 18.dp,
             end = 18.dp,
             top = 14.dp,
-            bottom = 120.dp
+            bottom = 30.dp
         ),
-
-        verticalArrangement =
-            Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-
-        /*
-         * QUESTION CARD
-         */
-
         item {
+           val questionTitleText = when (question) {
+    is QuizQuestion.FillBlank ->
+        "Fill Missing Word".translate(displayLanguage)
+
+    is QuizQuestion.Translation ->
+        "Translation Match".translate(displayLanguage)
+
+    is QuizQuestion.NextLine ->
+        "Next Line".translate(displayLanguage)
+
+    is QuizQuestion.TrueFalse ->
+        "True or False".translate(displayLanguage)
+
+    is QuizQuestion.SequenceBuilder ->
+        "Arrange Sequence".translate(displayLanguage)
+
+    is QuizQuestion.WordMeaning ->
+        "Word Meaning".translate(displayLanguage)
+
+    is QuizQuestion.BaniAuthor ->
+        "Bani Author".translate(displayLanguage)
+
+    is QuizQuestion.BaniAng ->
+        "Bani Ang (Page)".translate(displayLanguage)
+}
+
+            val questionText = when (question) {
+                is QuizQuestion.FillBlank -> question.line
+                is QuizQuestion.Translation -> question.line
+                is QuizQuestion.NextLine -> question.currentLine
+                is QuizQuestion.TrueFalse -> {
+                    val parts = question.statement.split("\n\n")
+                    parts.getOrNull(0).orEmpty()
+                }
+                is QuizQuestion.SequenceBuilder -> "Arrange Gurbani Line".translate(displayLanguage)
+                is QuizQuestion.WordMeaning -> question.line
+                is QuizQuestion.BaniAuthor -> question.baniName
+                is QuizQuestion.BaniAng -> question.baniName
+            }
 
             Surface(
-
-                modifier =
-                    Modifier.fillMaxWidth(),
-
-                shape =
-                    RoundedCornerShape(34.dp),
-
-                color =
-                    glassCard,
-
-                border = BorderStroke(
-                    1.dp,
-                    subtleBorder
-                )
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(34.dp),
+                color = glassCard,
+                border = BorderStroke(1.dp, subtleBorder)
             ) {
-
                 Column(
-
-                    modifier =
-                        Modifier.padding(24.dp)
+                    modifier = Modifier.padding(24.dp)
                 ) {
-
-                    /*
-                     * HEADER
-                     */
-
                     Row(
-
-                        modifier =
-                            Modifier.fillMaxWidth(),
-
-                        verticalAlignment =
-                            Alignment.CenterVertically
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
+                        val currentMascotState = remember(answered, answerCorrect, question, hearts) {
+                            when {
+                                hearts <= 0 -> MascotState.Oops
+                                answered && answerCorrect -> MascotState.Celebrating
+                                answered && !answerCorrect -> MascotState.Oops
+                                question is QuizQuestion.SequenceBuilder -> MascotState.Thinking
+                                question is QuizQuestion.FillBlank -> MascotState.Thinking
+                                question is QuizQuestion.NextLine -> MascotState.Reading
+                                question is QuizQuestion.Translation -> MascotState.Listening
+                                question is QuizQuestion.WordMeaning -> MascotState.Reading
+                                question is QuizQuestion.BaniAuthor -> MascotState.Reading
+                                question is QuizQuestion.BaniAng -> MascotState.Reading
+                                else -> MascotState.Happy
+                            }
+                        }
 
-                        Text(
-
-                            text =
-                                "${"Question".translate(displayLanguage)} ${questionIndex + 1}/${questions.size}".translateDigits(displayLanguage),
-
-                            color =
-                                colors.textSecondary,
-
-                            fontWeight =
-                                FontWeight.SemiBold,
-
-                            fontSize = 13.sp
+                        MascotBani(
+                            state = currentMascotState,
+                            modifier = Modifier.size(78.dp)
                         )
 
-                        Spacer(
-                            Modifier.weight(1f)
-                        )
+                        Spacer(Modifier.width(12.dp))
 
-                        Surface(
-
-                            shape =
-                                RoundedCornerShape(100.dp),
-
-                            color =
-                                colors.accent.copy(
-                                    alpha = 0.14f
-                                )
+                        Column(
+                            modifier = Modifier.weight(1f)
                         ) {
-
                             Text(
-
-                                text =
-                                    "${"Score".translate(displayLanguage)} $score".translateDigits(displayLanguage),
-
-                                color =
-                                    colors.accent,
-
-                                fontWeight =
-                                    FontWeight.Bold,
-
-                                fontSize = 12.sp,
-
-                                modifier =
-                                    Modifier.padding(
-                                        horizontal = 14.dp,
-                                        vertical = 8.dp
-                                    )
+                                text = questionText,
+                                color = colors.textPrimary,
+                                fontSize = 20.sp,
+                                lineHeight = 30.sp,
+                                fontWeight = FontWeight.ExtraBold
                             )
+
+                            Spacer(Modifier.height(4.dp))
+
+                         Row(
+    verticalAlignment = Alignment.CenterVertically
+) {
+
+    when {
+
+        answered && answerCorrect -> {
+
+            Text(
+                text = "Great job!"
+                    .translate(displayLanguage),
+
+                color = colors.success,
+
+                fontSize = 12.sp,
+
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        answered && !answerCorrect -> {
+
+            Text(
+                text = "Keep trying"
+                    .translate(displayLanguage),
+
+                color = colors.error,
+
+                fontSize = 12.sp,
+
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        hearts <= 0 -> {
+
+            Text(
+                text = "Out of hearts"
+                    .translate(displayLanguage),
+
+                color = colors.error,
+
+                fontSize = 12.sp,
+
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        else -> {
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+
+        Surface(
+            shape = RoundedCornerShape(100.dp),
+
+            color = Color.Transparent
+        ) {
+
+            Text(
+                text = "Q: "
+                    .translate(displayLanguage),
+
+                modifier = Modifier.padding(
+                    horizontal = 2.dp,
+                    vertical = 3.dp
+                ),
+
+                color = colors.accent,
+
+                fontSize = 13.sp,
+
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        Text(
+            text = "${questionIndex + 1}/${questions.size}"
+                .translateDigits(displayLanguage),
+
+           color = colors.textSecondary,
+
+            fontSize = 10.sp,
+
+            fontWeight = FontWeight.SemiBold
+        )
+    }
+}
+    }
+
+    Spacer(
+        Modifier.width(6.dp)
+    )
+
+    Text(
+        text = "•",
+
+        color = colors.textSecondary.copy(alpha = 0.5f),
+
+        fontSize = 12.sp
+    )
+
+    Spacer(
+        Modifier.width(6.dp)
+    )
+
+    Text(
+        text = questionTitleText,
+
+        color = colors.textSecondary,
+
+        fontSize = 12.sp
+    )
+}
                         }
                     }
 
-                    Spacer(
-                        Modifier.height(18.dp)
-                    )
+                    Spacer(Modifier.height(12.dp))
 
                     LinearProgressIndicator(
-
-                        progress = {
-
-                            (questionIndex + 1f) /
-                                questions.size
-                        },
-
+                        progress = { (questionIndex + 1f) / questions.size },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(7.dp)
                             .clip(CircleShape),
-
-                        color =
-                            colors.accent,
-
-                        trackColor =
-                            colors.cardSecondary.copy(
-                                alpha = 0.34f
-                            )
+                        color = colors.accent,
+                        trackColor = colors.cardSecondary.copy(alpha = 0.34f)
                     )
 
-                    Spacer(
-                        Modifier.height(26.dp)
-                    )
-
-                    val title = when (question) {
-
-                        is QuizQuestion.FillBlank ->
-                            "Fill Missing Word"
-
-                        is QuizQuestion.Translation ->
-                            "Translation Match"
-
-                        is QuizQuestion.NextLine ->
-                            "Next Line"
-
-                        is QuizQuestion.TrueFalse ->
-                            "True or False"
-
-                        is QuizQuestion.SequenceBuilder ->
-                            "Arrange Sequence"
-                    }
-
-                    QuizSectionLabel(
-                        title = title.translate(displayLanguage),
-                        color = colors.accent
-                    )
-
-                    Spacer(
-                        Modifier.height(18.dp)
-                    )
-
-                    /*
-                     * QUESTION CONTENT
-                     */
-Surface(
-
-    modifier =
-        Modifier.fillMaxWidth(),
-
-    shape =
-        RoundedCornerShape(28.dp),
-
-    color =
-        colors.cardSecondary.copy(
-            alpha = 0.22f
-        ),
-
-    border = BorderStroke(
-
-        1.dp,
-
-        colors.textSecondary.copy(
-            alpha = 0.10f
-        )
-    )
-) {
-
-    Column(
-
-        modifier =
-            Modifier.padding(20.dp)
-    ) {
-
-        when (question) {
-
-            is QuizQuestion.TrueFalse -> {
-
-                val parts =
-                    question.statement
-                        .split("\n\n")
-
-                val gurbani =
-                    parts.getOrNull(0)
-                        .orEmpty()
-
-                val translation =
-                    parts.getOrNull(1)
-                        .orEmpty()
-
-                Text(
-
-                    text = gurbani,
-
-                    color =
-                        colors.textPrimary,
-
-                    fontSize = 28.sp,
-
-                    lineHeight = 42.sp,
-
-                    fontWeight =
-                        FontWeight.ExtraBold
-                )
-
-                if (translation.isNotBlank()) {
-
-                    Spacer(
-                        Modifier.height(20.dp)
-                    )
+                    Spacer(Modifier.height(18.dp))
 
                     Surface(
-
-                        shape =
-                            RoundedCornerShape(
-                                22.dp
-                            ),
-
-                        color =
-                            colors.accent.copy(
-                                alpha = 0.12f
-                            )
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(28.dp),
+                        color = colors.cardSecondary.copy(alpha = 0.22f),
+                        border = BorderStroke(1.dp, colors.textSecondary.copy(alpha = 0.10f))
                     ) {
+                        Column(
+                            modifier = Modifier.padding(20.dp)
+                        ) {
+                            when (question) {
+                                is QuizQuestion.TrueFalse -> {
+                                    val parts = question.statement.split("\n\n")
+                                    val translation = parts.getOrNull(1).orEmpty()
+                                    if (translation.isNotBlank()) {
+                                        Text(
+                                            text = "Translation:".translate(displayLanguage),
+                                            color = colors.accent,
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                        Spacer(Modifier.height(6.dp))
+                                        Text(
+                                            text = translation,
+                                            color = colors.textPrimary,
+                                            fontSize = 16.sp,
+                                            lineHeight = 24.sp,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                    } else {
+                                        Text(
+                                            text = "Is this Gurbani line correct?".translate(displayLanguage),
+                                            color = colors.textPrimary,
+                                            fontSize = 16.sp,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    }
+                                }
 
-                        Text(
-
-                            text =
-                                translation,
-
-                            color =
-                                colors.accent,
-
-                            fontWeight =
-                                FontWeight.Bold,
-
-                            fontSize = 13.sp,
-
-                            lineHeight = 22.sp,
-
-                            modifier =
-                                Modifier.padding(
-                                    horizontal = 14.dp,
-                                    vertical = 10.dp
-                                )
-                        )
-                    }
-                }
-            }
-
-            is QuizQuestion.SequenceBuilder -> {
-
-                Text(
-
-                    text =
-                        "Arrange the Gurbani line correctly",
-
-                    color =
-                        colors.textPrimary,
-
-                    fontSize = 14.sp,
-
-                    lineHeight = 40.sp,
-
-                    fontWeight =
-                        FontWeight.ExtraBold
-                )
-
-                Spacer(
-                    Modifier.height(22.dp)
-                )
-
-                Surface(
-
-                    modifier =
-                        Modifier.fillMaxWidth(),
-
-                    shape =
-                        RoundedCornerShape(
-                            24.dp
-                        ),
-
-                    color =
-                        colors.accent.copy(
-                            alpha = 0.08f
-                        )
-                ) {
-
-                    Column(
-
-                        modifier =
-                            Modifier.padding(
-                                18.dp
-                            )
-                    ) {
-
-                        QuizSectionLabel(
-                            title = "Hint".translate(displayLanguage),
-                            color = colors.accent
-                        )
-
-                        Spacer(
-                            Modifier.height(8.dp)
-                        )
-
-                        Text(
-
-                            text =
-                                question.hint.translate(displayLanguage),
-
-                            color =
-                                colors.textSecondary,
-
-                            lineHeight = 22.sp
-                        )
-
-                        Spacer(
-                            Modifier.height(20.dp)
-                        )
-
-                        Text(
-
-                            text =
-
-                                if (
-                                    selectedWords.isEmpty()
-                                ) {
-
-                                    "Tap words below...".translate(displayLanguage)
-
-                                } else {
-
-                                    selectedWords.joinToString(
-                                        " "
+                                is QuizQuestion.SequenceBuilder -> {
+                                    QuizSectionLabel(
+                                        title = "Hint / Translation".translate(displayLanguage),
+                                        color = colors.accent
                                     )
-                                },
+                                    Spacer(Modifier.height(8.dp))
+                                    Text(
+                                        text = question.hint.translate(displayLanguage),
+                                        color = colors.textSecondary,
+                                        lineHeight = 22.sp
+                                    )
+                                    Spacer(Modifier.height(16.dp))
+                                    Text(
+                                        text = if (selectedWords.isEmpty()) {
+                                            "Tap words below to arrange...".translate(displayLanguage)
+                                        } else {
+                                            selectedWords.joinToString(" ")
+                                        },
+                                        color = colors.textPrimary,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 18.sp,
+                                        lineHeight = 28.sp
+                                    )
+                                }
 
-                            color =
-                                colors.textPrimary,
+                                is QuizQuestion.WordMeaning -> {
+                                    Text(
+                                        text = "What is the meaning / explanation of this line?".translate(displayLanguage),
+                                        color = colors.accent,
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
 
-                            fontWeight =
-                                FontWeight.Bold,
+                                is QuizQuestion.BaniAuthor -> {
+                                    Text(
+                                        text = "Who is the author / writer of this Bani?".translate(displayLanguage),
+                                        color = colors.accent,
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
 
-                            lineHeight = 34.sp
-                        )
+                                is QuizQuestion.BaniAng -> {
+                                    Text(
+                                        text = "What is the starting Ang (Page) of this Bani?".translate(displayLanguage),
+                                        color = colors.accent,
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+
+                                is QuizQuestion.FillBlank -> {
+                                    Text(
+                                        text = "Fill the missing word in the line above".translate(displayLanguage),
+                                        color = colors.accent,
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+
+                                is QuizQuestion.Translation -> {
+                                    Text(
+                                        text = "Match the correct translation for the line above".translate(displayLanguage),
+                                        color = colors.accent,
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+
+                                is QuizQuestion.NextLine -> {
+                                    Text(
+                                        text = "What is the next line of this Gurbani Paath?".translate(displayLanguage),
+                                        color = colors.accent,
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+                            }
+                        }
                     }
-                }
-            }
-
-            else -> {
-
-                val questionText = when (question) {
-
-                    is QuizQuestion.FillBlank ->
-                        question.line
-
-                    is QuizQuestion.Translation ->
-                        question.line
-
-                    is QuizQuestion.NextLine ->
-                        question.currentLine
-
-                    else -> ""
-                }
-
-                Text(
-
-                    text =
-                        questionText,
-
-                    color =
-                        colors.textPrimary,
-
-                    fontSize = 28.sp,
-
-                    lineHeight = 42.sp,
-
-                    fontWeight =
-                        FontWeight.ExtraBold
-                )
-            }
-        }
-    }
-}
                 }
             }
         }
@@ -1224,14 +1352,11 @@ Surface(
                                     score++
 
                                 } else {
-
                                     mistakes++
-
-                                    wrongAnswers =
-                                        wrongAnswers + (
-                                            question.line to
-                                                question.answer
-                                        )
+                                    hearts--
+                                   wrongAnswers =
+    wrongAnswers +
+        "Fill Missing Word\n\n${question.line}:::${question.answer}"
                                 }
                             }
                         }
@@ -1240,27 +1365,26 @@ Surface(
             }
 
             is QuizQuestion.Translation,
-            is QuizQuestion.NextLine -> {
+            is QuizQuestion.NextLine,
+            is QuizQuestion.WordMeaning,
+            is QuizQuestion.BaniAuthor,
+            is QuizQuestion.BaniAng -> {
 
                 val options = when (question) {
-
-                    is QuizQuestion.Translation ->
-                        question.options
-
-                    is QuizQuestion.NextLine ->
-                        question.options
-
+                    is QuizQuestion.Translation -> question.options
+                    is QuizQuestion.NextLine -> question.options
+                    is QuizQuestion.WordMeaning -> question.options
+                    is QuizQuestion.BaniAuthor -> question.options
+                    is QuizQuestion.BaniAng -> question.options
                     else -> emptyList()
                 }
 
                 val answer = when (question) {
-
-                    is QuizQuestion.Translation ->
-                        question.answer
-
-                    is QuizQuestion.NextLine ->
-                        question.answer
-
+                    is QuizQuestion.Translation -> question.answer
+                    is QuizQuestion.NextLine -> question.answer
+                    is QuizQuestion.WordMeaning -> question.answer
+                    is QuizQuestion.BaniAuthor -> question.answer
+                    is QuizQuestion.BaniAng -> question.answer
                     else -> ""
                 }
 
@@ -1298,13 +1422,39 @@ Surface(
                             score++
 
                         } else {
-
                             mistakes++
+                            hearts--
+                            val questionText = when (question) {
+                                is QuizQuestion.Translation -> question.line
+                                is QuizQuestion.NextLine -> question.currentLine
+                                is QuizQuestion.WordMeaning -> "Meaning of: ${question.line}"
+                                is QuizQuestion.BaniAuthor -> "Author of: ${question.baniName}"
+                                is QuizQuestion.BaniAng -> "Starting Ang of: ${question.baniName}"
+                                else -> "Q: ".translate(displayLanguage)
+                            }
+                            val reviewQuestion = when (question) {
 
-                            wrongAnswers =
-                                wrongAnswers + (
-                                    "Question" to answer
-                                )
+                            is QuizQuestion.Translation ->
+                                "Translation Match\n\n${question.line}"
+
+                            is QuizQuestion.NextLine ->
+                                "Next Line\n\n${question.currentLine}"
+
+                            is QuizQuestion.WordMeaning ->
+                                "Word Meaning\n\n${question.line}"
+
+                            is QuizQuestion.BaniAuthor ->
+                                "Author Question\n\n${question.baniName}"
+
+                            is QuizQuestion.BaniAng ->
+                                "Ang Question\n\n${question.baniName}"
+
+                            else ->
+                                questionText
+}
+
+wrongAnswers =
+    wrongAnswers + "$reviewQuestion:::$answer"
                         }
                     }
                 }
@@ -1371,14 +1521,16 @@ Surface(
                                         score++
 
                                     } else {
-
                                         mistakes++
-
+                                        hearts--
                                         wrongAnswers =
-                                            wrongAnswers + (
-                                                question.statement to
-                                                    question.answer.toString()
-                                            )
+    wrongAnswers +
+        "True or False\n\n${question.statement}:::${
+            if (question.answer)
+                "True".translate(displayLanguage)
+            else
+                "False".translate(displayLanguage)
+        }"
                                     }
                                 }
                             }
@@ -1468,13 +1620,11 @@ Surface(
                                         } else {
 
                                             mistakes++
+                                            hearts--
 
                                             wrongAnswers =
-                                                wrongAnswers + (
-                                                    "Arrange Sequence" to
-                                                        question.originalWords
-                                                            .joinToString(" ")
-                                                )
+    wrongAnswers +
+        "Arrange Sequence\n\n${question.hint}\n\n:::${question.originalWords.joinToString(" ")}"
                                         }
                                     }
                                 }
@@ -1483,72 +1633,133 @@ Surface(
                     }
                 }
             }
-        }
+    }
+}
 
-        /*
-         * CONTINUE
-         */
-
-        if (answered) {
-
-            item {
-
-                Spacer(
-                    Modifier.height(4.dp)
+    if (showContinueQuizDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showContinueQuizDialog = false
+                questionIndex = 0
+                score = 0
+                mistakes = 0
+                hearts = 5
+                continueNoHeartsMode = false
+                quizFinished = false
+                wrongAnswers = emptyList()
+            },
+            title = {
+                Text(
+                    text = "Out of Lives!".translate(displayLanguage),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp,
+                    color = colors.textPrimary,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
                 )
+            },
+            text = {
+               Column(
 
+    modifier = Modifier.fillMaxWidth(),
+
+    horizontalAlignment =
+        Alignment.CenterHorizontally,
+
+    verticalArrangement =
+        Arrangement.spacedBy(8.dp)
+) {
+
+    MascotBani(
+
+        state = MascotState.Oops,
+
+        modifier = Modifier.size(120.dp)
+    )
+
+    Text(
+
+        text =
+            "Out of hearts"
+                .translate(displayLanguage),
+
+        color =
+            colors.textPrimary,
+
+        fontSize = 20.sp,
+
+        fontWeight =
+            FontWeight.Bold,
+
+        textAlign =
+            TextAlign.Center
+    )
+
+    Text(
+
+        text =
+            "You have no hearts remaining."
+                .translate(displayLanguage),
+
+        color =
+            colors.textSecondary,
+
+        fontSize = 14.sp,
+
+        textAlign =
+            TextAlign.Center
+    )
+
+    Text(
+
+        text =
+            "Restart the quiz or continue in No-Hearts mode."
+                .translate(displayLanguage),
+
+        color =
+            colors.textSecondary,
+
+        fontSize = 13.sp,
+
+        lineHeight = 20.sp,
+
+        textAlign =
+            TextAlign.Center,
+
+        modifier = Modifier
+            .padding(horizontal = 12.dp)
+    )
+}
+            },
+            confirmButton = {
                 Button(
-
-                    modifier =
-                        Modifier.fillMaxWidth(),
-
-                    shape =
-                        RoundedCornerShape(24.dp),
-
-                    colors =
-                        ButtonDefaults.buttonColors(
-                            containerColor =
-                                if (answerCorrect)
-                                    colors.success
-                                else
-                                    colors.error
-                        ),
-
                     onClick = {
-
+                        showContinueQuizDialog = false
+                        quizFinished = true
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = colors.accent)
+                ) {
+                    Text("View Score".translate(displayLanguage), color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        continueNoHeartsMode = true
+                        showContinueQuizDialog = false
                         if (!isLastQuestion) {
-
                             questionIndex++
-
                         } else {
-
                             quizFinished = true
                         }
                     }
                 ) {
-
-                    Text(
-
-                        text =
-
-                            if (isLastQuestion)
-                                                                "Finish Quiz".translate(displayLanguage)
-                                                            else
-                                                                "Continue".translate(displayLanguage),
-
-                        color = Color.White,
-
-                        modifier =
-                            Modifier.padding(
-                                vertical = 6.dp
-                            ),
-
-                        fontWeight =
-                            FontWeight.Bold
-                    )
+                    Text("Continue".translate(displayLanguage), color = colors.textSecondary, fontWeight = FontWeight.Bold)
                 }
-            }
-        }
+            },
+            shape = RoundedCornerShape(28.dp),
+            containerColor = colors.card
+        )
     }
 }
 
@@ -1589,18 +1800,12 @@ private fun QuizChoiceChip(
 
     val background = when {
 
-        answered &&
-            selected &&
-            correct -> {
-
-            colors.success.copy(alpha = 0.18f)
+        answered && correct -> {
+            colors.success.copy(alpha = 0.24f)
         }
 
-        answered &&
-            selected &&
-            !correct -> {
-
-            colors.error.copy(alpha = 0.18f)
+        answered && selected && !correct -> {
+            colors.error.copy(alpha = 0.24f)
         }
 
         else -> {
@@ -1663,18 +1868,12 @@ private fun QuizOptionCard(
 
     val background = when {
 
-        answered &&
-            selected &&
-            correct -> {
-
-            colors.success.copy(alpha = 0.18f)
+        answered && correct -> {
+            colors.success.copy(alpha = 0.24f)
         }
 
-        answered &&
-            selected &&
-            !correct -> {
-
-            colors.error.copy(alpha = 0.18f)
+        answered && selected && !correct -> {
+            colors.error.copy(alpha = 0.24f)
         }
 
         else -> {
@@ -1740,18 +1939,12 @@ private fun QuizBinaryButton(
 
     val background = when {
 
-        answered &&
-            selected &&
-            correct -> {
-
-            colors.success.copy(alpha = 0.18f)
+        answered && correct -> {
+            colors.success.copy(alpha = 0.24f)
         }
 
-        answered &&
-            selected &&
-            !correct -> {
-
-            colors.error.copy(alpha = 0.18f)
+        answered && selected && !correct -> {
+            colors.error.copy(alpha = 0.24f)
         }
 
         else -> {

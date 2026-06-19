@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import org.audiocular.nitnem.audio.StreamAudioController
 import org.audiocular.nitnem.models.PlaybackSnapshot
 
 private class DesktopStreamAudioController : StreamAudioController {
@@ -33,13 +34,13 @@ private class DesktopStreamAudioController : StreamAudioController {
 
     override fun release() = Unit
 
-    override suspend fun downloadAudio(baniId: String, remoteUrl: String): Boolean = false
+    override suspend fun downloadAudio(baniId: String, remoteUrl: String, trackId: String?): Boolean = false
 
-    override fun isAudioDownloaded(baniId: String): Boolean = false
+    override fun isAudioDownloaded(baniId: String, trackId: String?): Boolean = false
 
-    override fun getLocalAudioPath(baniId: String): String? = null
+    override fun getLocalAudioPath(baniId: String, trackId: String?): String? = null
 
-    override fun deleteAudio(baniId: String) = Unit
+    override fun deleteAudio(baniId: String, trackId: String?) = Unit
 }
 
 @Composable

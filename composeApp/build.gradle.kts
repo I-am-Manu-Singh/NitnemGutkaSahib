@@ -1,5 +1,6 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.Properties
 
 plugins {
 
@@ -32,6 +33,7 @@ kotlin {
             implementation("androidx.media3:media3-session:1.4.1")
             implementation("androidx.media3:media3-ui:1.4.1")
             implementation("androidx.work:work-runtime-ktx:2.9.0")
+            implementation("org.slf4j:slf4j-simple:2.0.13")
             implementation("androidx.glance:glance-appwidget:1.1.1")
             implementation("androidx.glance:glance-material3:1.1.1")
             implementation("androidx.datastore:datastore-preferences:1.1.1")
@@ -77,6 +79,24 @@ android {
     namespace = "org.audiocular.nitnem"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
+    val keystorePropertiesFile = rootProject.file("local.properties")
+    val keystoreProperties = Properties()
+    if (keystorePropertiesFile.exists()) {
+        keystorePropertiesFile.inputStream().use { keystoreProperties.load(it) }
+    }
+
+    signingConfigs {
+        create("release") {
+            val keyPath = keystoreProperties.getProperty("RELEASE_KEYSTORE_PATH") ?: ""
+            if (keyPath.isNotEmpty()) {
+                storeFile = file(keyPath)
+                storePassword = keystoreProperties.getProperty("RELEASE_KEYSTORE_PASSWORD") ?: ""
+                keyAlias = keystoreProperties.getProperty("RELEASE_KEY_ALIAS") ?: ""
+                keyPassword = keystoreProperties.getProperty("RELEASE_KEY_PASSWORD") ?: ""
+            }
+        }
+    }
+
     defaultConfig {
         applicationId = "org.audiocular.nitnem"
         minSdk = libs.versions.android.minSdk.get().toInt()
@@ -93,7 +113,13 @@ android {
 
     buildTypes {
         getByName("release") {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            val keyPath = keystoreProperties.getProperty("RELEASE_KEYSTORE_PATH") ?: ""
+            if (keyPath.isNotEmpty()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 

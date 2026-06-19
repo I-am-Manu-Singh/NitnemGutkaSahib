@@ -11,7 +11,9 @@ private object NoOpJourneyWidgetBridge : JourneyWidgetBridge {
         streakDays: Int,
         weeklyCompleted: Int,
         monthlyConsistencyDays: Int,
-        completedBaniIds: List<String>
+        completedBaniIds: List<String>,
+        widgetTheme: String,
+        widgetContent: String
     ) = Unit
 }
 

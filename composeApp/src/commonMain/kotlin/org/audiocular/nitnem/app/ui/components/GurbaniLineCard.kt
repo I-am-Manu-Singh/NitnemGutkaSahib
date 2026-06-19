@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.Stable
@@ -32,6 +33,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.PathEffect
 import org.audiocular.nitnem.models.BaniLine
 import org.audiocular.nitnem.utils.translateHindiTransliteration
 
@@ -85,7 +91,8 @@ data class GurbaniLineUiConfig(
 
 @OptIn(
     ExperimentalFoundationApi::class,
-    ExperimentalMaterial3Api::class
+    ExperimentalMaterial3Api::class,
+    ExperimentalLayoutApi::class
 )
 @Composable
 fun GurbaniLineCard(
@@ -422,30 +429,25 @@ fun GurbaniLineCard(
                             onClick = onBookmark
                         )
 
-                        if (
-                            line.wordMeaning.isNotBlank()
-                        ) {
+                        MinimalActionButton(
 
-                            MinimalActionButton(
+                            icon =
+                                Icons.Default.MenuBook,
 
-                                icon =
-                                    Icons.Default.MenuBook,
+                            tint =
+                                wordMeaningColor.copy(
+                                    alpha = 0.70f
+                                ),
 
-                                tint =
-                                    wordMeaningColor.copy(
-                                        alpha = 0.70f
-                                    ),
+                            containerColor =
+                                colors.surfaceVariant.copy(
+                                    alpha = 0.18f
+                                ),
 
-                                containerColor =
-                                    colors.surfaceVariant.copy(
-                                        alpha = 0.18f
-                                    ),
-
-                                onClick = {
-                                    onMeaningClick(line)
-                                }
-                            )
-                        }
+                            onClick = {
+                                onMeaningClick(line)
+                            }
+                        )
                     }
                 }
 
@@ -465,45 +467,110 @@ fun GurbaniLineCard(
                  * GURMUKHI
                  */
 
-                Text(
+                val words = remember(line.gurmukhi) {
+                    line.gurmukhi.split(" ").filter { it.isNotBlank() }
+                }
 
-                    text = if (config.larivaarMode) line.gurmukhi.replace(" ", "") else line.gurmukhi,
+                val wordMeaningsMap = remember(line.wordMeaning) {
+                    parseWordMeanings(line.wordMeaning)
+                }
 
-                    color = gurmukhiColor,
+                var activePopupWordIndex by remember { mutableStateOf<Int?>(null) }
 
-                    fontSize =
-                        config.gurmukhiFontSize.sp,
+                LaunchedEffect(activePopupWordIndex) {
+                    if (activePopupWordIndex != null) {
+                        kotlinx.coroutines.delay(4000)
+                        activePopupWordIndex = null
+                    }
+                }
 
-                    lineHeight =
-                        config.lineSpacing.sp,
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = if (config.centerGurmukhi) Arrangement.Center else Arrangement.Start,
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    words.forEachIndexed { wordIndex, word ->
+                        val cleanWord = remember(word) {
+                            word.replace(Regex("[।|.||?;:!,='\"/\\\\]"), "").trim().lowercase()
+                        }
+                        val meaning = wordMeaningsMap[cleanWord]
+                        val hasMeaning = !meaning.isNullOrBlank()
 
-                    fontWeight =
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier.wrapContentSize()
+                        ) {
+                            Text(
+                                text = word,
+                                color = gurmukhiColor,
+                                fontSize = config.gurmukhiFontSize.sp,
+                                lineHeight = config.lineSpacing.sp,
+                                fontWeight = if (config.boldGurmukhi) FontWeight.Bold else FontWeight.Medium,
+                                modifier = Modifier
+                                    .clickable(enabled = hasMeaning) {
+                                        activePopupWordIndex = if (activePopupWordIndex == wordIndex) null else wordIndex
+                                    }
+                                    .drawBehind {
+                                        if (hasMeaning) {
+                                            val strokeWidth = 1.2.dp.toPx()
+                                            val y = size.height - 1.dp.toPx()
+                                            val pathEffect = PathEffect.dashPathEffect(floatArrayOf(3f, 3f), 0f)
+                                            drawLine(
+                                                color = colors.primary.copy(alpha = 0.5f),
+                                                start = Offset(0f, y),
+                                                end = Offset(size.width, y),
+                                                strokeWidth = strokeWidth,
+                                                pathEffect = pathEffect
+                                            )
+                                        }
+                                    }
+                                    .padding(horizontal = if (config.larivaarMode) 0.dp else 2.dp)
+                            )
 
-                        if (config.boldGurmukhi) {
-                            FontWeight.Bold
-                        } else {
-                            FontWeight.Medium
-                        },
-
-                    textAlign =
-
-                        if (config.centerGurmukhi) {
-                            TextAlign.Center
-                        } else {
-                            TextAlign.Start
-                        },
-
-                    modifier =
-                        Modifier.fillMaxWidth()
-                )
+                            if (activePopupWordIndex == wordIndex && hasMeaning) {
+                                Popup(
+                                    alignment = Alignment.TopCenter,
+                                    offset = IntOffset(0, -50),
+                                    onDismissRequest = { activePopupWordIndex = null }
+                                ) {
+                                    Surface(
+                                        shape = RoundedCornerShape(12.dp),
+                                        color = colors.surfaceContainerHigh,
+                                        border = BorderStroke(1.dp, colors.outlineVariant.copy(alpha = 0.24f)),
+                                        tonalElevation = 6.dp,
+                                        modifier = Modifier.widthIn(max = 220.dp)
+                                    ) {
+                                        Column(
+                                            modifier = Modifier.padding(12.dp),
+                                            horizontalAlignment = Alignment.CenterHorizontally
+                                        ) {
+                                            Text(
+                                                text = word,
+                                                color = colors.primary,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = (config.gurmukhiFontSize * 0.75f).sp
+                                            )
+                                            Spacer(Modifier.height(4.dp))
+                                            Text(
+                                                text = meaning!!,
+                                                color = colors.onSurface,
+                                                fontSize = (config.gurmukhiFontSize * 0.60f).sp,
+                                                textAlign = TextAlign.Center
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
 
                 /*
                  * ROMAN
                  */
 
                 if (
-                    config.showRomanTransliteration &&
-                    line.transliteration.isNotBlank()
+                    config.showRomanTransliteration
                 ) {
 
                     Spacer(
@@ -516,7 +583,7 @@ fun GurbaniLineCard(
                             Icons.Default.Language,
 
                         text =
-                            line.transliteration,
+                            if (line.transliteration.isNotBlank()) line.transliteration else "Transliteration not available",
 
                         color =
                             romanTransliterationColor,
@@ -539,8 +606,7 @@ fun GurbaniLineCard(
                  */
 
                 if (
-                    config.showDevanagariTransliteration &&
-                    line.hindi.isNotBlank()
+                    config.showDevanagariTransliteration
                 ) {
 
                     Spacer(
@@ -553,13 +619,75 @@ fun GurbaniLineCard(
                             Icons.Default.AutoStories,
 
                         text =
-                            line.hindi.translateHindiTransliteration(),
+                            if (line.hindi.isNotBlank()) line.hindi.translateHindiTransliteration() else "Hindi translation not available",
 
                         color =
                             romanTransliterationColor,
 
                         fontSize =
                             config.romanTransliterationFontSize,
+
+                        lineSpacing =
+                            config.lineSpacing
+                    )
+                }
+
+                /*
+                 * ENGLISH TRANSLATION
+                 */
+
+                if (
+                    config.showEnglishTranslation
+                ) {
+
+                    Spacer(
+                        Modifier.height(sectionSpacing)
+                    )
+
+                    MinimalTranslationSection(
+
+                        icon =
+                            Icons.Default.Translate,
+
+                        text =
+                            if (line.translation.isNotBlank()) line.translation else "English translation not available",
+
+                        color =
+                            translationColor.copy(alpha = 0.85f),
+
+                        fontSize =
+                            config.translationFontSize,
+
+                        lineSpacing =
+                            config.lineSpacing
+                    )
+                }
+
+                /*
+                 * PUNJABI TRANSLATION
+                 */
+
+                if (
+                    config.showPunjabiTranslation
+                ) {
+
+                    Spacer(
+                        Modifier.height(sectionSpacing)
+                    )
+
+                    MinimalTranslationSection(
+
+                        icon =
+                            Icons.Default.MenuBook,
+
+                        text =
+                            if (line.punjabi.isNotBlank()) line.punjabi else "Punjabi translation not available",
+
+                        color =
+                            translationColor.copy(alpha = 0.85f),
+
+                        fontSize =
+                            config.translationFontSize,
 
                         lineSpacing =
                             config.lineSpacing
@@ -783,4 +911,27 @@ private fun resolveTextColor(
 
         else -> default
     }
+}
+
+private fun parseWordMeanings(meaningText: String): Map<String, String> {
+    val result = mutableMapOf<String, String>()
+    if (meaningText.isBlank()) return result
+    
+    // Split by Gurbani full stop '।' or semicolon ';' or newline '\n'
+    val entries = meaningText.split(Regex("[।;\n]"))
+    for (entry in entries) {
+        if (entry.isBlank()) continue
+        // Split word and meaning by '=' or '-'
+        val parts = entry.split(Regex("[=-]"), 2)
+        if (parts.size == 2) {
+            val rawWord = parts[0].trim()
+            val rawMeaning = parts[1].trim()
+            if (rawWord.isNotEmpty() && rawMeaning.isNotEmpty()) {
+                // Normalize word: strip common trailing punctuation or symbols
+                val cleanWordKey = rawWord.replace(Regex("[।|.||?;:!,='\"/\\\\]"), "").trim().lowercase()
+                result[cleanWordKey] = rawMeaning
+            }
+        }
+    }
+    return result
 }

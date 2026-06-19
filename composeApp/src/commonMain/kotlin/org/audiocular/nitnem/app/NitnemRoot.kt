@@ -6,13 +6,15 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.*
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
-import org.audiocular.nitnem.app.audio.rememberStreamAudioController
+import kotlinx.coroutines.flow.distinctUntilChanged
+import org.audiocular.nitnem.audio.rememberStreamAudioController
 import org.audiocular.nitnem.app.models.AppTab
 import org.audiocular.nitnem.app.models.ExperienceTab
 import org.audiocular.nitnem.app.notifications.rememberNotificationBridge
@@ -29,8 +31,7 @@ import org.audiocular.nitnem.data.OfflineFirstNitnemRepository
 import org.audiocular.nitnem.models.BaniLine
 import org.audiocular.nitnem.viewmodel.NitnemViewModel
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.asPaddingValues
+
 @Composable
 fun NitnemRoot(
     viewModel: NitnemViewModel
@@ -41,48 +42,54 @@ fun NitnemRoot(
     }
 
     val uiState by
-        viewModel.uiState.collectAsState()
+    viewModel.uiState.collectAsState()
 
     val banis by
-        repository.observeBanis()
-            .collectAsState(
-                initial = emptyList()
-            )
+    repository.observeBanis()
+        .collectAsState(
+            initial = emptyList()
+        )
 
     val audioController =
         rememberStreamAudioController()
 
     val playback by
-        audioController.playback.collectAsState()
+    audioController.playback.collectAsState()
 
     val synchronizer = remember {
         AudioLineSynchronizer()
     }
 
-    val currentLineIndex = remember(
-        playback.positionMs,
-        uiState.currentBani
+    var preparedKey by remember {
+        mutableStateOf<String?>(null)
+    }
+
+    val effectiveLines = remember(
+        uiState.syncedLines,
+        uiState.currentBani?.id
     ) {
 
-        val activeLine =
+        uiState.syncedLines.ifEmpty {
 
-            synchronizer.activeLine(
-
-                uiState.currentBani
-                    ?.lines
-                    .orEmpty(),
-
-                playback.positionMs
-            )
-
-        uiState.currentBani
-            ?.lines
-            ?.indexOfFirst {
-
-                it.id == activeLine?.id
-            }
-            ?: 0
+            uiState.currentBani
+                ?.lines
+                .orEmpty()
+        }
     }
+
+
+
+    /*
+     * CURRENT LINE
+     */
+    val currentLineIndex =
+        effectiveLines.indexOfFirst {
+            it.id ==
+                    synchronizer.activeLine(
+                        effectiveLines,
+                        playback.positionMs
+                    )?.id
+        }
 
     var showChrome by remember {
         mutableStateOf(true)
@@ -95,24 +102,39 @@ fun NitnemRoot(
     val widgetBridge =
         rememberJourneyWidgetBridge()
 
+    val nitnemBaniIds = remember {
+        setOf(
+            "japji-sahib",
+            "jaap-sahib",
+            "tav-prasad-savaiye",
+            "benti-chaupai-sahib",
+            "anand-sahib",
+            "rehras-sahib",
+            "kirtan-sohila"
+        )
+    }
+
     LaunchedEffect(
         uiState.completedBanis,
-        banis,
-        uiState.currentBani,
+        banis.size,
+        uiState.currentBani?.id,
         uiState.streakDays,
         uiState.weeklyCompleted,
-        uiState.monthlyConsistencyDays
+        uiState.monthlyConsistencyDays,
+        uiState.widgetTheme,
+        uiState.widgetContent
     ) {
 
         if (banis.isNotEmpty()) {
+            val completedNitnemCount = uiState.completedBanis.count { it in nitnemBaniIds }
 
             widgetBridge.update(
 
                 completed =
-                    uiState.completedBanis.size,
+                    completedNitnemCount,
 
                 total =
-                    banis.size,
+                    7,
 
                 currentTitle =
                     uiState.currentBani?.title
@@ -128,7 +150,13 @@ fun NitnemRoot(
                     uiState.monthlyConsistencyDays,
 
                 completedBaniIds =
-                    uiState.completedBanis.toList()
+                    uiState.completedBanis.toList(),
+
+                widgetTheme =
+                    uiState.widgetTheme,
+
+                widgetContent =
+                    uiState.widgetContent
             )
         }
     }
@@ -148,12 +176,25 @@ fun NitnemRoot(
     LaunchedEffect(
         uiState.completedBanis
     ) {
-        val currentCount = uiState.completedBanis.size
+
+        val currentCount =
+            uiState.completedBanis.size
+
         if (uiState.notifications) {
-            if (lastCompletedBaniCount.value != -1 && currentCount > lastCompletedBaniCount.value) {
-                val completed = uiState.completedBanis.lastOrNull()
+
+            if (
+                lastCompletedBaniCount.value != -1 &&
+                currentCount >
+                lastCompletedBaniCount.value
+            ) {
+
+                val completed =
+                    uiState.completedBanis.lastOrNull()
+
                 if (completed != null) {
+
                     val baniTitle =
+
                         banis.firstOrNull {
                             it.id == completed
                         }?.title ?: completed
@@ -165,7 +206,9 @@ fun NitnemRoot(
                 }
             }
         }
-        lastCompletedBaniCount.value = currentCount
+
+        lastCompletedBaniCount.value =
+            currentCount
     }
 
     /*
@@ -231,7 +274,7 @@ fun NitnemRoot(
      */
 
     LaunchedEffect(
-        banis
+        banis.map { it.id }
     ) {
 
         viewModel.loadBanis(banis)
@@ -251,84 +294,19 @@ fun NitnemRoot(
         )
     }
 
-    /*
-     * PLAYBACK
-     */
-
-    LaunchedEffect(
-        playback
-    ) {
-
-        viewModel.updatePlayback(
+    LaunchedEffect(Unit) {
+        snapshotFlow {
             playback
-        )
-    }
-
-    /*
-     * PREPARE AUDIO
-     */
-
-    var preparedUrl by remember {
-        mutableStateOf<String?>(null)
-    }
-
-    LaunchedEffect(
-        uiState.currentBani
-    ) {
-        val bani = uiState.currentBani
-        if (bani != null) {
-            val trackId = audioController.getActiveTrackId(bani.id)
-            viewModel.updateActiveTrackId(trackId)
         }
-    }
+            .distinctUntilChanged()
+            .collect { currentPlayback ->
 
-    LaunchedEffect(
-        uiState.currentBani,
-        uiState.downloadedBaniIds,
-        uiState.activeTrackId
-    ) {
-
-        val bani =
-            uiState.currentBani
-                ?: return@LaunchedEffect
-
-        val activeUrl =
-            audioController
-                .getActiveAudioUrl(
-                    bani.id
+                viewModel.updatePlayback(
+                    currentPlayback
                 )
-
-        val url = when {
-
-            activeUrl != null -> {
-                activeUrl
             }
-
-            else -> {
-                val audio = bani.audio
-                val durationMs = if (audio != null && audio.durationMs > 0L) {
-                    audio.durationMs
-                } else {
-                    (bani.estimatedMinutes * 60000L).coerceAtLeast(60000L)
-                }
-                "simulate://${bani.id}?durationMs=$durationMs"
-            }
-        }
-
-        if (
-            !url.isNullOrBlank() &&
-            preparedUrl != url
-        ) {
-
-            preparedUrl = url
-
-            println(
-                "Preparing audio: $url"
-            )
-
-            audioController.prepare(url, bani.title)
-        }
     }
+
 
     /*
      * PLAYBACK SPEED
@@ -343,13 +321,11 @@ fun NitnemRoot(
                 uiState.playbackSpeed
             )
     }
-
-    /*
-     * RELEASE
-     */
-
-    // Controller release is handled by the application process/service lifecycle since it is a Singleton
-
+    LaunchedEffect(currentLineIndex) {
+        println(
+            "MINI PLAYER LINE -> $currentLineIndex @ ${playback.positionMs}"
+        )
+    }
     /*
      * UI
      */
@@ -358,7 +334,8 @@ fun NitnemRoot(
 
         containerColor = Background,
 
-        contentWindowInsets = WindowInsets(0),
+        contentWindowInsets =
+            WindowInsets(0),
 
         bottomBar = {
 
@@ -432,22 +409,23 @@ fun NitnemRoot(
             }
         }
 
-Box(
+        Box(
 
-    modifier = Modifier
-        .fillMaxSize()
-        .then(backgroundModifier)
-        .padding(padding)
-        .padding(top = 28.dp)
+            modifier = Modifier
+                .fillMaxSize()
+                .then(backgroundModifier)
+                .padding(padding)
+                .padding(top = 28.dp)
 
-) {
+        ) {
 
             when (uiState.selectedTab) {
 
                 AppTab.Home -> {
 
                     HomeScreen(
-                        viewModel = viewModel
+                        viewModel = viewModel,
+                        audioController = audioController
                     )
                 }
 
@@ -461,11 +439,12 @@ Box(
                             audioController,
 
                         onSeekToLine = {
-                            line: BaniLine ->
+                                line: BaniLine ->
 
                             audioController.seekTo(
                                 line.startsAtMs
                             )
+
                             audioController.resume()
                         }
                     )
@@ -486,7 +465,11 @@ Box(
                                 audioController,
 
                             bani = currentBani,
-                            displayLanguage = uiState.displayLanguage
+
+                            displayLanguage =
+                                uiState.displayLanguage,
+                            uiState = uiState,
+                            viewModel = viewModel
                         )
                     }
                 }
@@ -517,9 +500,9 @@ Box(
             ) {
 
                 AnimatedVisibility(
+
                     visible =
-                        (uiState.miniPlayerVisible || uiState.playback.isPlaying) &&
-                            uiState.selectedTab != AppTab.Settings
+                        uiState.miniPlayerVisible
                 ) {
 
                     ThinMiniPlayer(
@@ -531,16 +514,18 @@ Box(
                             uiState.currentBani,
 
                         playback =
-                            uiState.playback,
+                            playback,
+                        onSeekTo = { position ->
 
+                            audioController.seekTo(position)
+
+                        },
                         currentLine =
                             currentLineIndex
                                 .coerceAtLeast(0),
 
                         totalLines =
-                            uiState.currentBani
-                                ?.lines
-                                ?.size ?: 0,
+                            effectiveLines.size,
 
                         displayLanguage =
                             uiState.displayLanguage,
@@ -550,6 +535,7 @@ Box(
                             viewModel.selectTab(
                                 AppTab.Experience
                             )
+
                             viewModel.selectExperienceTab(
                                 ExperienceTab.Listen
                             )
@@ -582,9 +568,7 @@ Box(
 
                                 synchronizer.activeLine(
 
-                                    uiState.currentBani
-                                        ?.lines
-                                        .orEmpty(),
+                                    effectiveLines,
 
                                     playback.positionMs
                                 )
@@ -603,9 +587,7 @@ Box(
 
                                 synchronizer.activeLine(
 
-                                    uiState.currentBani
-                                        ?.lines
-                                        .orEmpty(),
+                                    effectiveLines,
 
                                     playback.positionMs
                                 )

@@ -35,14 +35,14 @@ import org.audiocular.nitnem.models.PlaybackSnapshot
 import org.audiocular.nitnem.utils.translate
 import org.audiocular.nitnem.utils.translateDigits
 import org.audiocular.nitnem.utils.translateAng
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ThinMiniPlayer(
 
     modifier: Modifier = Modifier,
 
     bani: Bani?,
-
+    onSeekTo: (Long) -> Unit,
     playback: PlaybackSnapshot,
 
     currentLine: Int = 0,
@@ -169,7 +169,9 @@ fun ThinMiniPlayer(
 
             targetValue =
 
-                if (playback.isPlaying)
+                if (
+    playback.isPlaying
+)
                     Accent
                 else
                     Gold,
@@ -177,44 +179,131 @@ fun ThinMiniPlayer(
             label = ""
         )
 
-        Surface(
+        val progress = remember(
+            playback.positionMs,
+            playback.durationMs
+        ) {
 
+            if (playback.durationMs <= 0L) {
+
+                0f
+
+            } else {
+
+                (
+                    playback.positionMs.toFloat() /
+                        playback.durationMs.toFloat()
+                ).coerceIn(0f, 1f)
+            }
+        }
+
+        val progressLabel = remember(
+            bani?.id,
+            currentLine,
+            totalLines,
+            displayLanguage
+        ) {
+
+            if (bani != null) {
+
+                val theme =
+                    resolveBaniTheme(
+                        bani.title
+                    )
+
+                val progressInfo =
+                    calculateBaniProgress(
+                        bani.title,
+                        bani.lines,
+                        currentLine
+                    )
+
+                if (progressInfo != null) {
+
+                    val localizedAng =
+                        theme.ang.translateAng(
+                            displayLanguage
+                        )
+
+                    " • $localizedAng • ${
+                        progressInfo.getLocalizedLabel(
+                            displayLanguage
+                        )
+                    }"
+
+                } else {
+
+                    val lineNum =
+                        (
+                            currentLine + 1
+                        ).coerceAtLeast(1)
+
+                    val total =
+                        bani.lines.size
+
+                    " • ${
+                        theme.ang.translateAng(
+                            displayLanguage
+                        )
+                    } • ${
+                        "Line".translate(
+                            displayLanguage
+                        )
+                    } $lineNum/$total"
+                        .translateDigits(
+                            displayLanguage
+                        )
+                }
+
+            } else {
+
+                val lineNum =
+                    (
+                        currentLine + 1
+                    ).coerceAtLeast(1)
+
+                " • ${
+                    "Line".translate(
+                        displayLanguage
+                    )
+                } $lineNum/$totalLines"
+                    .translateDigits(
+                        displayLanguage
+                    )
+            }
+        }
+        LaunchedEffect(playback.isLoading, playback.isReady) {
+
+            println(
+                "UI PLAYBACK -> " +
+                        "loading=${playback.isLoading}, " +
+                        "ready=${playback.isReady}"
+            )
+        }
+               Surface(
             modifier = modifier
                 .fillMaxWidth()
                 .height(78.dp)
-                .offset(y = 2.dp)
-                .scale(
-
-                    if (playback.isPlaying)
-                        1f
-                    else
-                        0.985f
-                )
+                // FIX: Cleared raw y-axis offsets that were causing compilation bleed 
+                // and alignment tracking calculation bugs in parent layouts
                 .shadow(
-                    elevation = 18.dp,
+                    elevation = 12.dp,
                     shape = RoundedCornerShape(
                         topStart = 26.dp,
                         topEnd = 26.dp
                     )
-                )
-                .clickable {
-                    onOpenPlayer()
-                },
-
+                ),
             shape = RoundedCornerShape(
                 topStart = 26.dp,
                 topEnd = 26.dp
             ),
-
             color = containerColor,
-
             border = BorderStroke(
                 1.dp,
                 borderColor
             ),
-
             tonalElevation = 0.dp
-        ) {
+        )  {
 
             Column(
 
@@ -226,24 +315,65 @@ fun ThinMiniPlayer(
                  * PROGRESS BAR
                  */
 
-                LinearProgressIndicator(
+                var sliderPosition by remember {
+                    mutableFloatStateOf(progress)
+                }
 
-                    progress = {
-                        playback.progress
+                var isDragging by remember {
+                    mutableStateOf(false)
+                }
+
+                LaunchedEffect(progress) {
+                    if (!isDragging) {
+                        sliderPosition = progress
+                    }
+                }
+
+                Slider(
+                    value = sliderPosition,
+                    onValueChange = {
+                        isDragging = true
+                        sliderPosition = it
                     },
-
+                    onValueChangeFinished = {
+                        isDragging = false
+                        onSeekTo(
+                            (sliderPosition * playback.durationMs).toLong()
+                        )
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(4.dp),
+                        .height(8.dp), // smaller touch area
 
-                    color = progressColor,
+                    thumb = {
+                        Box(
+                            Modifier
+                                .size(4.dp)
+                                .background(
+                                    progressColor,
+                                    CircleShape
+                                )
+                        )
+                    },
 
-                    trackColor =
+                    track = { sliderState ->
+                        SliderDefaults.Track(
+                            sliderState = sliderState,
+                            drawStopIndicator = null,
+                            thumbTrackGapSize = 0.dp,
 
-                        if (isLight)
-                            Color(0xFFE7D7C1)
-                        else
-                            Color.White.copy(alpha = 0.08f)
+                            modifier = Modifier.height(6.dp), // Spotify style
+
+                            colors = SliderDefaults.colors(
+                                activeTrackColor = progressColor,
+                                inactiveTrackColor =
+                                    if (isLight)
+                                        Color(0xFFE7D7C1)
+                                    else
+                                        Color.White.copy(alpha = 0.08f)
+                            )
+                        )
+                    }
                 )
 
                 /*
@@ -269,44 +399,72 @@ fun ThinMiniPlayer(
                      * PLAY BUTTON
                      */
 
-                    val infiniteTransition =
-                        rememberInfiniteTransition()
+                    val rotateAnim =
+                        if (
+                                playback.isPlaying
+                            ) {
 
-                    val rotateAnim by infiniteTransition.animateFloat(
+                            val infiniteTransition =
+                                rememberInfiniteTransition(
+                                    label = ""
+                                )
 
-                        initialValue = 0f,
+                            infiniteTransition.animateFloat(
 
-                        targetValue = 360f,
+                                initialValue = 0f,
 
-                        animationSpec = infiniteRepeatable(
+                                targetValue = 360f,
 
-                            animation = tween(
-                                durationMillis = 9000,
-                                easing = LinearEasing
-                            )
-                        ),
+                                animationSpec =
+                                    infiniteRepeatable(
 
-                        label = ""
-                    )
+                                        animation = tween(
+                                            durationMillis = 9000,
+                                            easing = LinearEasing
+                                        )
+                                    ),
 
-                    val pulseAnim by infiniteTransition.animateFloat(
+                                label = ""
+                            ).value
 
-                        initialValue = 0.94f,
+                        } else {
+                            0f
+                        }
 
-                        targetValue = 1.04f,
+                    val pulseAnim =
+                        if (
+    playback.isPlaying
+) {
 
-                        animationSpec = infiniteRepeatable(
+                            val infiniteTransition =
+                                rememberInfiniteTransition(
+                                    label = ""
+                                )
 
-                            animation = tween(
-                                durationMillis = 1600,
-                                easing = EaseInOut
-                            ),
+                            infiniteTransition.animateFloat(
 
-                            repeatMode = RepeatMode.Reverse
-                        ),
+                                initialValue = 0.94f,
 
-                        label = ""
-                    )
+                                targetValue = 1.04f,
+
+                                animationSpec =
+                                    infiniteRepeatable(
+
+                                        animation = tween(
+                                            durationMillis = 1600,
+                                            easing = EaseInOut
+                                        ),
+
+                                        repeatMode =
+                                            RepeatMode.Reverse
+                                    ),
+
+                                label = ""
+                            ).value
+
+                        } else {
+                            1f
+                        }
 
                     Box(
 
@@ -339,7 +497,9 @@ fun ThinMiniPlayer(
                             Alignment.Center
                     ) {
 
-                        if (playback.isPlaying) {
+                        if (
+                                playback.isPlaying
+                            ) {
 
                             Box(
 
@@ -386,23 +546,39 @@ fun ThinMiniPlayer(
                                 Alignment.Center
                         ) {
 
-                            if (playback.isLoading) {
+                            if (!playback.isReady && playback.isLoading){
+
                                 CircularProgressIndicator(
-                                    modifier = Modifier.size(18.dp),
+
+                                    modifier =
+                                        Modifier.size(18.dp),
+
                                     color = Color.White,
+
                                     strokeWidth = 2.dp
                                 )
+
                             } else {
+
                                 Icon(
 
                                     imageVector =
 
-                                        if (playback.isPlaying)
+                                        if (
+    playback.isPlaying
+)
                                             Icons.Default.Pause
                                         else
                                             Icons.Default.PlayArrow,
 
-                                    contentDescription = null,
+                                    contentDescription =
+
+                                      if (
+    playback.isPlaying
+)
+                                            "Pause"
+                                        else
+                                            "Play",
 
                                     tint = Color.White,
 
@@ -425,170 +601,125 @@ fun ThinMiniPlayer(
 
                         modifier = Modifier
                             .weight(1f)
+                            .clickable(
+                                indication = null,
+                                interactionSource = remember {
+                                    MutableInteractionSource()
+                                }
+                            ) {
+                                onOpenPlayer()
+                            }
                             .padding(end = 4.dp),
 
                         verticalArrangement =
                             Arrangement.Center
                     ) {
 
-                        val progressLabel = remember(
-                            bani,
-                            currentLine,
-                            displayLanguage
+                        /*
+                         * TITLE
+                         */
+
+                        Row(
+
+                            modifier = Modifier.fillMaxWidth(),
+
+                            verticalAlignment =
+                                Alignment.CenterVertically
                         ) {
 
-                            if (bani != null) {
+                           if (
+    playback.isPlaying
+){
 
-                                val theme =
-                                    resolveBaniTheme(
-                                        bani.title
-                                    )
+                                Box(
 
-                                val progressInfo =
-                                    calculateBaniProgress(
-                                        bani.title,
-                                        bani.lines,
-                                        currentLine
-                                    )
+                                    modifier = Modifier
+                                        .size(6.dp)
+                                        .clip(CircleShape)
+                                        .background(Accent)
+                                )
 
-                                if (progressInfo != null) {
-
-                                    val localizedAng = theme.ang.translateAng(displayLanguage)
-                                    " • $localizedAng • ${
-                                        progressInfo.getLocalizedLabel(
-                                            displayLanguage
-                                        )
-                                    }"
-
-                                } else {
-
-                                    val lineNum =
-                                        (
-                                            currentLine + 1
-                                        ).coerceAtLeast(1)
-
-                                    val total =
-                                        bani.lines.size
-
-                                    " • ${theme.ang.translateAng(displayLanguage)} • ${"Line".translate(displayLanguage)} $lineNum/$total".translateDigits(displayLanguage)
-                                }
-
-                            } else {
-
-                                val lineNum =
-                                    (
-                                        currentLine + 1
-                                    ).coerceAtLeast(1)
-
-                                " • ${"Line".translate(displayLanguage)} $lineNum/$totalLines".translateDigits(displayLanguage)
+                                Spacer(
+                                    Modifier.width(5.dp)
+                                )
                             }
+
+                            Text(
+
+                                text =
+                                    (bani?.title ?: "Nitnem")
+                                        .translate(displayLanguage),
+
+                                color = titleColor,
+
+                                fontWeight =
+                                    FontWeight.Bold,
+
+                                fontSize = 13.sp,
+
+                                maxLines = 1,
+
+                                overflow =
+                                    TextOverflow.Ellipsis
+                            )
                         }
-/*
- * TITLE
- */
-
-Row(
-
-    modifier = Modifier.fillMaxWidth(),
-
-    verticalAlignment =
-        Alignment.CenterVertically
-) {
-
-    if (playback.isPlaying) {
-
-        Box(
-
-            modifier = Modifier
-                .size(6.dp)
-                .clip(CircleShape)
-                .background(Accent)
-        )
-
-        Spacer(
-            Modifier.width(5.dp)
-        )
-    }
-
-    Text(
-
-        text =
-            (bani?.title ?: "Nitnem")
-                .translate(displayLanguage),
-
-        color = titleColor,
-
-        fontWeight =
-            FontWeight.Bold,
-
-        fontSize = 13.sp,
-
-        maxLines = 1,
-
-        overflow =
-            TextOverflow.Ellipsis
-    )
-}
-
-Spacer(
-    Modifier.height(1.dp)
-)
-
-/*
- * TIME + PROGRESS
- */
-
-Row(
-
-    modifier = Modifier.fillMaxWidth(),
-
-    verticalAlignment =
-        Alignment.CenterVertically
-) {
-
-    Text(
-
-        text =
-            "${formatTime(playback.positionMs)} / ${
-                formatTime(playback.durationMs)
-            }",
-
-        color = subtitleColor,
-
-        fontSize = 10.sp,
-
-        fontWeight =
-            FontWeight.SemiBold,
-
-        maxLines = 1
-    )
-
-    Spacer(
-        Modifier.width(6.dp)
-    )
-
-    Text(
-
-        text = progressLabel,
-
-        color =
-            subtitleColor.copy(
-                alpha = 0.80f
-            ),
-
-        fontSize = 8.sp,
-
-        maxLines = 1,
-
-        overflow =
-            TextOverflow.Ellipsis
-    )
-}
 
                         Spacer(
                             Modifier.height(1.dp)
                         )
 
+                        /*
+                         * TIME + PROGRESS
+                         */
+
+                        Row(
+
+                            modifier = Modifier.fillMaxWidth(),
+
+                            verticalAlignment =
+                                Alignment.CenterVertically
+                        ) {
+
+                            Text(
+
+                                text =
+                                    "${formatTime(playback.positionMs)} / ${
+                                        formatTime(playback.durationMs)
+                                    }",
+
+                                color = subtitleColor,
+
+                                fontSize = 10.sp,
+
+                                fontWeight =
+                                    FontWeight.SemiBold,
+
+                                maxLines = 1
+                            )
+
+                            Spacer(
+                                Modifier.width(6.dp)
+                            )
+
+                            Text(
+
+                                text = progressLabel,
+
+                                modifier = Modifier.weight(1f),
+
+                                color =
+                                    subtitleColor.copy(
+                                        alpha = 0.80f
+                                    ),
+
+                                fontSize = 8.sp,
+
+                                maxLines = 1,
+
+                                overflow =
+                                    TextOverflow.Ellipsis
+                            )
+                        }
                     }
 
                     Spacer(
@@ -631,38 +762,28 @@ Row(
                                 else
                                     titleColor.copy(alpha = 0.72f),
 
+                            contentDescription =
+                                "Repeat",
+
                             onClick =
                                 onRepeatLine
                         )
-
                         MiniPlayerIconButton(
-
-                            icon =
-                                Icons.Default.Replay10,
-
-                            containerColor =
-                                buttonBg,
-
-                            iconTint =
-                                titleColor.copy(alpha = 0.72f),
-
-                            onClick =
-                                onSeekBack
+                            icon = Icons.Default.Replay10,
+                            containerColor = buttonBg,
+                            iconTint = titleColor.copy(alpha = 0.72f),
+                            contentDescription = "Back 10 seconds",
+                            enabled = playback.isReady && !playback.isLoading,
+                            onClick = onSeekBack
                         )
 
                         MiniPlayerIconButton(
-
-                            icon =
-                                Icons.Default.Forward10,
-
-                            containerColor =
-                                buttonBg,
-
-                            iconTint =
-                                titleColor.copy(alpha = 0.72f),
-
-                            onClick =
-                                onSeekForward
+                            icon = Icons.Default.Forward10,
+                            containerColor = buttonBg,
+                            iconTint = titleColor.copy(alpha = 0.72f),
+                            contentDescription = "Forward 10 seconds",
+                            enabled = playback.isReady && !playback.isLoading,
+                            onClick = onSeekForward
                         )
 
                         MiniPlayerIconButton(
@@ -688,6 +809,9 @@ Row(
                                 else
                                     titleColor.copy(alpha = 0.72f),
 
+                            contentDescription =
+                                "Bookmark",
+
                             onClick =
                                 onBookmark
                         )
@@ -697,7 +821,6 @@ Row(
         }
     }
 }
-
 @Composable
 private fun MiniPlayerIconButton(
 
@@ -707,6 +830,10 @@ private fun MiniPlayerIconButton(
 
     iconTint: Color,
 
+    contentDescription: String,
+
+    enabled: Boolean = true,
+
     onClick: () -> Unit
 ) {
 
@@ -714,11 +841,22 @@ private fun MiniPlayerIconButton(
 
         modifier = Modifier.size(28.dp),
 
-        onClick = onClick,
+        onClick = {
+            if (enabled) {
+                onClick()
+            }
+        },
+
+        enabled = enabled,
 
         shape = CircleShape,
 
-        color = containerColor,
+        color =
+            if (enabled) {
+                containerColor
+            } else {
+                containerColor.copy(alpha = 0.4f)
+            },
 
         border = BorderStroke(
 
@@ -739,64 +877,59 @@ private fun MiniPlayerIconButton(
     ) {
 
         Box(
-
-            contentAlignment =
-                Alignment.Center
+            contentAlignment = Alignment.Center
         ) {
 
             Icon(
 
                 imageVector = icon,
 
-                contentDescription = null,
+                contentDescription = contentDescription,
 
-                tint = iconTint,
+                tint =
+                    if (enabled) {
+                        iconTint
+                    } else {
+                        iconTint.copy(alpha = 0.4f)
+                    },
 
                 modifier = Modifier.size(14.dp)
             )
         }
     }
 }
-
 private fun formatTime(
     ms: Long
 ): String {
 
     val totalSeconds =
-
         (ms / 1000)
             .coerceAtLeast(0)
 
+    val hours =
+        totalSeconds / 3600
+
     val minutes =
-        totalSeconds / 60
+        (totalSeconds % 3600) / 60
 
     val seconds =
         totalSeconds % 60
 
-    return buildString {
+    return if (hours > 0) {
 
-        append(minutes)
+        String.format(
+            "%d:%02d:%02d",
+            hours,
+            minutes,
+            seconds
+        )
 
-        append(":")
+    } else {
 
-        append(
-            seconds.toString()
-                .padStart(2, '0')
+        String.format(
+            "%d:%02d",
+            minutes,
+            seconds
         )
     }
 }
-
-private val PlaybackSnapshot.progress: Float
-
-    get() =
-
-        if (durationMs <= 0L)
-
-            0f
-
-        else
-
-            (
-                positionMs.toFloat() /
-                    durationMs.toFloat()
-            ).coerceIn(0f, 1f)

@@ -16,5 +16,5 @@ data class OnboardingState(
 
     val widgetTheme: String = "Classic Gold",
 
-    val widgetContent: String = "Next Bani"
+    val widgetContent: String = "Mascot Assistant"
 )

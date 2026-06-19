@@ -1,5 +1,5 @@
 package org.audiocular.nitnem.app.sync
-
+import org.audiocular.nitnem.data.CuratedAudioCatalog
 import android.content.Context
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
@@ -9,6 +9,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import org.audiocular.nitnem.utils.timingKey
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -19,19 +20,15 @@ import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Undo
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
-import androidx.compose.runtime.snapshots.SnapshotStateList
-import androidx.compose.runtime.toMutableStateList
+import org.audiocular.nitnem.utils.timingKey
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,11 +39,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
-import org.audiocular.nitnem.app.audio.StreamAudioController
+import org.audiocular.nitnem.audio.StreamAudioController
 import org.audiocular.nitnem.app.ui.theme.*
 import org.audiocular.nitnem.models.Bani
 import org.audiocular.nitnem.models.LineTiming
-import org.audiocular.nitnem.models.AudioTrack
 import org.audiocular.nitnem.data.generated.GeneratedBaniCatalog
 import org.audiocular.nitnem.app.models.DisplayLanguage
 import org.audiocular.nitnem.utils.translate
@@ -61,6 +57,8 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.Lightbulb
 
 
 @OptIn(
@@ -96,66 +94,111 @@ fun SyncEditorScreen(
     var selectedBani by remember {
         mutableStateOf(bani)
     }
+    val tracks = remember(
+        selectedBani.id,
+        playback.currentTitle
+    ) {
 
-    val tracks = remember(selectedBani) {
-        val list = mutableListOf<AudioTrack>()
-        selectedBani.audio?.let { defaultAudio ->
-            list.add(
-                AudioTrack(
-                    id = "default",
-                    title = defaultAudio.title.ifBlank { "Default Track" },
-                    artist = defaultAudio.artist.ifBlank { "Default Artist" },
-                    durationMs = defaultAudio.durationMs,
-                    license = defaultAudio.license,
-                    attribution = defaultAudio.attribution,
-                    remoteUrl = defaultAudio.remoteUrl,
-                    localPath = defaultAudio.localPath
+        buildList {
+
+            selectedBani.audio?.let {
+
+                add(
+                    it.copy(
+                        id = "default"
+                    )
                 )
+            }
+
+            addAll(
+                CuratedAudioCatalog
+                    .getTracksForBani(
+                        selectedBani.id
+                    )
             )
-        } ?: run {
-            list.add(
-                AudioTrack(
-                    id = "default",
-                    title = "Default Track",
-                    artist = "Default Artist",
-                    durationMs = 0L,
-                    license = "",
-                    attribution = ""
-                )
+
+            addAll(
+                audioController
+                    .getCustomTracks(
+                        selectedBani.id
+                    )
             )
-        }
-        list.addAll(audioController.getCustomTracks(selectedBani.id))
-        list
-    }
-
-    var selectedTrack by remember(selectedBani) {
-        val initialTrack = if (initialTrackId != null) {
-            tracks.firstOrNull { it.id == initialTrackId } ?: tracks.first()
-        } else {
-            tracks.first()
-        }
-        mutableStateOf(initialTrack)
-    }
-
-    LaunchedEffect(selectedBani, selectedTrack) {
-        val loaded = TimingLoader.loadTimings(context, selectedBani.id, selectedTrack.id)
-        timings.clear()
-        timings.addAll(loaded)
-        currentIndex = 0
-
-        val url = if (selectedTrack.id != "default") {
-            selectedTrack.localPath ?: selectedTrack.remoteUrl
-        } else {
-            audioController.getLocalAudioPath(selectedBani.id) ?: selectedTrack.remoteUrl
-        }
-        if (!url.isNullOrBlank()) {
-            audioController.prepare(url = url, title = selectedBani.title)
+        }.distinctBy {
+            it.id
         }
     }
+    var selectedTrack by remember(
+        selectedBani.id,
+        tracks
+    ) {
+
+        mutableStateOf(
+
+            tracks.firstOrNull {
+                it.id == initialTrackId
+            } ?: tracks.firstOrNull()
+        )
+    }
+
+    val activeTrack =
+        selectedTrack ?: return
+LaunchedEffect(
+    selectedBani.id,
+    selectedTrack?.id
+) {
+
+    val loaded = TimingLoader.loadTimings(
+        context,
+        selectedTrack?.timingKey()
+            ?: selectedBani.id
+    )
+    timings.clear()
+    timings.addAll(loaded)
+
+    currentIndex = 0
+
+   scope.launch {
+    listState.scrollToItem(0)
+}
+    val localDownloaded =
+
+        audioController.getLocalAudioPath(
+            selectedBani.id,
+            activeTrack.id
+        )
+
+    val url = when {
+
+        !localDownloaded.isNullOrBlank() -> {
+
+            localDownloaded
+        }
+
+        activeTrack.localPath?.isNotBlank() == true -> {
+
+            activeTrack.localPath
+        }
+
+        activeTrack.remoteUrl?.isNotBlank() == true -> {
+
+            activeTrack.remoteUrl
+        }
+
+        else -> null
+    }
+
+    if (!url.isNullOrBlank()) {
+
+        audioController.prepare(
+            url = url,
+            title = selectedBani.title
+        )
+    }
+}
 
     DisposableEffect(Unit) {
         onDispose {
-            audioController.pause()
+            audioController.stop()
         }
     }
 
@@ -193,7 +236,9 @@ fun SyncEditorScreen(
     val accentBorder = AccentBorder
     val success = Color(0xFF46D39A)
     val error = Color(0xFFFF7070)
-
+val timingMap = remember(timings.toList()) {
+    timings.associateBy { it.id }
+}
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -209,8 +254,505 @@ fun SyncEditorScreen(
     ) {
 
         /*
-         * BANI & TRACK SELECTORS
-         */
+ * TOP SECTION
+ */
+        Column(
+
+            modifier = Modifier.fillMaxWidth(),
+
+            verticalArrangement =
+                Arrangement.spacedBy(10.dp)
+        ) {
+
+            /*
+             * HEADER ROW
+             */
+
+            Row(
+
+                modifier = Modifier.fillMaxWidth(),
+
+                verticalAlignment =
+                    Alignment.CenterVertically
+            ) {
+
+                /*
+                 * BACK BUTTON
+                 */
+
+                Surface(
+
+                    onClick = onBack,
+
+                    shape = CircleShape,
+
+                    color = accent.copy(alpha = 0.10f),
+
+                    border = BorderStroke(
+                        1.dp,
+                        accent.copy(alpha = 0.14f)
+                    )
+                ) {
+
+                    Box(
+
+                        modifier = Modifier
+                            .size(34.dp),
+
+                        contentAlignment =
+                            Alignment.Center
+                    ) {
+
+                        Icon(
+
+                            imageVector =
+                                Icons.Default.ArrowBack,
+
+                            contentDescription =
+                                "Back",
+
+                            tint = accent,
+
+                            modifier =
+                                Modifier.size(18.dp)
+                        )
+                    }
+                }
+
+                Spacer(
+                    Modifier.width(12.dp)
+                )
+
+                /*
+                 * TITLE + TIMING
+                 */
+
+                Column(
+
+                    modifier =
+                        Modifier.weight(1f),
+
+                    verticalArrangement =
+                        Arrangement.Center
+                ) {
+
+                    Text(
+
+                        text =
+                            "Sync Studio"
+                                .translate(displayLanguage),
+
+                        color =
+                            textPrimary,
+
+                        fontSize = 17.sp,
+
+                        fontWeight =
+                            FontWeight.Bold,
+
+                        maxLines = 1
+                    )
+
+                    Spacer(
+                        Modifier.height(1.dp)
+                    )
+
+                    Text(
+
+                        text =
+                            formatTime(
+                                playback.positionMs
+                            ),
+
+                        color =
+                            textSecondary,
+
+                        fontSize = 11.sp
+                    )
+                }
+
+                /*
+                 * INFO BUTTON
+                 */
+
+                Surface(
+
+                    onClick = {
+                        showTutorialSheet = true
+                    },
+
+                    shape = CircleShape,
+
+                    color = accent.copy(alpha = 0.10f),
+
+                    border = BorderStroke(
+                        1.dp,
+                        accent.copy(alpha = 0.14f)
+                    )
+                ) {
+
+                    Box(
+
+                        modifier = Modifier
+                            .size(34.dp),
+
+                        contentAlignment =
+                            Alignment.Center
+                    ) {
+
+                        Icon(
+
+                            imageVector =
+                                Icons.Default.Info,
+
+                            contentDescription =
+                                "Sync Tutorial",
+
+                            tint =
+                                accent.copy(alpha = 0.82f),
+
+                            modifier =
+                                Modifier.size(18.dp)
+                        )
+                    }
+                }
+            }
+
+            /*
+             * ACTIONS ROW
+             */
+
+            Row(
+
+                modifier = Modifier.fillMaxWidth(),
+
+                horizontalArrangement =
+                    Arrangement.spacedBy(8.dp),
+
+                verticalAlignment =
+                    Alignment.CenterVertically
+            ) {
+
+                CompactHeaderButton(
+
+                    icon = if (
+                        playback.isPlaying
+                    ) {
+                        Icons.Default.Pause
+                    } else {
+                        Icons.Default.PlayArrow
+                    },
+
+                    onClick = {
+                        audioController.playPause()
+                    }
+                )
+
+                CompactHeaderButton(
+
+                    icon =
+                        Icons.Default.FastRewind,
+
+                    onClick = {
+                        audioController.seekBack(2000)
+                    }
+                )
+
+                CompactHeaderButton(
+
+                    icon =
+                        Icons.Default.Undo,
+
+                    onClick = {
+
+                        val lastTiming =
+                            timings.lastOrNull()
+                                ?: return@CompactHeaderButton
+
+                        timings.remove(lastTiming)
+
+                        val targetIndex =
+
+                            selectedBani.lines
+                                .indexOfFirst {
+                                    it.id == lastTiming.id
+                                }
+                                .coerceAtLeast(0)
+
+                        currentIndex = targetIndex
+
+                        scope.launch {
+
+                            listState.animateScrollToItem(
+                                targetIndex
+                            )
+                        }
+                    }
+                )
+
+                CompactHeaderButton(
+
+                    icon =
+                        Icons.Default.Save,
+
+                    onClick = {
+
+                        try {
+
+                            if (timings.isNotEmpty()) {
+
+                                val last =
+                                    timings.last()
+
+                                val safeEnd =
+
+                                    playback.positionMs
+                                        .coerceAtLeast(
+                                            last.startsAtMs
+                                        )
+
+                                timings[timings.lastIndex] =
+                                    last.copy(
+                                        endsAtMs = safeEnd
+                                    )
+                            }
+
+                            val sortedTimings =
+
+                                timings.sortedBy {
+                                    it.startsAtMs
+                                }
+
+                            val normalizedTimings =
+
+                                sortedTimings.mapIndexed { index, timing ->
+
+                                    val next =
+                                        sortedTimings.getOrNull(index + 1)
+
+                                    timing.copy(
+
+                                        endsAtMs =
+                                            next?.startsAtMs
+                                                ?: timing.endsAtMs
+                                    )
+                                }
+
+                            val json =
+                                TimingExporter.export(
+                                    normalizedTimings
+                                )
+
+                            val audioDir =
+                                File(
+                                    context.filesDir,
+                                    "audio"
+                                ).apply {
+
+                                    if (!exists()) {
+                                        mkdirs()
+                                    }
+                                }
+
+                            val filename =
+                                "${selectedTrack?.timingKey()}_timing.json"
+
+                            val file =
+                                File(audioDir, filename)
+
+                            file.writeText(json)
+
+                            Toast.makeText(
+
+                                context,
+
+                                "Saved"
+                                    .translate(displayLanguage),
+
+                                Toast.LENGTH_SHORT
+
+                            ).show()
+
+                        } catch (e: Exception) {
+
+                            Toast.makeText(
+
+                                context,
+
+                                "Save failed"
+                                    .translate(displayLanguage),
+
+                                Toast.LENGTH_SHORT
+
+                            ).show()
+                        }
+                    }
+                )
+
+                CompactHeaderButton(
+
+                    icon =
+                        Icons.Default.Share,
+
+                    onClick = {
+
+                        try {
+
+                            val filename =
+                                "${selectedTrack?.timingKey()}_timing.json"
+
+                            val audioDir =
+                                File(
+                                    context.filesDir,
+                                    "audio"
+                                )
+
+                            val file =
+                                File(audioDir, filename)
+
+                            if (
+                                file.exists() &&
+                                file.length() > 0
+                            ) {
+
+                                val authority =
+                                    "${context.packageName}.fileprovider"
+
+                                val uri =
+                                    androidx.core.content.FileProvider.getUriForFile(
+                                        context,
+                                        authority,
+                                        file
+                                    )
+
+                                val intent =
+                                    android.content.Intent(
+                                        android.content.Intent.ACTION_SEND
+                                    ).apply {
+
+                                        type =
+                                            "application/json"
+
+                                        putExtra(
+                                            android.content.Intent.EXTRA_STREAM,
+                                            uri
+                                        )
+
+                                        addFlags(
+                                            android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+                                        )
+                                    }
+
+                                context.startActivity(
+
+                                    android.content.Intent.createChooser(
+                                        intent,
+                                        "Share Gurbani Timings"
+                                    )
+                                )
+
+                            } else {
+
+                                Toast.makeText(
+
+                                    context,
+
+                                    "Please save the timing file first"
+                                        .translate(displayLanguage),
+
+                                    Toast.LENGTH_SHORT
+
+                                ).show()
+                            }
+
+                        } catch (e: Exception) {
+
+                            e.printStackTrace()
+
+                            Toast.makeText(
+
+                                context,
+
+                                "Sharing failed"
+                                    .translate(displayLanguage),
+
+                                Toast.LENGTH_SHORT
+
+                            ).show()
+                        }
+                    }
+                )
+
+                Spacer(
+                    Modifier.weight(1f)
+                )
+
+                SpeedSelectorButton(
+
+                    currentSpeed =
+                        playback.speed,
+
+                    onSpeedSelected = { speed ->
+
+                        audioController
+                            .updatePlaybackSpeed(speed)
+                    }
+                )
+            }
+
+            /*
+             * PROGRESS BAR
+             */
+
+            Box(
+
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(5.dp)
+                    .clip(
+                        RoundedCornerShape(50)
+                    )
+                    .background(
+                        accent.copy(alpha = 0.08f)
+                    )
+            ) {
+
+                Box(
+
+                    modifier = Modifier
+                        .fillMaxWidth(
+
+                            if (playback.durationMs <= 0L) {
+
+                                0f
+
+                            } else {
+
+                                (
+                                        playback.positionMs.toFloat() /
+                                                playback.durationMs.toFloat()
+                                        ).coerceIn(0f, 1f)
+                            }
+                        )
+                        .fillMaxHeight()
+                        .background(
+
+                            Brush.horizontalGradient(
+
+                                listOf(
+                                    Gold,
+                                    accent
+                                )
+                            )
+                        )
+                )
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+        /*
+        * BANI & TRACK SELECTORS
+        */
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -296,17 +838,21 @@ fun SyncEditorScreen(
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.SemiBold
                             )
-                            Text(
-                                text = if (selectedTrack.id == "default") {
-                                    "Default".translate(displayLanguage)
-                                } else {
-                                    selectedTrack.artist
-                                },
-                                color = textPrimary,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                maxLines = 1
-                            )
+                            if (activeTrack.id.endsWith("_default")) {
+                                "Default".translate(displayLanguage)
+                            } else {
+                                activeTrack.title.ifBlank {
+                                    selectedTrack?.artist
+                                }
+                            }?.let {
+                                Text(
+                                    text = it,
+                                    color = textPrimary,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1
+                                )
+                            }
                         }
                         Icon(
                             imageVector = Icons.Default.ArrowDropDown,
@@ -341,209 +887,7 @@ fun SyncEditorScreen(
                 }
             }
         }
-
-        /*
-         * TOP PLAYER BAR
-         */
-
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(26.dp),
-            color = cardColor,
-            border = BorderStroke(
-                1.dp,
-                accentBorder
-            ),
-            tonalElevation = 2.dp,
-            shadowElevation = if (AppTheme.themeMode == ThemeMode.Light) {
-                4.dp
-            } else {
-                0.dp
-            }
-        ) {
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
-
-                /*
-                 * HEADER ROW
-                 */
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-
-                    Column(modifier = Modifier.weight(1f)) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            IconButton(
-                                onClick = onBack,
-                                modifier = Modifier.size(24.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.ArrowBack,
-                                    contentDescription = "Back",
-                                    tint = accent,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                            Spacer(Modifier.width(8.dp))
-                            Text(
-                                text = "Sync Studio".translate(displayLanguage),
-                                color = accent,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 18.sp
-                            )
-                            Spacer(Modifier.width(6.dp))
-                            IconButton(
-                                onClick = { showTutorialSheet = true },
-                                modifier = Modifier.size(24.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Info,
-                                    contentDescription = "Sync Tutorial",
-                                    tint = accent.copy(alpha = 0.7f),
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                        }
-
-                        Spacer(Modifier.height(2.dp))
-
-                        Text(
-                            text = formatTime(playback.positionMs),
-                            color = textSecondary,
-                            fontSize = 12.sp
-                        )
-                    }
-
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-
-                        CompactHeaderButton(
-                            icon = if (playback.isPlaying) {
-                                Icons.Default.Pause
-                            } else {
-                                Icons.Default.PlayArrow
-                            },
-                            onClick = {
-                                audioController.playPause()
-                            }
-                        )
-
-                        CompactHeaderButton(
-                            icon = Icons.Default.FastRewind,
-                            onClick = {
-                                audioController.seekBack(2000)
-                            }
-                        )
-
-                        CompactHeaderButton(
-                            icon = Icons.Default.Undo,
-                            onClick = {
-                                if (timings.isNotEmpty()) {
-                                    timings.removeLast()
-                                    currentIndex = (currentIndex - 1).coerceAtLeast(0)
-                                }
-                            }
-                        )
-
-                        CompactHeaderButton(
-                            icon = Icons.Default.Save,
-                            onClick = {
-                                try {
-                                    if (timings.isNotEmpty()) {
-                                        val last = timings.last()
-                                        timings[timings.lastIndex] = last.copy(
-                                            endsAtMs = playback.durationMs
-                                        )
-                                    }
-
-                                    val json = TimingExporter.export(timings)
-                                    val audioDir = File(context.filesDir, "audio").apply {
-                                        if (!exists()) {
-                                            mkdirs()
-                                        }
-                                    }
-                                    val filename = if (selectedTrack.id != "default") {
-                                        "${selectedBani.id}_${selectedTrack.id}_timings.json"
-                                    } else {
-                                        "${selectedBani.id}_timings.json"
-                                    }
-                                    val file = File(audioDir, filename)
-                                    file.writeText(json)
-
-                                    Toast.makeText(
-                                        context,
-                                        "Saved".translate(displayLanguage),
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-
-                                } catch (e: Exception) {
-                                    Toast.makeText(
-                                        context,
-                                        "Save failed".translate(displayLanguage),
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                }
-                            }
-                        )
-
-                        SpeedSelectorButton(
-                            currentSpeed = playback.speed,
-                            onSpeedSelected = { speed ->
-                                audioController.updatePlaybackSpeed(speed)
-                            }
-                        )
-                    }
-                }
-
-                Spacer(Modifier.height(14.dp))
-
-                /*
-                 * PROGRESS BAR
-                 */
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp)
-                        .clip(CircleShape)
-                        .background(
-                            accent.copy(alpha = 0.08f)
-                        )
-                ) {
-
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(
-                                if (playback.durationMs <= 0L) {
-                                    0f
-                                } else {
-                                    playback.positionMs.toFloat() / playback.durationMs.toFloat()
-                                }
-                            )
-                            .fillMaxHeight()
-                            .background(
-                                Brush.horizontalGradient(
-                                    listOf(
-                                        Gold,
-                                        accent
-                                    )
-                                )
-                            )
-                    )
-                }
-            }
-        }
-
-        Spacer(Modifier.height(18.dp))
+        Spacer(Modifier.height(6.dp))
 
         /*
          * LINE LIST
@@ -551,7 +895,7 @@ fun SyncEditorScreen(
 
         LazyColumn(
             state = listState,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(
                 bottom = 120.dp
             )
@@ -564,9 +908,7 @@ fun SyncEditorScreen(
                 }
             ) { index, line ->
 
-                val timing = timings.firstOrNull {
-                    it.id == line.id
-                }
+              val timing = timingMap[line.id]
 
                 val isActive = index == currentIndex
 
@@ -588,14 +930,29 @@ fun SyncEditorScreen(
                         .combinedClickable(
                             onClick = {
                                 val currentMs = playback.positionMs
-                                timings.removeAll {
-                                    it.id == line.id
-                                }
+                              val existingIndex =
+    timings.indexOfFirst {
+        it.id == line.id
+    }
+
+if (existingIndex >= 0) {
+
+    while (
+        timings.size > existingIndex + 1
+    ) {
+        timings.removeLast()
+    }
+
+    timings.removeAt(existingIndex)
+}
 
                                 if (timings.isNotEmpty()) {
                                     val previous = timings.last()
                                     timings[timings.lastIndex] = previous.copy(
-                                        endsAtMs = currentMs
+                                        endsAtMs =
+    currentMs.coerceAtLeast(
+        previous.startsAtMs + 50L
+    )
                                     )
                                 }
 
@@ -615,10 +972,12 @@ fun SyncEditorScreen(
 
                                 scope.launch {
                                     delay(120L)
-                                    listState.animateScrollToItem(
-                                        index = nextIndex,
-                                        scrollOffset = -220
-                                    )
+                               if (nextIndex < selectedBani.lines.size) {
+    listState.animateScrollToItem(
+        index = nextIndex,
+        scrollOffset = -220
+    )
+}
                                 }
                             },
                             onLongClick = {
@@ -753,94 +1112,247 @@ fun SyncEditorScreen(
     }
 
     if (showTutorialSheet) {
+
         ModalBottomSheet(
-            onDismissRequest = { showTutorialSheet = false },
-            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+            onDismissRequest = {
+                showTutorialSheet = false
+            },
+
+            sheetState = rememberModalBottomSheetState(
+                skipPartiallyExpanded = true
+            ),
+
+            containerColor = SurfaceColor,
+
+            dragHandle = {
+
+                Box(
+                    modifier = Modifier
+                        .padding(top = 12.dp)
+                        .width(42.dp)
+                        .height(5.dp)
+                        .clip(CircleShape)
+                        .background(
+                            Accent.copy(alpha = 0.22f)
+                        )
+                )
+            }
         ) {
-            Column(
+
+            LazyColumn(
+
                 modifier = Modifier
                     .fillMaxWidth()
-                    .navigationBarsPadding()
-                    .padding(horizontal = 20.dp)
-                    .padding(top = 4.dp, bottom = 24.dp)
+                    .navigationBarsPadding(),
+
+                contentPadding = PaddingValues(
+                    start = 20.dp,
+                    end = 20.dp,
+                    top = 4.dp,
+                    bottom = 32.dp
+                ),
+
+                verticalArrangement =
+                    Arrangement.spacedBy(14.dp)
             ) {
-                Text(
-                    text = "How to Sync Gurbani".translate(displayLanguage),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = accent,
-                    modifier = Modifier.padding(bottom = 6.dp)
-                )
 
-                Text(
-                    text = "Follow these simple steps to synchronize audio recitation with Gurbani lines:".translate(displayLanguage),
-                    color = textSecondary,
-                    fontSize = 13.sp,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
+                item {
 
-                // Step 1
-                TutorialStepRow(
-                    stepNumber = 1,
-                    title = "Select Bani & Track".translate(displayLanguage),
-                    description = "Choose the Gurbani and specific artist track from the dropdown selectors at the top of the Sync Studio.".translate(displayLanguage),
-                    accent = accent,
-                    accentSoft = accentSoft,
-                    textPrimary = textPrimary,
-                    textSecondary = textSecondary
-                )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
 
-                Spacer(Modifier.height(12.dp))
+                        Surface(
 
-                // Step 2
-                TutorialStepRow(
-                    stepNumber = 2,
-                    title = "Play & Listen".translate(displayLanguage),
-                    description = "Tap the Play button to start the audio recitation. Listen along closely.".translate(displayLanguage),
-                    accent = accent,
-                    accentSoft = accentSoft,
-                    textPrimary = textPrimary,
-                    textSecondary = textSecondary
-                )
+                            shape = CircleShape,
 
-                Spacer(Modifier.height(12.dp))
+                            color = AccentSoft
+                        ) {
 
-                // Step 3
-                TutorialStepRow(
-                    stepNumber = 3,
-                    title = "Tap to Highlight".translate(displayLanguage),
-                    description = "Tap each Gurbani line card exactly at the moment the reciter starts reading that specific line. This logs the start time.".translate(displayLanguage),
-                    accent = accent,
-                    accentSoft = accentSoft,
-                    textPrimary = textPrimary,
-                    textSecondary = textSecondary
-                )
+                            Box(
+                                modifier = Modifier
+                                    .size(42.dp),
 
-                Spacer(Modifier.height(12.dp))
+                                contentAlignment =
+                                    Alignment.Center
+                            ) {
 
-                // Step 4
-                TutorialStepRow(
-                    stepNumber = 4,
-                    title = "Adjust / Undo".translate(displayLanguage),
-                    description = "Missed a beat? Use the Rewind button (-2s) to go back, or tap the Undo button to delete the last timing. Long-press any card to clear its timing and jump back to editing it.".translate(displayLanguage),
-                    accent = accent,
-                    accentSoft = accentSoft,
-                    textPrimary = textPrimary,
-                    textSecondary = textSecondary
-                )
+                                Icon(
 
-                Spacer(Modifier.height(12.dp))
+                                    imageVector =
+                                        Icons.Default.GraphicEq,
 
-                // Step 5
-                TutorialStepRow(
-                    stepNumber = 5,
-                    title = "Save Your Work".translate(displayLanguage),
-                    description = "Tap the Save button (💾) when finished. This saves your timing file, which will now automatically highlight text when playing this track in the Gurbani Reader!".translate(displayLanguage),
-                    accent = accent,
-                    accentSoft = accentSoft,
-                    textPrimary = textPrimary,
-                    textSecondary = textSecondary
-                )
+                                    contentDescription = null,
+
+                                    tint = Accent
+                                )
+                            }
+                        }
+
+                        Spacer(
+                            Modifier.width(14.dp)
+                        )
+
+                        Column {
+
+                            Text(
+
+                                text =
+                                    "Sync Studio Guide"
+                                        .translate(displayLanguage),
+
+                                color = Accent,
+
+                                fontWeight = FontWeight.Bold,
+
+                                fontSize = 20.sp
+                            )
+
+                            Text(
+
+                                text =
+                                    "Create perfectly synced Gurbani timings"
+                                        .translate(displayLanguage),
+
+                                color = TextSecondary,
+
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+                }
+
+                item {
+
+                    Surface(
+
+                        shape = RoundedCornerShape(22.dp),
+
+                        color =
+                            Accent.copy(alpha = 0.06f),
+
+                        border = BorderStroke(
+                            1.dp,
+                            Accent.copy(alpha = 0.12f)
+                        )
+                    ) {
+
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(18.dp),
+
+                            verticalArrangement =
+                                Arrangement.spacedBy(16.dp)
+                        ) {
+
+                            TutorialStepRow(
+                                stepNumber = 1,
+                                title = "Select Bani & Audio".translate(displayLanguage),
+                                description = "Choose the Gurbani and recitation track you want to synchronize.".translate(displayLanguage),
+                                accent = Accent,
+                                accentSoft = AccentSoft,
+                                textPrimary = TextPrimary,
+                                textSecondary = TextSecondary
+                            )
+
+                            TutorialStepRow(
+                                stepNumber = 2,
+                                title = "Play the Recitation".translate(displayLanguage),
+                                description = "Start playback and carefully listen to the reciter.".translate(displayLanguage),
+                                accent = Accent,
+                                accentSoft = AccentSoft,
+                                textPrimary = TextPrimary,
+                                textSecondary = TextSecondary
+                            )
+
+                            TutorialStepRow(
+                                stepNumber = 3,
+                                title = "Tap Each Gurbani Line".translate(displayLanguage),
+                                description = "Tap a line exactly when the reciter begins reading it.".translate(displayLanguage),
+                                accent = Accent,
+                                accentSoft = AccentSoft,
+                                textPrimary = TextPrimary,
+                                textSecondary = TextSecondary
+                            )
+
+                            TutorialStepRow(
+                                stepNumber = 4,
+                                title = "Fix Mistakes".translate(displayLanguage),
+                                description = "Use Undo or long-press a line to remove incorrect timings.".translate(displayLanguage),
+                                accent = Accent,
+                                accentSoft = AccentSoft,
+                                textPrimary = TextPrimary,
+                                textSecondary = TextSecondary
+                            )
+
+                            TutorialStepRow(
+                                stepNumber = 5,
+                                title = "Save Timing File".translate(displayLanguage),
+                                description = "Your synced timing file will automatically power live highlighting in Gurbani Experience mode.".translate(displayLanguage),
+                                accent = Accent,
+                                accentSoft = AccentSoft,
+                                textPrimary = TextPrimary,
+                                textSecondary = TextSecondary
+                            )
+                        }
+                    }
+                }
+
+                item {
+
+                    Surface(
+
+                        shape = RoundedCornerShape(18.dp),
+
+                        color =
+                            Gold.copy(alpha = 0.08f),
+
+                        border = BorderStroke(
+                            1.dp,
+                            Gold.copy(alpha = 0.12f)
+                        )
+                    ) {
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+
+                            verticalAlignment =
+                                Alignment.CenterVertically
+                        ) {
+
+                            Icon(
+
+                                imageVector =
+                                    Icons.Default.Lightbulb,
+
+                                contentDescription = null,
+
+                                tint = Gold
+                            )
+
+                            Spacer(
+                                Modifier.width(12.dp)
+                            )
+
+                            Text(
+
+                                text =
+                                    "Use headphones for precise synchronization."
+                                        .translate(displayLanguage),
+
+                                color = TextPrimary,
+
+                                fontSize = 13.sp,
+
+                                lineHeight = 20.sp
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -860,7 +1372,7 @@ private fun TutorialStepRow(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(accentSoft.copy(alpha = 0.3f))
+            .background(Color.Transparent)
             .padding(14.dp),
         verticalAlignment = Alignment.Top
     ) {

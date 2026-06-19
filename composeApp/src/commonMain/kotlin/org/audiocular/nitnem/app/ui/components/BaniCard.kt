@@ -1,6 +1,6 @@
 package org.audiocular.nitnem.app.ui.components
 
-import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -33,6 +33,7 @@ import org.audiocular.nitnem.utils.translateDigits
 import org.audiocular.nitnem.utils.translateAng
 import org.audiocular.nitnem.models.Bani
 import androidx.compose.foundation.BorderStroke
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun BaniCard(
 
@@ -120,12 +121,20 @@ fun BaniCard(
      * ANIMATIONS
      */
 
-    val infinite =
+  val infinite =
+    if (selected) {
+
         rememberInfiniteTransition(
             label = ""
         )
 
-    val containerPulse by infinite.animateFloat(
+    } else {
+
+        null
+    }
+val containerPulse =
+
+    infinite?.animateFloat(
 
         initialValue = 0.97f,
 
@@ -142,9 +151,13 @@ fun BaniCard(
         ),
 
         label = ""
-    )
 
-    val iconScale by infinite.animateFloat(
+    )?.value ?: 1f
+
+
+val iconScale =
+
+    infinite?.animateFloat(
 
         initialValue = 0.96f,
 
@@ -161,64 +174,9 @@ fun BaniCard(
         ),
 
         label = ""
-    )
 
-    val randomX by infinite.animateFloat(
+    )?.value ?: 1f
 
-        initialValue = startX,
-
-        targetValue = endX,
-
-        animationSpec = infiniteRepeatable(
-
-            animation = tween(
-                durationMillis = 4200,
-                easing = EaseInOut
-            ),
-
-            repeatMode = RepeatMode.Reverse
-        ),
-
-        label = ""
-    )
-
-    val randomY by infinite.animateFloat(
-
-        initialValue = startY,
-
-        targetValue = endY,
-
-        animationSpec = infiniteRepeatable(
-
-            animation = tween(
-                durationMillis = 3800,
-                easing = EaseInOut
-            ),
-
-            repeatMode = RepeatMode.Reverse
-        ),
-
-        label = ""
-    )
-
-    val randomRotation by infinite.animateFloat(
-
-        initialValue = startRotation,
-
-        targetValue = endRotation,
-
-        animationSpec = infiniteRepeatable(
-
-            animation = tween(
-                durationMillis = 5200,
-                easing = EaseInOut
-            ),
-
-            repeatMode = RepeatMode.Reverse
-        ),
-
-        label = ""
-    )
 
     Card(
 
@@ -366,7 +324,7 @@ fun BaniCard(
                     Box(
 
                         modifier = Modifier
-                            .size(65.dp)
+                            .size(60.dp)
                             .scale(containerPulse)
                             .clip(CircleShape)
                             .background(
@@ -413,24 +371,7 @@ fun BaniCard(
                             tint = Color.White,
 
                             modifier = Modifier
-                                .size(30.dp)
-                                .graphicsLayer {
-
-                                    scaleX =
-                                        iconScale
-
-                                    scaleY =
-                                        iconScale
-
-                                    translationX =
-                                        randomX
-
-                                    translationY =
-                                        randomY
-
-                                    rotationZ =
-                                        randomRotation
-                                }
+                                .size(24.dp)
                         )
                     }
                 }
@@ -439,15 +380,22 @@ fun BaniCard(
                     Modifier.width(12.dp)
                 )
 
-                /*
-                 * CONTENT
-                 */
-
                 Column(
-                    modifier = Modifier.weight(1f)
+
+                    modifier = Modifier.weight(1f),
+
+                    verticalArrangement =
+                        Arrangement.spacedBy(4.dp)
                 ) {
 
+                    /*
+                     * TITLE ROW
+                     */
                     Row(
+
+                        modifier =
+                            Modifier.fillMaxWidth(),
+
                         verticalAlignment =
                             Alignment.CenterVertically
                     ) {
@@ -459,10 +407,15 @@ fun BaniCard(
                                     displayLanguage
                                 ),
 
+                            modifier =
+                                Modifier.weight(1f, fill = false),
+
                             fontWeight =
                                 FontWeight.Bold,
 
                             fontSize = 14.sp,
+
+                            lineHeight = 18.sp,
 
                             color =
                                 TextPrimary,
@@ -470,20 +423,13 @@ fun BaniCard(
                             maxLines = 1,
 
                             overflow =
-                                TextOverflow.Ellipsis,
-
-                            modifier =
-                                Modifier.weight(
-                                    1f,
-                                    fill = false
-                                )
+                                TextOverflow.Ellipsis
                         )
 
                         if (onInfoClick != null) {
 
                             Spacer(
-                                modifier =
-                                    Modifier.width(6.dp)
+                                Modifier.width(2.dp)
                             )
 
                             IconButton(
@@ -492,7 +438,7 @@ fun BaniCard(
                                     onInfoClick,
 
                                 modifier =
-                                    Modifier.size(24.dp)
+                                    Modifier.size(22.dp)
                             ) {
 
                                 Icon(
@@ -507,20 +453,20 @@ fun BaniCard(
                                             ),
 
                                     tint =
-                                        prayerAccent.copy(
-                                            alpha = 0.72f
+                                        Accent.copy(
+                                            alpha = 0.68f
                                         ),
 
                                     modifier =
-                                        Modifier.size(18.dp)
+                                        Modifier.size(15.dp)
                                 )
                             }
                         }
                     }
 
-                    // Spacer(
-                    //     Modifier.height(2.dp)
-                    // )
+                    /*
+                     * AUTHOR
+                     */
 
                     Text(
 
@@ -536,15 +482,17 @@ fun BaniCard(
 
                         fontSize = 11.sp,
 
+                        lineHeight = 14.sp,
+
                         maxLines = 1,
 
                         overflow =
                             TextOverflow.Ellipsis
                     )
 
-                    // Spacer(
-                    //     Modifier.height(2.dp)
-                    // )
+                    /*
+                     * PROGRESS / STRUCTURE
+                     */
 
                     val activeProgressString =
                         remember(
@@ -559,11 +507,11 @@ fun BaniCard(
                                 val lineIndex =
 
                                     (
-                                        progress *
-                                            (
-                                                bani.lines.size - 1
-                                            )
-                                        ).toInt()
+                                            progress *
+                                                    (
+                                                            bani.lines.size - 1
+                                                            )
+                                            ).toInt()
                                         .coerceIn(
                                             0,
                                             bani.lines.size - 1
@@ -596,11 +544,11 @@ fun BaniCard(
                                 activeProgressString != null
                             ) {
 
-                                "${bani.ang.translateAng(displayLanguage)}  •  $activeProgressString"
+                                "${bani.ang.translateAng(displayLanguage)} • $activeProgressString"
 
                             } else {
 
-                                "${bani.ang.translateAng(displayLanguage)}  •  ${
+                                "${bani.ang.translateAng(displayLanguage)} • ${
                                     bani.structure.translate(
                                         displayLanguage
                                     )
@@ -611,10 +559,12 @@ fun BaniCard(
 
                         color =
                             TextPrimary.copy(
-                                alpha = 0.50f
+                                alpha = 0.52f
                             ),
 
                         fontSize = 10.sp,
+
+                        lineHeight = 13.sp,
 
                         maxLines = 1,
 
@@ -623,16 +573,29 @@ fun BaniCard(
                     )
 
                     Spacer(
-                        Modifier.height(4.dp)
+                        Modifier.height(2.dp)
                     )
 
-                    Row(
+                    /*
+                     * CHIPS
+                     */
+
+                    val hasAudio = remember(
+                        bani,
+                        artistName
+                    ) {
+
+                        bani.audio != null ||
+                                !artistName.isNullOrBlank()
+                    }
+
+                    FlowRow(
 
                         horizontalArrangement =
                             Arrangement.spacedBy(5.dp),
 
-                        verticalAlignment =
-                            Alignment.CenterVertically
+                        verticalArrangement =
+                            Arrangement.spacedBy(5.dp)
                     ) {
 
                         MiniInfoChip(
@@ -656,14 +619,25 @@ fun BaniCard(
                                     )
                         )
 
-                        if (audio != null) {
+                        if (hasAudio) {
 
                             MiniInfoChip(
+
                                 text =
                                     "Audio"
                                         .translate(
                                             displayLanguage
                                         )
+                            )
+                        }
+
+                        if (!artistName.isNullOrBlank()) {
+
+                            MiniInfoChip(
+
+                                text = artistName,
+
+                                highlight = true
                             )
                         }
                     }
@@ -674,32 +648,57 @@ fun BaniCard(
                 )
 
                /*
- * RIGHT SIDE
- */
+                 * RIGHT SIDE
+                 */
 
-Column(
+                    Column(
 
-    horizontalAlignment =
-        Alignment.CenterHorizontally
-) {
+                        horizontalAlignment =
+                            Alignment.CenterHorizontally
+                    ) {
+                    val eqAlpha =
 
-    Box(
+                        if (selected) {
 
-        modifier = Modifier
-            .size(36.dp)
-            .clip(CircleShape)
-            .background(
+                            infinite?.animateFloat(
+                                initialValue = 0.55f,
+                                targetValue = 1f,
+                                animationSpec = infiniteRepeatable(
+                                    animation = tween(700),
+                                    repeatMode = RepeatMode.Reverse
+                                ),
+                                label = ""
+                            )?.value ?: 1f
 
-                if (selected) {
+                        } else {
+                            1f
+                        }
+                        Box(
 
-                    prayerAccent.copy(
-                        alpha = 0.07f
-                    )
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(
 
-                } else {
+                                    if (selected) {
 
-                    Mist
-                }
+                                        prayerAccent.copy(
+                                            alpha = 0.07f
+                                        )
+
+                                   } else {
+
+                        when (AppTheme.themeMode) {
+
+                            ThemeMode.Light -> Mist
+
+                            ThemeMode.Dark ->
+                                Color.White.copy(alpha = 0.05f)
+
+                            ThemeMode.Amoled ->
+                                Color.White.copy(alpha = 0.04f)
+                        }
+}
             ),
 
         contentAlignment =
@@ -721,27 +720,21 @@ Column(
 
             contentDescription = null,
 
-            tint =
+         tint =
+    if (selected) {
 
-                if (selected) {
+        prayerAccent.copy(
+            alpha = eqAlpha
+        )
 
-                    prayerAccent.copy(
-                        alpha = 0.82f
-                    )
+    } else {
 
-                } else {
-
-                    TextPrimary.copy(
-                        alpha = 0.6f
-                    )
-                }
+        TextPrimary.copy(alpha = 0.6f)
+    }
         )
     }
 }
 
-Spacer(
-    Modifier.width(8.dp)
-)
             }
         }
 
@@ -749,7 +742,7 @@ Spacer(
          * PROGRESS
          */
 
-        if (progress > 0f) {
+        if (animatedProgress > 0.001f){
 
             LinearProgressIndicator(
 
@@ -771,45 +764,71 @@ Spacer(
 }
 @Composable
 private fun MiniInfoChip(
-    text: String
+    text: String,
+    highlight: Boolean = false
 ) {
 
     Box(
 
         modifier = Modifier
+            .heightIn(min = 14.dp)
             .clip(
-                RoundedCornerShape(28.dp)
+                RoundedCornerShape(14.dp)
             )
             .background(
-    when (AppTheme.themeMode) {
 
-        ThemeMode.Light ->
-            Mist
+                if (highlight) {
 
-        ThemeMode.Dark ->
-            SurfaceVariant
+                    Accent.copy(alpha = 0.12f)
 
-        ThemeMode.Amoled ->
-            Color(0xFF111111)
-    }
-)
+                } else {
+
+                    when (AppTheme.themeMode) {
+
+                        ThemeMode.Light  ->
+                            Mist
+
+                        ThemeMode.Dark   ->
+                            SurfaceVariant
+
+                        ThemeMode.Amoled ->
+                            Color(0xFF111111)
+                    }
+                }
+            )
+            .padding(
+                horizontal = 8.dp,
+                vertical = 0.dp
+            )
     ) {
 
         Text(
 
             text = text,
 
-            modifier = Modifier.padding(
-                horizontal = 8.dp,
-                vertical = 0.dp
-            ),
+            modifier = Modifier
+                .widthIn(max = 92.dp),
 
-            color = TextPrimary,
+            color =
+                if (highlight)
+                    Accent
+                else
+                    TextPrimary,
 
             fontSize = 9.sp,
 
             fontWeight =
-                FontWeight.Medium
+
+                if (highlight)
+                    FontWeight.SemiBold
+                else
+                    FontWeight.Medium,
+
+            maxLines = 1,
+
+            overflow = TextOverflow.Ellipsis,
+
+            softWrap = false
         )
     }
 }

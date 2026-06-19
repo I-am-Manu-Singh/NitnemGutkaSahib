@@ -1,5 +1,5 @@
 package org.audiocular.nitnem.models
-
+import org.audiocular.nitnem.models.BaniLine
 import org.audiocular.nitnem.app.models.AppTab
 import org.audiocular.nitnem.app.models.DisplayLanguage
 import org.audiocular.nitnem.app.models.ExperienceTab
@@ -91,11 +91,11 @@ data class NitnemUiState(
 
     val wordMeaningFontSize: Float =
         16f,
-
+val syncedLines: List<BaniLine> = emptyList(),
     /*
      * VISIBILITY
      */
-
+val totalListeningMinutes: Int = 0,
     val showTranslation: Boolean =
         true,
 
@@ -273,6 +273,14 @@ data class NitnemUiState(
    
 
 val hukamnama: Hukamnama? = null,
-
-    val activeTrackId: String = "default"
+    val activeTrackId: String = "default",
+    val totalXp: Int = 0,
+    val meditationMinutes: Int = 0,
+    val malaMantraCount: Int = 0,
+    val quizHighscore: Int = 0,
+    val activeQuizSession: QuizSession? = null,
+    val meditationTimerRunning: Boolean = false,
+    val meditationRemainingSeconds: Int = 0,
+    val meditationDurationSeconds: Int = 0,
+    val meditationSelectedMode: String = "Mantra"
 )

@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.LocalDate
-import org.audiocular.nitnem.app.audio.StreamAudioController
+import org.audiocular.nitnem.audio.StreamAudioController
 import org.audiocular.nitnem.app.models.AppTab
 import org.audiocular.nitnem.app.models.DisplayLanguage
 import org.audiocular.nitnem.app.models.ExperienceTab
@@ -18,7 +18,10 @@ import org.audiocular.nitnem.data.bookmarks.BookmarksRepository
 import org.audiocular.nitnem.data.playback.PlaybackRepository
 import org.audiocular.nitnem.data.preferences.SettingsRepository
 import org.audiocular.nitnem.models.Bani
+import org.audiocular.nitnem.models.BaniLine
 import org.audiocular.nitnem.models.NitnemUiState
+import org.audiocular.nitnem.models.QuizSession
+import org.audiocular.nitnem.models.QuizQuestion
 import org.audiocular.nitnem.models.PlaybackSnapshot
 import org.audiocular.nitnem.data.Hukamnama
 class NitnemViewModel(
@@ -36,14 +39,14 @@ class NitnemViewModel(
         BookmarksRepository
 
 ) : ViewModel() {
-
+    private var lastSavedPlaybackBucket = -1L
+    private var lastTrackedMinute = -1
     private var restoredBaniId: String? = null
 
     private val _uiState =
         MutableStateFlow(
             NitnemUiState()
         )
-
     val uiState:
         StateFlow<NitnemUiState> =
         _uiState.asStateFlow()
@@ -69,6 +72,114 @@ class NitnemViewModel(
         )
     }
 }
+
+    fun hasValidTimings(
+
+        lines: List<BaniLine>
+
+    ): Boolean {
+
+        return lines.any {
+
+            it.startsAtMs > 0L
+
+        }
+
+    }
+    fun setSyncedLines(
+        lines: List<BaniLine>
+    ) {
+
+        val normalized = lines
+            .distinctBy { it.id }
+            .sortedBy { it.startsAtMs }
+            .filter {
+                it.startsAtMs >= 0L
+            }
+
+        if (
+            _uiState.value.syncedLines ==
+            normalized
+        ) {
+            return
+        }
+
+        _uiState.update {
+
+            it.copy(
+                syncedLines = normalized
+            )
+        }
+    }
+
+    fun awardXp(amount: Int) {
+        _uiState.update { it.copy(totalXp = it.totalXp + amount) }
+    }
+
+    fun addMeditationMinutes(minutes: Int) {
+        _uiState.update { 
+            it.copy(
+                meditationMinutes = it.meditationMinutes + minutes,
+                totalXp = it.totalXp + (minutes * 10)
+            )
+        }
+    }
+
+    fun incrementMalaCount() {
+        _uiState.update { 
+            val newMalaCount = it.malaMantraCount + 1
+            val newXp = if (newMalaCount % 108 == 0) it.totalXp + 5 else it.totalXp
+            it.copy(
+                malaMantraCount = newMalaCount,
+                totalXp = newXp
+            )
+        }
+    }
+
+    fun addMalaCount(count: Int) {
+        _uiState.update {
+            val newMalaCount = it.malaMantraCount + count
+            val newXp = it.totalXp + (count / 108) * 5
+            it.copy(
+                malaMantraCount = newMalaCount,
+                totalXp = newXp
+            )
+        }
+    }
+
+    fun updateQuizHighscore(score: Int) {
+        _uiState.update {
+            it.copy(quizHighscore = maxOf(it.quizHighscore, score))
+        }
+    }
+
+    fun resetMalaCount() {
+        _uiState.update {
+            it.copy(malaMantraCount = 0)
+        }
+    }
+
+    fun setQuizSession(session: QuizSession?) {
+        _uiState.update {
+            it.copy(activeQuizSession = session)
+        }
+    }
+
+    fun updateMeditationState(
+        running: Boolean,
+        remainingSeconds: Int,
+        durationSeconds: Int,
+        selectedMode: String
+    ) {
+        _uiState.update {
+            it.copy(
+                meditationTimerRunning = running,
+                meditationRemainingSeconds = remainingSeconds,
+                meditationDurationSeconds = durationSeconds,
+                meditationSelectedMode = selectedMode
+            )
+        }
+    }
     /*
      * LOAD BANIS
      */
@@ -77,17 +188,29 @@ class NitnemViewModel(
         items: List<Bani>
     ) {
 
+        if (
+            _uiState.value.banis ==
+            items
+        ) {
+            return
+        }
+
         _uiState.update { state ->
 
-            val resolvedBani = items.firstOrNull { it.id == restoredBaniId }
-                ?: state.currentBani
-                ?: items.firstOrNull()
+            val resolvedBani =
+
+                items.firstOrNull {
+                    it.id == restoredBaniId
+                }
+                    ?: state.currentBani
+                    ?: items.firstOrNull()
 
             state.copy(
 
                 banis = items,
 
-                currentBani = resolvedBani
+                currentBani =
+                    resolvedBani
             )
         }
     }
@@ -231,8 +354,14 @@ sohilaTime =
                             translationColorMode =
                                 settings.translationColorMode,
 
-                            wordMeaningColorMode =
-                                settings.wordMeaningColorMode
+                             wordMeaningColorMode =
+                                 settings.wordMeaningColorMode,
+
+                             widgetTheme =
+                                 settings.widgetTheme,
+
+                             widgetContent =
+                                 settings.widgetContent
                         )
                     }
                 }
@@ -277,7 +406,11 @@ sohilaTime =
                                 analyticsRepository
                                     .monthlyConsistency(
                                         analytics.history
-                                    )
+                                    ),
+                                    totalListeningMinutes =
+                            analytics.history.sumOf {
+                                it.listeningMinutes
+                            }
                         )
                     }
                 }
@@ -311,7 +444,27 @@ sohilaTime =
                 .playbackFlow
                 .collectLatest { playback ->
 
-                    restoredBaniId = playback.baniId
+                    val current =
+                        _uiState.value.playback
+
+                    /*
+                     * IGNORE SAME PLAYBACK
+                     */
+
+                    if (
+
+                        current.positionMs ==
+                        playback.position &&
+
+                        current.speed ==
+                        playback.speed
+
+                    ) {
+                        return@collectLatest
+                    }
+
+                    restoredBaniId =
+                        playback.baniId
 
                     val bani =
                         _uiState.value.banis
@@ -323,7 +476,8 @@ sohilaTime =
 
                         it.copy(
 
-                            currentBani = bani ?: it.currentBani,
+                            currentBani =
+                                bani ?: it.currentBani,
 
                             playbackSpeed =
                                 playback.speed,
@@ -342,7 +496,6 @@ sohilaTime =
                 }
         }
     }
-
     /*
      * NAVIGATION
      */
@@ -425,30 +578,150 @@ sohilaTime =
         snapshot: PlaybackSnapshot
     ) {
 
+        val previous =
+            _uiState.value.playback
+
+        /*
+         * THROTTLE UPDATES
+         */
+
+        val previousBucket =
+            previous.positionMs / 5000L
+
+        val currentBucket =
+            snapshot.positionMs / 5000L
+
+        /*
+         * IGNORE IDENTICAL UPDATES
+         */
+
+        if (
+
+            previous.isPlaying ==
+            snapshot.isPlaying &&
+
+            previous.currentTitle ==
+            snapshot.currentTitle &&
+
+            previousBucket ==
+            currentBucket &&
+
+            previous.speed ==
+            snapshot.speed
+
+        ) {
+            return
+        }
+
+        val startedPlaying =
+
+            snapshot.isPlaying &&
+                    !previous.isPlaying
+
+        /*
+         * UI STATE
+         */
+
         _uiState.update {
 
             it.copy(
-                playback = snapshot
+
+                playback = snapshot,
+
+                miniPlayerVisible =
+
+                    if (startedPlaying)
+                        true
+                    else
+                        it.miniPlayerVisible
             )
+        }
+
+        /*
+         * PERSIST MINI PLAYER
+         */
+
+        if (startedPlaying) {
+
+            viewModelScope.launch {
+
+                settingsRepository
+                    .setShowMiniPlayer(true)
+            }
         }
 
         val baniId =
             _uiState.value.currentBani?.id
                 ?: return
 
-        viewModelScope.launch {
+        /*
+         * SAVE PLAYBACK
+         */
 
-            playbackRepository
-                .savePlayback(
+        val saveBucket =
+            snapshot.positionMs / 15000L
 
-                    baniId = baniId,
+        if (
+            saveBucket !=
+            lastSavedPlaybackBucket
+        ) {
 
-                    position =
-                        snapshot.positionMs,
+            lastSavedPlaybackBucket =
+                saveBucket
 
-                    speed =
-                        snapshot.speed
-                )
+            viewModelScope.launch {
+
+                playbackRepository
+                    .savePlayback(
+
+                        baniId = baniId,
+
+                        position =
+                            snapshot.positionMs,
+
+                        speed =
+                            snapshot.speed
+                    )
+            }
+        }
+
+        /*
+         * ANALYTICS
+         */
+        val currentMinute =
+
+            (
+                    snapshot.positionMs /
+                            60000L
+                    ).toInt()
+
+        if (
+            lastTrackedMinute == -1
+        ) {
+
+            lastTrackedMinute =
+                currentMinute
+
+            return
+        }
+
+        if (
+
+            snapshot.isPlaying &&
+
+            currentMinute ==
+            lastTrackedMinute + 1
+
+        ) {
+
+            lastTrackedMinute =
+                currentMinute
+
+            viewModelScope.launch {
+
+                analyticsRepository
+                    .addListeningMinutes(1)
+            }
         }
     }
 
@@ -576,21 +849,26 @@ sohilaTime =
     fun setDisplayLanguage(
         language: DisplayLanguage
     ) {
+        val showEn = language == DisplayLanguage.English
+        val showPa = language == DisplayLanguage.Punjabi
+        val showHi = language == DisplayLanguage.Hindi
 
         _uiState.update {
-
             it.copy(
-                displayLanguage =
-                    language
+                displayLanguage = language,
+                showEnglishTranslation = showEn,
+                showPunjabiTranslation = showPa,
+                showDevanagariTransliteration = showHi,
+                showRomanTransliteration = showEn
             )
         }
 
         viewModelScope.launch {
-
-            settingsRepository
-                .setDisplayLanguage(
-                    language
-                )
+            settingsRepository.setDisplayLanguage(language)
+            settingsRepository.setShowEnglishTranslation(showEn)
+            settingsRepository.setShowPunjabiTranslation(showPa)
+            settingsRepository.setShowDevanagariTransliteration(showHi)
+            settingsRepository.setShowRomanTransliteration(showEn)
         }
     }
 
@@ -1127,6 +1405,40 @@ fun setSohilaTime(time: String) {
         }
     }
 
+    fun setWidgetTheme(
+        theme: String
+    ) {
+        _uiState.update {
+            it.copy(
+                widgetTheme = theme
+            )
+        }
+
+        viewModelScope.launch {
+            settingsRepository
+                .setWidgetTheme(
+                    theme
+                )
+        }
+    }
+
+    fun setWidgetContent(
+        content: String
+    ) {
+        _uiState.update {
+            it.copy(
+                widgetContent = content
+            )
+        }
+
+        viewModelScope.launch {
+            settingsRepository
+                .setWidgetContent(
+                    content
+                )
+        }
+    }
+
     fun setElderMode(
         enabled: Boolean
     ) {
@@ -1223,13 +1535,15 @@ fun setSohilaTime(time: String) {
         remoteUrl: String,
 
         audioController:
-            StreamAudioController
+            StreamAudioController,
+        trackId: String? = null
     ) {
 
+        val key = if (trackId != null && trackId != "default") "${baniId}_$trackId" else baniId
         if (
             _uiState.value
                 .downloadingBaniIds
-                .contains(baniId)
+                .contains(key)
         ) return
 
         _uiState.update {
@@ -1239,7 +1553,7 @@ fun setSohilaTime(time: String) {
                 downloadingBaniIds =
 
                     it.downloadingBaniIds +
-                            baniId
+                            key
             )
         }
 
@@ -1250,8 +1564,9 @@ fun setSohilaTime(time: String) {
                 audioController
                     .downloadAudio(
 
-                        baniId,
-                        remoteUrl
+                        baniId = baniId,
+                        remoteUrl = remoteUrl,
+                        trackId = trackId
                     )
 
             _uiState.update {
@@ -1261,14 +1576,14 @@ fun setSohilaTime(time: String) {
                     downloadingBaniIds =
 
                         it.downloadingBaniIds -
-                                baniId,
+                                key,
 
                     downloadedBaniIds =
 
                         if (success)
 
                             it.downloadedBaniIds +
-                                    baniId
+                                    key
 
                         else
                             it.downloadedBaniIds
@@ -1398,4 +1713,5 @@ fun setSohilaTime(time: String) {
             it.copy(activeTrackId = trackId)
         }
     }
+
 }

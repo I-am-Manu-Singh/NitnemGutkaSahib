@@ -88,8 +88,11 @@ object HukamnamaProvider {
             val lastFetchLocalDate = Instant.fromEpochMilliseconds(cachedData.lastFetchTime)
                 .toLocalDateTime(timeZone).date
 
-            // If the last fetch was on the same calendar day, return cached directly to save data
-            if (lastFetchLocalDate == currentLocalDate) {
+            val isTodayHukamnama = cachedData.hukamnama.date.contains(currentLocalDate.dayOfMonth.toString()) &&
+                    cachedData.hukamnama.date.contains(currentLocalDate.month.name, ignoreCase = true)
+
+            // If the last fetch was on the same calendar day AND it is today's actual Hukamnama, return it directly to save data
+            if (lastFetchLocalDate == currentLocalDate && isTodayHukamnama) {
                 return@withContext cachedData.hukamnama
             }
 

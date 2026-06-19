@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import org.audiocular.nitnem.audio.StreamAudioController
 import org.audiocular.nitnem.models.PlaybackSnapshot
 
 private class IosStreamAudioController : StreamAudioController {

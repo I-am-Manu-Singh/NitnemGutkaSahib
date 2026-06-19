@@ -1,12 +1,12 @@
-package org.audiocular.nitnem.app.audio
+package org.audiocular.nitnem.audio
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
-import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
@@ -17,9 +17,10 @@ import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import androidx.media3.common.AudioAttributes
+import androidx.media3.common.C
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,6 +35,8 @@ import org.audiocular.nitnem.models.AudioTrack
 import org.audiocular.nitnem.data.generated.GeneratedBaniCatalog
 import org.audiocular.nitnem.data.CuratedAudioCatalog
 import android.media.MediaMetadataRetriever
+import androidx.annotation.OptIn
+import androidx.media3.common.util.UnstableApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.encodeToString
 import java.io.File
@@ -41,20 +44,29 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 import androidx.media3.database.StandaloneDatabaseProvider
+import androidx.media3.datasource.RawResourceDataSource
 import androidx.media3.datasource.cache.LeastRecentlyUsedCacheEvictor
 import androidx.media3.datasource.cache.SimpleCache
 import androidx.media3.datasource.cache.CacheDataSource
+import androidx.media3.exoplayer.DefaultLoadControl
+import org.audiocular.nitnem.app.audio.AudioControllerHolder
+import org.audiocular.nitnem.app.audio.NitnemAudioService
+import org.audiocular.nitnem.utils.timingKey
+import androidx.core.net.toUri
 
+@UnstableApi
 class AndroidStreamAudioController private constructor(
     private val context: Context
 ) : StreamAudioController {
 
     companion object {
+        @SuppressLint("StaticFieldLeak")
         @Volatile
         private var INSTANCE: AndroidStreamAudioController? = null
 
         private var simpleCache: SimpleCache? = null
 
+        @OptIn(UnstableApi::class)
         @Synchronized
         private fun getCache(context: Context): SimpleCache {
             if (simpleCache == null) {
@@ -74,7 +86,10 @@ class AndroidStreamAudioController private constructor(
             }
         }
     }
-
+private val activeTrackState =
+    MutableStateFlow<Map<String, String>>(
+        emptyMap()
+    )
     /*
      * PLAYER
      */
@@ -82,9 +97,16 @@ class AndroidStreamAudioController private constructor(
     private val httpDataSourceFactory =
         DefaultHttpDataSource.Factory()
             .setUserAgent(
-                "NitnemGutka"
+                // Browser-like UA — Archive.org CDN responds faster to known clients
+                "Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 " +
+                "(KHTML, like Gecko) Chrome/100.0.4896.58 Mobile Safari/537.36"
             )
+            // Archive.org CDN can take 15-20s on a cold hit; 8s default causes silent failures
+            .setConnectTimeoutMs(20_000)
+            .setReadTimeoutMs(20_000)
             .setAllowCrossProtocolRedirects(true)
+            // Disable gzip so range-request streaming works correctly
+            .setDefaultRequestProperties(mapOf("Accept-Encoding" to "identity"))
 
     private val dataSourceFactory =
         DefaultDataSource.Factory(
@@ -96,9 +118,18 @@ class AndroidStreamAudioController private constructor(
         .setCache(getCache(context))
         .setUpstreamDataSourceFactory(dataSourceFactory)
         .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
-
     internal val player =
         ExoPlayer.Builder(context)
+            .setLoadControl(
+                DefaultLoadControl.Builder()
+                    .setBufferDurationsMs(
+                        15_000,
+                        50_000,
+                        1_500,
+                        2_500
+                    )
+                    .build()
+            )
             .setMediaSourceFactory(
                 DefaultMediaSourceFactory(
                     cacheDataSourceFactory
@@ -107,9 +138,33 @@ class AndroidStreamAudioController private constructor(
             .build()
             .apply {
 
+                /*
+                 * AUDIO ATTRIBUTES
+                 */
+
+                setAudioAttributes(
+
+                    AudioAttributes.Builder()
+
+                        .setUsage(C.USAGE_MEDIA)
+
+                        .setContentType(
+                            C.AUDIO_CONTENT_TYPE_MUSIC
+                        )
+
+                        .build(),
+
+                    true
+                )
+
+                /*
+                 * IMPORTANT
+                 */
+
+                setHandleAudioBecomingNoisy(true)
+
                 playWhenReady = false
             }
-
     /*
      * STORAGE
      */
@@ -161,7 +216,9 @@ class AndroidStreamAudioController private constructor(
     private var simulatedIsPlaying = false
     private var simulatedSpeed = 1f
     private var currentTitle = "Nitnem"
+    private var prepareGeneration = 0
 
+    private var prepareTimeoutJob: Job? = null
     private var currentUrl:
         String? = null
 
@@ -197,9 +254,20 @@ class AndroidStreamAudioController private constructor(
                     isPlaying: Boolean
                 ) {
 
+                    println(
+
+                        "PLAYER STATE -> " +
+
+                                "isPlaying=$isPlaying, " +
+
+                                "currentUrl=$currentUrl"
+
+                    )
+
                     if (isPlaying) {
 
                         startPollingProgress()
+
                         startBackgroundPlayback()
 
                     } else {
@@ -214,6 +282,77 @@ class AndroidStreamAudioController private constructor(
                     playbackState: Int
                 ) {
 
+                    when (playbackState) {
+
+                        Player.STATE_IDLE -> {
+
+                            println(
+                                "EXO STATE -> IDLE"
+                            )
+                        }
+
+                        Player.STATE_BUFFERING -> {
+
+                            println(
+                                "EXO STATE -> BUFFERING"
+                            )
+                        }
+
+                        Player.STATE_READY -> {
+
+                            prepareTimeoutJob?.cancel()
+
+                            println("EXO STATE -> READY")
+
+                            println(
+                                "READY INFO -> " +
+                                        "playWhenReady=${player.playWhenReady}, " +
+                                        "isPlaying=${player.isPlaying}, " +
+                                        "duration=${player.duration}"
+                            )
+
+                            if (
+                                player.playWhenReady &&
+                                !player.isPlaying
+                            ) {
+
+                                println("FORCING PLAY")
+
+                                player.play()
+                            }
+                        }
+
+                        Player.STATE_ENDED -> {
+
+                            val duration =
+                                player.duration
+
+                            val position =
+                                player.currentPosition
+
+                            val actuallyEnded =
+                                duration > 0 &&
+                                        position >= duration - 500
+
+                            if (!actuallyEnded) {
+
+                                println(
+                                    "IGNORING TRANSIENT ENDED STATE"
+                                )
+
+                                return
+                            }
+
+                            println(
+                                "EXO STATE -> ENDED"
+                            )
+
+                            stopPollingProgress()
+
+                            prepareTimeoutJob?.cancel()
+                        }
+                    }
+
                     updateState()
                 }
 
@@ -221,21 +360,80 @@ class AndroidStreamAudioController private constructor(
                     error: PlaybackException
                 ) {
 
+                    println(
+                        "PLAYER ERROR -> ${error.message}"
+                    )
+
                     error.printStackTrace()
+                    prepareTimeoutJob?.cancel()
+                    stopPollingProgress()
+
+                    /*
+                     * HARD RESET
+                     */
+
+                    try {
+                        prepareTimeoutJob?.cancel()
+
+                        player.clearMediaItems()
+
+                    } catch (e: Exception) {
+
+                        e.printStackTrace()
+                    }
 
                     _playback.update {
 
                         it.copy(
                             error =
-                                error.localizedMessage,
-                            isLoading = false
+                                error.localizedMessage
+                                    ?: "Playback failed",
+                            isLoading = false,
+                            isPlaying = false,
+                            isReady = false
                         )
                     }
+                }
+                override fun onMediaItemTransition(
+                    mediaItem: MediaItem?,
+                    reason: Int
+                ) {
+                    println(
+                        "MEDIA ITEM TRANSITION -> " +
+                                mediaItem?.mediaMetadata?.title
+                    )
                 }
             }
         )
 
-        restorePlaybackState()
+        /*
+         * RESTORE LAST PLAYBACK
+         */
+
+        scope.launch {
+
+            delay(300)
+
+            try {
+
+                restorePlaybackState()
+
+            } catch (e: Exception) {
+
+                e.printStackTrace()
+
+                currentUrl = null
+
+                _playback.update {
+
+                    it.copy(
+                        isLoading = false,
+                        isPlaying = false,
+                        isReady = false
+                    )
+                }
+            }
+        }
     }
 
     /*
@@ -271,7 +469,7 @@ class AndroidStreamAudioController private constructor(
                     savePlaybackState()
                 }
 
-                delay(500)
+                delay(100)
             }
         }
     }
@@ -284,31 +482,38 @@ class AndroidStreamAudioController private constructor(
     }
 
     /*
-     * UPDATE UI STATE
-     */
-
+ * UPDATE UI STATE
+ */
     private fun updateState() {
+        println(
+            "STATE UPDATE -> " +
+                    "state=${player.playbackState}, " +
+                    "isPlaying=${player.isPlaying}, " +
+                    "playWhenReady=${player.playWhenReady}"
+        )
+        val playbackState =
+            player.playbackState
 
         val duration =
-
-            if (
-                player.duration ==
-                C.TIME_UNSET
-            ) {
-
+            if (player.duration == C.TIME_UNSET) {
                 0L
-
             } else {
-
                 player.duration
             }
+
+        val isLoading =
+            playbackState == Player.STATE_BUFFERING
+
+        val isReady =
+            playbackState == Player.STATE_READY
+
+        val isEnded =
+            playbackState == Player.STATE_ENDED
 
         _playback.update {
 
             it.copy(
-
-                isPlaying =
-                    player.isPlaying,
+                isPlaying = player.isPlaying,
 
                 positionMs =
                     player.currentPosition,
@@ -320,204 +525,303 @@ class AndroidStreamAudioController private constructor(
                     player.playbackParameters.speed,
 
                 isReady =
+                    isReady,
 
-                    player.playbackState ==
-                        Player.STATE_READY ||
+                isLoading =
+                    isLoading,
 
-                        player.playbackState ==
-                        Player.STATE_BUFFERING,
+                isEnded =
+                    isEnded,
 
-                error = null,
-
-                isEnded = player.playbackState == Player.STATE_ENDED,
-
-                isLoading = player.playbackState == Player.STATE_BUFFERING || player.isLoading
+                error = null
             )
         }
+
+        println(
+            "UI PLAYBACK -> " +
+                    "loading=$isLoading, " +
+                    "ready=$isReady"
+        )
     }
+/*
+ * URI
+ */
+private fun createUri(
+    url: String
+): Uri {
 
-    /*
-     * URI
-     */
+    return when {
 
-    private fun createUri(
-        url: String
-    ): Uri {
+        /*
+         * ASSET AUDIO
+         */
 
-        return when {
+        url.startsWith("asset://") -> {
 
-            url.startsWith("raw/") -> {
+            val assetPath =
+                url.removePrefix("asset://")
 
-                val resourceName =
-                    url.removePrefix("raw/")
+            "asset:///$assetPath".toUri()
+        }
 
-                val resourceId =
+        /*
+         * REMOTE URL
+         */
 
-                    context.resources.getIdentifier(
+        url.startsWith("http://") ||
+                url.startsWith("https://") -> {
 
-                        resourceName,
+            Uri.parse(url)
+        }
 
-                        "raw",
+        /*
+         * LOCAL FILE
+         */
 
-                        context.packageName
-                    )
+        url.startsWith("/") -> {
 
-                if (resourceId == 0) {
+            Uri.fromFile(
+                File(url)
+            )
+        }
 
-                    throw IllegalArgumentException(
-                        "Raw resource not found: $resourceName"
-                    )
-                }
+        /*
+         * CONTENT URI
+         */
 
-                Uri.parse(
-                    "android.resource://${context.packageName}/$resourceId"
-                )
-            }
+        url.startsWith("content://") -> {
 
-            url.startsWith("http") -> {
+            Uri.parse(url)
+        }
 
-                Uri.parse(url)
-            }
+        /*
+         * FALLBACK
+         */
 
-            url.startsWith("/") -> {
+        else -> {
 
-                Uri.fromFile(
-                    File(url)
-                )
-            }
-
-            else -> {
-
-                Uri.parse(url)
-            }
+            Uri.parse(url)
         }
     }
-
-    /*
-     * PREPARE
-     */
-
+}
     private fun prepareInternal(
         url: String,
         title: String,
         initialPositionMs: Long,
         playWhenReady: Boolean
     ) {
-        if (url.isBlank()) {
-            return
-        }
 
-        if (url.startsWith("simulate://")) {
-            isSimulated = true
-            currentUrl = url
-            currentTitle = title
-            simulatedIsPlaying = playWhenReady
-            player.stop() // Stop ExoPlayer if it was playing
+        if (url.isBlank()) return
 
-            // Parse duration
-            val durationParam = url.substringAfter("durationMs=", "")
-            simulatedDurationMs = durationParam.toLongOrNull() ?: (15 * 60 * 1000L)
-            simulatedPositionMs = initialPositionMs
-            
-            if (playWhenReady) {
-                startPollingProgress()
-            } else {
-                stopPollingProgress()
-            }
-            updateSimulatedState()
-            return
-        }
+        val generation = ++prepareGeneration
+        println("PREPARE START -> $title")
+        println("PREPARE URL -> $url")
+        println("GENERATION -> $generation")
+
+        prepareTimeoutJob?.cancel()
 
         isSimulated = false
 
-        if (
-            currentUrl == url &&
-            player.playbackState != Player.STATE_IDLE &&
-            player.playbackState != Player.STATE_ENDED
-        ) {
-            if (playWhenReady) {
-                player.play()
-                startBackgroundPlayback()
-                updateState()
-            }
-            return
-        }
-
         currentUrl = url
 
+        currentTitle = title
+
         scope.launch {
-            _playback.update {
-                it.copy(
-                    isPlaying = playWhenReady,
-                    isReady = false,
-                    isLoading = true,
-                    currentTitle = title
-                )
-            }
+
             try {
-                val resolvedUrl = if (url.contains("youtube.com") || url.contains("youtu.be")) {
-                    val videoId = extractYoutubeVideoId(url)
-                    if (videoId != null) {
-                        resolveYoutubeAudioUrl(videoId) ?: url
-                    } else {
-                        url
-                    }
-                } else {
-                    url
-                }
 
-                val mediaItem = MediaItem.Builder()
-                    .setUri(createUri(resolvedUrl))
-                    .setMediaMetadata(
-                        MediaMetadata.Builder()
-                            .setTitle(title)
-                            .setArtist("Nitnem Gutka Steek")
-                            .build()
+                _playback.update {
+
+                    it.copy(
+                        currentTitle = title,
+                        isLoading = true,
+                        isReady = false,
+                        isEnded = false,
+                        error = null
                     )
-                    .build()
-
-                player.stop()
-                player.clearMediaItems()
-                player.setMediaItem(mediaItem)
-
-                if (initialPositionMs > 0L) {
-                    player.seekTo(initialPositionMs)
                 }
+
+                val finalUri =
+
+                    if (url.startsWith("raw/")) {
+
+                        val rawName =
+                            url.removePrefix("raw/")
+
+                        val resId =
+                            context.resources.getIdentifier(
+                                rawName,
+                                "raw",
+                                context.packageName
+                            )
+
+                        println(
+                            "RAW LOOKUP -> " +
+                                    "name=$rawName, " +
+                                    "resId=$resId"
+                        )
+
+                        if (resId == 0) {
+
+                            throw IllegalArgumentException(
+                                "Raw resource not found: $rawName"
+                            )
+                        }
+
+                        RawResourceDataSource
+                            .buildRawResourceUri(resId)
+
+                    } else {
+
+                        createUri(url)
+                    }
+
+                println("FINAL URI -> $finalUri")
+
+                val mediaItem =
+
+                    MediaItem.Builder()
+                        .setUri(finalUri)
+                        .setMediaMetadata(
+                            MediaMetadata.Builder()
+                                .setTitle(title)
+                                .build()
+                        )
+                        .build()
+                prepareTimeoutJob?.cancel()
+
+                println("SETTING MEDIA ITEM")
+                player.stop()
+
+                player.clearMediaItems()
+                player.setMediaItem(
+                    mediaItem,
+                    initialPositionMs
+                )
+
+                println("SETTING PLAYWHENREADY -> $playWhenReady")
+
+                player.playWhenReady = playWhenReady
+
+                println("CALLING PREPARE")
 
                 player.prepare()
-                if (playWhenReady) {
-                    player.play()
-                    startBackgroundPlayback()
+
+                if (!url.startsWith("raw/")) {
+
+                    prepareTimeoutJob = scope.launch {
+
+                        delay(10_000L)
+
+                        if (
+
+                            generation == prepareGeneration &&
+
+                            player.playbackState != Player.STATE_READY &&
+
+                            player.playbackState != Player.STATE_ENDED
+
+                        ) {
+
+                            player.clearMediaItems()
+
+                            _playback.update {
+
+                                it.copy(
+
+                                    isLoading = false,
+
+                                    isReady = false,
+
+                                    isPlaying = false,
+
+                                    error = "Audio failed to load"
+
+                                )
+
+                            }
+
+                        }
+
+                    }
+
                 }
-                updateState()
+
 
             } catch (e: Exception) {
+
                 e.printStackTrace()
+
                 _playback.update {
-                    it.copy(error = e.localizedMessage)
+
+                    it.copy(
+                        isLoading = false,
+                        isPlaying = false,
+                        isReady = false,
+                        error = e.message
+                    )
                 }
             }
         }
     }
-
     override fun prepare(
-        url: String,
-        title: String,
-        initialPositionMs: Long
-    ) {
-        prepareInternal(url, title, initialPositionMs, playWhenReady = false)
-    }
 
+        url: String,
+
+        title: String,
+
+        initialPositionMs: Long
+
+    ) {
+
+        println("PREPARE API CALLED")
+
+        prepareInternal(url, title, initialPositionMs, false)
+
+    }
     /*
      * PLAY
      */
-
     override fun play(
         url: String,
         title: String
     ) {
-        prepareInternal(url, title, initialPositionMs = 0L, playWhenReady = true)
-        savePlaybackState()
+
+        println("PLAY API CALLED")
+
+        println(
+            "PLAY CHECK -> " +
+                    "currentUrl=$currentUrl, " +
+                    "requestedUrl=$url, " +
+                    "isPlaying=${player.isPlaying}, " +
+                    "state=${player.playbackState}"
+        )
+
+        /*
+         * SAME TRACK
+         */
+        if (currentUrl == url) {
+
+            println("PLAY SKIPPED SAME URL -> $url")
+
+            if (!player.isPlaying) {
+
+                player.play()
+            }
+
+            return
+        }
+
+        println(
+            "PREPARING NEW TRACK -> $url"
+        )
+
+        prepareInternal(
+            url = url,
+            title = title,
+            initialPositionMs = 0L,
+            playWhenReady = true
+        )
     }
 
     override fun pause() {
@@ -536,6 +840,7 @@ class AndroidStreamAudioController private constructor(
     }
 
     override fun resume() {
+        println("RESUME API CALLED")
         if (isSimulated) {
             simulatedIsPlaying = true
             startPollingProgress()
@@ -574,16 +879,43 @@ class AndroidStreamAudioController private constructor(
                 val url =
                     currentUrl ?: return
 
-                play(url)
+                play(
+                    url = url,
+                    title = currentTitle
+                )
             }
 
             Player.STATE_ENDED -> {
+                prepareTimeoutJob?.cancel()
+                println(
+                    "EXO STATE -> ENDED"
+                )
 
-                player.seekTo(0)
+                stopPollingProgress()
 
-                resume()
+                /*
+                 * IGNORE TRANSIENT ENDED
+                 * DURING PREPARE
+                 */
+
+                if (
+                    player.playbackState ==
+                    Player.STATE_BUFFERING
+                ) {
+                    return
+                }
+                if (player.duration <= 0L) {
+                    return
+                }
+                _playback.update {
+
+                    it.copy(
+                        isLoading = false,
+                        isPlaying = false,
+                        isEnded = true
+                    )
+                }
             }
-
             else -> {
 
                 if (player.isPlaying) {
@@ -604,68 +936,28 @@ class AndroidStreamAudioController private constructor(
      * SEEK
      */
 
-    override fun seekTo(
-        positionMs: Long
-    ) {
-        if (isSimulated) {
-            simulatedPositionMs = positionMs.coerceIn(0L, simulatedDurationMs)
-            updateSimulatedState()
-            savePlaybackState()
-            return
-        }
+    override fun seekTo(positionMs: Long) {
+        println("SEEK TO -> $positionMs")
 
-        val duration =
-            player.duration
+        player.seekTo(positionMs)
 
-        val safePosition =
-
-            if (
-                duration == C.TIME_UNSET
-            ) {
-
-                positionMs.coerceAtLeast(0L)
-
-            } else {
-
-                positionMs.coerceIn(
-                    0L,
-                    duration
-                )
-            }
-
-        player.seekTo(
-            safePosition
+        println(
+            "AFTER SEEK -> state=${player.playbackState}, " +
+                    "isPlaying=${player.isPlaying}"
         )
 
         savePlaybackState()
-
         updateState()
     }
 
-    override fun seekForward(
-        millis: Long
-    ) {
-        if (isSimulated) {
-            seekTo(simulatedPositionMs + millis)
-            return
-        }
-
-        seekTo(
-            player.currentPosition + millis
-        )
+    override fun seekForward(millis: Long) {
+        if (player.playbackState != Player.STATE_READY) return
+        seekTo(player.currentPosition + millis)
     }
 
-    override fun seekBack(
-        millis: Long
-    ) {
-        if (isSimulated) {
-            seekTo(simulatedPositionMs - millis)
-            return
-        }
-
-        seekTo(
-            player.currentPosition - millis
-        )
+    override fun seekBack(millis: Long) {
+        if (player.playbackState != Player.STATE_READY) return
+        seekTo(player.currentPosition - millis)
     }
 
     /*
@@ -810,6 +1102,13 @@ class AndroidStreamAudioController private constructor(
                 null
             ) ?: return
 
+
+        if (
+            url.startsWith("http://") ||
+            url.startsWith("https://")
+        ) {
+            return
+        }
         val position =
 
             prefs.getLong(
@@ -823,8 +1122,14 @@ class AndroidStreamAudioController private constructor(
                 "last_title",
                 "Nitnem"
             ) ?: "Nitnem"
+        println("RESTORE URL -> $url")
+        prepareInternal(
+            url = url,
+            title = title,
+            initialPositionMs = position,
+            playWhenReady = false
+        )
 
-        prepare(url, title, position)
     }
 
     /*
@@ -832,7 +1137,7 @@ class AndroidStreamAudioController private constructor(
      */
 
     override fun stop() {
-
+        println("PLAYER STOP")
         player.stop()
 
         stopBackgroundPlayback()
@@ -841,7 +1146,7 @@ class AndroidStreamAudioController private constructor(
     }
 
     override fun release() {
-
+        println("PLAYER RELEASE")
         savePlaybackState()
     }
 
@@ -851,19 +1156,20 @@ class AndroidStreamAudioController private constructor(
 
     override suspend fun downloadAudio(
         baniId: String,
-        remoteUrl: String
+        remoteUrl: String,
+        trackId: String?
     ): Boolean = withContext(
         Dispatchers.IO
     ) {
 
         try {
 
-            val destinationFile =
-
-                File(
-                    audioDir,
-                    "$baniId.mp3"
-                )
+            val filename = if (trackId != null && trackId != "default") {
+                "${baniId}_$trackId.mp3"
+            } else {
+                "$baniId.mp3"
+            }
+            val destinationFile = File(audioDir, filename)
 
             if (
                 destinationFile.exists()
@@ -915,60 +1221,131 @@ class AndroidStreamAudioController private constructor(
             false
         }
     }
-
     override fun isAudioDownloaded(
-        baniId: String
+        baniId: String,
+        trackId: String?
     ): Boolean {
 
-        val resourceName = baniId.replace("-", "_")
-        val resourceId = context.resources.getIdentifier(
-            resourceName,
-            "raw",
-            context.packageName
-        )
-        if (resourceId != 0) {
+        val activeId =
+            trackId ?: getActiveTrackId(baniId)
+
+        /*
+         * CURATED RAW TRACK
+         */
+
+        val curatedTrack =
+            CuratedAudioCatalog
+                .getTracksForBani(baniId)
+                .firstOrNull {
+                    it.id == activeId
+                }
+
+        if (
+            curatedTrack?.remoteUrl
+                ?.startsWith("raw/") == true
+        ) {
+
             return true
         }
 
-        val file =
 
-            File(
-                audioDir,
+
+        /*
+         * FILE CHECK
+         */
+
+        val filename =
+
+            if (activeId != "default") {
+
+                "${baniId}_$activeId.mp3"
+
+            } else {
+
                 "$baniId.mp3"
-            )
+            }
+
+        val file =
+            File(audioDir, filename)
 
         return (
-            file.exists() &&
-                file.length() > 0
-            )
+                file.exists() &&
+                        file.length() > 0
+                )
     }
-
     override fun getLocalAudioPath(
-        baniId: String
+        baniId: String,
+        trackId: String?
     ): String? {
 
-        val resourceName = baniId.replace("-", "_")
-        val resourceId = context.resources.getIdentifier(
-            resourceName,
-            "raw",
-            context.packageName
-        )
-        if (resourceId != 0) {
-            return "raw/$resourceName"
+        val activeId =
+            trackId ?: getActiveTrackId(baniId)
+
+        /*
+         * CURATED TRACK
+         */
+
+        val curatedTrack =
+            CuratedAudioCatalog
+                .getTracksForBani(baniId)
+                .firstOrNull {
+                    it.id == activeId
+                }
+
+        if (curatedTrack != null) {
+
+            /*
+             * RAW RESOURCE
+             */
+
+            if (
+                curatedTrack.remoteUrl
+                    ?.startsWith("raw/") == true
+            ) {
+
+                return curatedTrack.remoteUrl
+            }
+
+            /*
+             * DOWNLOADED CURATED FILE
+             */
+
+            val curatedFile =
+                File(
+                    audioDir,
+                    "${baniId}_${activeId}.mp3"
+                )
+
+            if (
+                curatedFile.exists() &&
+                curatedFile.length() > 0
+            ) {
+
+                return curatedFile.absolutePath
+            }
         }
 
-        val file =
+        /*
+         * IMPORTED / DOWNLOADED
+         */
 
-            File(
-                audioDir,
+        val filename =
+
+            if (activeId != "default") {
+
+                "${baniId}_$activeId.mp3"
+
+            } else {
+
                 "$baniId.mp3"
-            )
+            }
+
+        val file =
+            File(audioDir, filename)
 
         return if (
-
             file.exists() &&
             file.length() > 0
-
         ) {
 
             file.absolutePath
@@ -980,20 +1357,54 @@ class AndroidStreamAudioController private constructor(
     }
 
     override fun deleteAudio(
-        baniId: String
+        baniId: String,
+        trackId: String?
     ) {
 
-        val file =
-
-            File(
-                audioDir,
-                "$baniId.mp3"
-            )
+        val filename = if (trackId != null && trackId != "default") {
+            "${baniId}_$trackId.mp3"
+        } else {
+            "$baniId.mp3"
+        }
+        val file = File(audioDir, filename)
 
         if (file.exists()) {
 
             file.delete()
         }
+    }
+    private fun resolveTrackUrl(
+        url: String?
+    ): String? {
+
+        if (url.isNullOrBlank()) {
+            return null
+        }
+
+        /*
+         * ASSET AUDIO
+         */
+
+        if (
+            url.startsWith("raw/")
+        ) {
+
+            return url
+        }
+
+        /*
+         * REMOTE URL
+         */
+
+        if (
+            url.startsWith("http://") ||
+            url.startsWith("https://")
+        ) {
+
+            return url
+        }
+
+        return url
     }
 
     private val json = Json { ignoreUnknownKeys = true }
@@ -1013,9 +1424,56 @@ class AndroidStreamAudioController private constructor(
     }
 
     override fun getCustomTracks(baniId: String): List<AudioTrack> {
-        val userTracks = getCustomTracks().filter { it.id.startsWith("${baniId}_") || it.id.startsWith(baniId) }
-        val curated = CuratedAudioCatalog.getTracksForBani(baniId)
-        return curated + userTracks
+        val userTracks =
+            getCustomTracks().filter {
+
+                it.id.startsWith(
+                    "${baniId}_custom_"
+                )
+            }
+        val curated =
+            CuratedAudioCatalog
+                .getTracksForBani(baniId)
+                .map { track ->
+
+                    if (
+                        track.remoteUrl
+                            ?.startsWith("raw/") == true
+                    ) {
+
+                        track.copy(
+                            localPath = track.remoteUrl
+                        )
+
+                    } else {
+
+                        val filename =
+                            "${baniId}_${track.id}.mp3"
+
+                        val file =
+                            File(audioDir, filename)
+
+                        if (
+                            file.exists() &&
+                            file.length() > 0
+                        ) {
+
+                            track.copy(
+                                localPath =
+                                    file.absolutePath
+                            )
+
+                        } else {
+
+                            track
+                        }
+                    }
+                }
+        return (
+    curated + userTracks
+).distinctBy {
+    it.id
+}
     }
 
     override fun importCustomTrack(baniId: String, artist: String, fileUri: String): AudioTrack? {
@@ -1051,7 +1509,7 @@ class AndroidStreamAudioController private constructor(
             val trackId = "${baniId}_custom_${artistClean}_${System.currentTimeMillis()}"
             val newTrack = AudioTrack(
                 id = trackId,
-                title = "$artist - Custom Sync",
+                title = artist,
                 artist = artist,
                 durationMs = durationMs,
                 license = "Custom Import",
@@ -1073,6 +1531,27 @@ class AndroidStreamAudioController private constructor(
     }
 
     override fun deleteCustomTrack(trackId: String): Boolean {
+        if (trackId.startsWith("curated_")) {
+            val baniId = GeneratedBaniCatalog.banis.firstOrNull { b ->
+                CuratedAudioCatalog.getTracksForBani(b.id).any { it.id == trackId }
+            }?.id
+            if (baniId != null) {
+                val filename = "${baniId}_$trackId.mp3"
+                val file = File(audioDir, filename)
+                if (file.exists()) {
+                    file.delete()
+                }
+                val timingsFile = File(audioDir, "${baniId}_${trackId}_timings.json")
+                if (timingsFile.exists()) {
+                    timingsFile.delete()
+                }
+                if (getActiveTrackId(baniId) == trackId) {
+                    setActiveTrackId(baniId, "default")
+                }
+                return true
+            }
+            return false
+        }
         return try {
             val currentTracks = getCustomTracks().toMutableList()
             val trackToDelete = currentTracks.firstOrNull { it.id == trackId }
@@ -1105,53 +1584,359 @@ class AndroidStreamAudioController private constructor(
         }
     }
 
-    override fun getActiveTrackId(baniId: String): String {
-        val prefs = context.getSharedPreferences("audio_state", Context.MODE_PRIVATE)
-        return prefs.getString("active_track_id_$baniId", "default") ?: "default"
+    override fun getActiveTrackId(
+        baniId: String
+    ): String {
+
+        val memoryValue =
+            activeTrackState.value[baniId]
+
+        if (memoryValue != null) {
+
+            println(
+                "GET ACTIVE TRACK (MEMORY) -> bani=$baniId track=$memoryValue"
+            )
+
+            return memoryValue
+        }
+
+        val prefs =
+            context.getSharedPreferences(
+                "audio_state",
+                Context.MODE_PRIVATE
+            )
+
+        val savedValue =
+            prefs.getString(
+                "active_track_id_$baniId",
+                "default"
+            ) ?: "default"
+
+        println(
+            "GET ACTIVE TRACK (PREFS) -> bani=$baniId track=$savedValue"
+        )
+
+        return savedValue
     }
 
-    override fun setActiveTrackId(baniId: String, trackId: String) {
-        val prefs = context.getSharedPreferences("audio_state", Context.MODE_PRIVATE)
-        prefs.edit().putString("active_track_id_$baniId", trackId).apply()
+    override fun setActiveTrackId(
+
+        baniId: String,
+
+        trackId: String
+
+    ) {
+
+        println("SET ACTIVE TRACK -> bani=$baniId track=$trackId")
+
+    activeTrackState.update {
+
+        it + (baniId to trackId)
     }
 
-    override fun getActiveAudioUrl(baniId: String): String? {
-        val activeTrackId = getActiveTrackId(baniId)
+    val prefs =
+        context.getSharedPreferences(
+            "audio_state",
+            Context.MODE_PRIVATE
+        )
+
+    prefs.edit()
+        .putString(
+            "active_track_id_$baniId",
+            trackId
+        )
+        .apply()
+}
+
+    override fun getActiveAudioUrl(
+        baniId: String
+    ): String? {
+
+        val activeTrackId =
+            getActiveTrackId(baniId)
+        println(
+            "ACTIVE AUDIO URL -> bani=$baniId activeTrack=$activeTrackId"
+        )
+        /*
+         * SELECTED TRACK
+         */
+
         if (activeTrackId != "default") {
-            // First check user imported tracks
-            val customTrack = getCustomTracks().firstOrNull { it.id == activeTrackId }
+
+            /*
+             * CUSTOM TRACK
+             */
+
+            val customTrack =
+                getCustomTracks(baniId)
+                    .firstOrNull {
+                        it.id == activeTrackId
+                    }
+
             if (customTrack != null) {
-                val path = customTrack.localPath
-                if (path != null) {
+
+
+
+                /*
+                 * LOCAL IMPORTED FILE
+                 */
+
+                customTrack.localPath?.let { path ->
+
                     val file = File(path)
-                    if (file.exists()) {
+
+                    if (
+                        file.exists() &&
+                        file.length() > 0
+                    ) {
+
                         return file.absolutePath
                     }
                 }
+
+                /*
+                 * REMOTE URL
+                 */
+
+                if (
+                    !customTrack.remoteUrl
+                        .isNullOrBlank()
+                ) {
+
+                    return resolveTrackUrl(
+                        customTrack.remoteUrl
+                    )
+                }
             }
-            // Next check curated online tracks
-            val curatedTrack = CuratedAudioCatalog.getTracksForBani(baniId).firstOrNull { it.id == activeTrackId }
-            if (curatedTrack != null && curatedTrack.remoteUrl != null) {
-                return curatedTrack.remoteUrl
+
+            /*
+             * CURATED TRACK
+             */
+
+            val curatedTrack =
+                CuratedAudioCatalog
+                    .getTracksForBani(baniId)
+                    .firstOrNull {
+                        it.id == activeTrackId
+                    }
+
+            if (curatedTrack != null) {
+
+                /*
+                 * DOWNLOADED VERSION
+                 */
+
+                val downloadedFile =
+                    File(
+                        audioDir,
+                        "${baniId}_${activeTrackId}.mp3"
+                    )
+
+                if (
+                    downloadedFile.exists() &&
+                    downloadedFile.length() > 0
+                ) {
+
+                    return downloadedFile.absolutePath
+                }
+
+                /*
+                 * ASSET / REMOTE
+                 */
+
+                if (
+                    !curatedTrack.remoteUrl
+                        .isNullOrBlank()
+                ) {
+
+                    return resolveTrackUrl(
+                        curatedTrack.remoteUrl
+                    )
+                }
             }
         }
-        val defaultLocal = getLocalAudioPath(baniId)
-        if (defaultLocal != null) {
+
+        /*
+         * DEFAULT LOCAL / DOWNLOADED
+         */
+
+        val defaultLocal =
+            getLocalAudioPath(baniId)
+
+        if (
+            !defaultLocal.isNullOrBlank()
+        ) {
+
             return defaultLocal
         }
-        val bani = GeneratedBaniCatalog.banis.firstOrNull { it.id == baniId }
-        val audio = bani?.audio
-        if (!audio?.remoteUrl.isNullOrBlank()) {
-            return audio.remoteUrl
+
+        /*
+         * GENERATED CATALOG
+         */
+
+        /*
+   * GENERATED CATALOG
+   * ONLY ALLOW RAW URLS
+   */
+
+        val generatedRemote =
+            GeneratedBaniCatalog
+                .banis
+                .firstOrNull {
+                    it.id == baniId
+                }
+                ?.audio
+                ?.remoteUrl
+
+        if (
+            !generatedRemote.isNullOrBlank() &&
+            generatedRemote.startsWith("raw/")
+        ) {
+
+            return resolveTrackUrl(
+                generatedRemote
+            )
         }
-        // If the default catalog has no remoteUrl, fall back to the first curated track!
-        val firstCurated = CuratedAudioCatalog.getTracksForBani(baniId).firstOrNull()
-        if (firstCurated != null && !firstCurated.remoteUrl.isNullOrBlank()) {
-            return firstCurated.remoteUrl
+
+        /*
+         * FALLBACK CURATED TRACK
+         */
+
+        val fallbackTrack =
+            CuratedAudioCatalog
+                .getTracksForBani(baniId)
+                .firstOrNull()
+
+        if (fallbackTrack != null) {
+
+            val downloadedFile =
+                File(
+                    audioDir,
+                    "${baniId}_${fallbackTrack.id}.mp3"
+                )
+
+            if (
+                downloadedFile.exists() &&
+                downloadedFile.length() > 0
+            ) {
+
+                return downloadedFile.absolutePath
+            }
+
+            if (
+                !fallbackTrack.remoteUrl
+                    .isNullOrBlank()
+            ) {
+
+                return resolveTrackUrl(
+                    fallbackTrack.remoteUrl
+                )
+            }
         }
+
         return null
     }
+    override fun hasTimingFile(
+        baniId: String,
+        trackId: String
+    ): Boolean {
 
+        println(
+            "HAS TIMING FILE -> " +
+                    "bani=$baniId, " +
+                    "track=$trackId"
+        )
+
+        val resolvedTrackId =
+            if (trackId == "default") {
+
+                CuratedAudioCatalog
+                    .getTracksForBani(baniId)
+                    .firstOrNull()
+                    ?.id
+                    ?: "default"
+
+            } else {
+
+                trackId
+            }
+
+        println(
+            "TIMING RESOLUTION -> " +
+                    "requestedTrack=$trackId, " +
+                    "resolvedTrack=$resolvedTrackId"
+        )
+
+        val track =
+            getCustomTracks(baniId)
+                .firstOrNull { it.id == resolvedTrackId }
+                ?: CuratedAudioCatalog
+                    .getTracksForBani(baniId)
+                    .firstOrNull { it.id == resolvedTrackId }
+                ?: return false
+
+        val timingKey =
+            track.timingKey()
+
+        val assetPath =
+            "timing/${timingKey}_timing.json"
+
+        println(
+            "TIMING CHECK -> " +
+                    "trackId=${track.id}, " +
+                    "timingKey=$timingKey, " +
+                    "assetPath=$assetPath"
+        )
+
+
+        /*
+         * DEBUG: LIST ALL TIMING FILES
+         */
+
+        println("ASSET TIMING FILES:")
+
+        context.assets.list("timing")?.forEach { fileName ->
+
+            println("TIMING ASSET -> $fileName")
+
+        }
+        return try {
+
+            context.assets.open(assetPath).use { }
+
+            println(
+                "TIMING FILE FOUND -> $assetPath"
+            )
+
+            true
+
+        } catch (e: Exception) {
+
+            println(
+                "TIMING FILE NOT FOUND -> $assetPath"
+            )
+
+            // Missing timing file is expected for many tracks.
+            // Avoid flooding logcat with stack traces.
+
+            false
+        }
+    }
+    override fun playRawResource(
+        rawName: String,
+        title: String
+    ) {
+
+        val rawUrl =
+            "raw/$rawName"
+
+        prepareInternal(
+            url = rawUrl,
+            title = title,
+            initialPositionMs = 0L,
+            playWhenReady = true
+        )
+    }
     private fun extractYoutubeVideoId(url: String): String? {
         return when {
             url.contains("youtu.be/") -> {
@@ -1201,11 +1986,13 @@ class AndroidStreamAudioController private constructor(
         }
         null
     }
+
 }
 
+@OptIn(UnstableApi::class)
 @Composable
 actual fun rememberStreamAudioController():
-    StreamAudioController {
+        StreamAudioController {
 
     val context =
         LocalContext.current.applicationContext

@@ -3,337 +3,518 @@ package org.audiocular.nitnem.data
 import org.audiocular.nitnem.models.AudioTrack
 
 object CuratedAudioCatalog {
-    fun getTracksForBani(baniId: String): List<AudioTrack> {
-        return tracksMap[baniId] ?: emptyList()
+
+    fun getTracksForBani(
+        baniId: String
+    ): List<AudioTrack> {
+
+        return tracksMap[baniId]
+            ?: emptyList()
     }
 
     private val tracksMap = mapOf(
+
+        /*
+         * ─────────────────────────────────────────
+         * JAPJI SAHIB
+         * ─────────────────────────────────────────
+         */
+
         "japji-sahib" to listOf(
+
+            AudioTrack(
+                id = "curated_japji_hari_singh",
+                title = "Japji Sahib",
+                artist = "Bhai Hari Singh Ji",
+                durationMs = 939213L,
+                license = "Public Domain",
+                attribution = "Bundled Asset",
+                remoteUrl = "raw/japji_sahib_hari_singh"
+            ),
+
             AudioTrack(
                 id = "curated_japji_jarnail",
-                title = "Japji Sahib (Santhiya)",
-                artist = "Bhai Jarnail Singh Ji (Damdami Taksal)",
-                durationMs = 939000L,
+                title = "Japji Sahib",
+                artist = "Bhai Jarnail Singh Ji",
+                durationMs = 985568L,
                 license = "CC BY-SA",
-                attribution = "YouTube: Bhai Jarnail Singh Ji",
-                remoteUrl = "https://www.youtube.com/watch?v=5oYw9oG6t3E"
+                attribution = "Bundled Asset",
+                remoteUrl = "raw/japji_jarnail_singh"
             ),
+
             AudioTrack(
-                id = "curated_japji_riar",
-                title = "Japji Sahib (Melodic Recitation)",
-                artist = "Bhai Joginder Singh Riar",
-                durationMs = 1110000L,
+                id = "curated_japji_harshdeep",
+                title = "Japji Sahib",
+                artist = "Harshdeep Kaur",
+                durationMs = 2217460L,
                 license = "CC BY-SA",
-                attribution = "YouTube: Bhai Joginder Singh Riar",
-                remoteUrl = "https://www.youtube.com/watch?v=D-a61Uv5vQ0"
+                attribution = "Bundled Asset",
+                remoteUrl = "raw/japji_sahib_harshdeep_kaur"
             )
         ),
+
+        /*
+         * ─────────────────────────────────────────
+         * JAAP SAHIB
+         * ─────────────────────────────────────────
+         */
+
         "jaap-sahib" to listOf(
+
             AudioTrack(
                 id = "curated_jaap_darshan",
-                title = "Jaap Sahib (Traditional)",
+                title = "Jaap Sahib",
                 artist = "Master Darshan Singh Ji",
-                durationMs = 1262890L,
+                durationMs = 1262847L,
                 license = "Public Domain",
-                attribution = "Archive.org: Namdhari Nitnem Audio",
-                remoteUrl = "https://archive.org/download/namdhari-nitnem/04Jaap.mp3"
+                attribution = "Bundled Asset",
+                remoteUrl = "raw/jaap_sahib_darshan_singh"
             ),
+
             AudioTrack(
                 id = "curated_jaap_jarnail",
-                title = "Jaap Sahib (Santhiya)",
-                artist = "Bhai Jarnail Singh Ji (Damdami Taksal)",
-                durationMs = 1262000L,
+                title = "Jaap Sahib",
+                artist = "Bhai Jarnail Singh Ji",
+                durationMs = 990401L,
                 license = "CC BY-SA",
-                attribution = "YouTube: Bhai Jarnail Singh Ji",
-                remoteUrl = "https://www.youtube.com/watch?v=dQ02q1_q79Q"
+                attribution = "Bundled Asset",
+                remoteUrl = "raw/jaap_sahib_jarnail_singh"
             )
         ),
+
+        /*
+         * ─────────────────────────────────────────
+         * TAV PRASAD SAVAIYE
+         * ─────────────────────────────────────────
+         */
+
         "tav-prasad-savaiye" to listOf(
+
             AudioTrack(
                 id = "curated_savaiye_darshan",
-                title = "Tav Prasad Savaiye (Traditional)",
+                title = "Tav Prasad Savaiye",
                 artist = "Master Darshan Singh Ji",
-                durationMs = 462370L,
+                durationMs = 462315L,
                 license = "Public Domain",
-                attribution = "Archive.org: Namdhari Nitnem Audio",
-                remoteUrl = "https://archive.org/download/namdhari-nitnem/12Swaiye-10.mp3"
+                attribution = "Bundled Asset",
+                remoteUrl = "raw/tav_prasad_darshan_singh"
             ),
+
             AudioTrack(
-                id = "curated_savaiye_jarnail",
-                title = "Tav Prasad Savaiye (Santhiya)",
-                artist = "Bhai Jarnail Singh Ji (Damdami Taksal)",
-                durationMs = 462000L,
+                id = "curated_savaiye_thakur",
+                title = "Tav Prasad Savaiye",
+                artist = "Giani Thakur Singh Ji",
+                durationMs = 314496L,
                 license = "CC BY-SA",
-                attribution = "YouTube: Bhai Jarnail Singh Ji",
-                remoteUrl = "https://www.youtube.com/watch?v=8V-w00a9H4Y"
+                attribution = "Bundled Asset",
+                remoteUrl = "raw/tav_prasad_thakur_singh"
             )
         ),
+
+        /*
+         * ─────────────────────────────────────────
+         * BENTI CHAUPAI SAHIB
+         * ─────────────────────────────────────────
+         */
+
         "benti-chaupai-sahib" to listOf(
+
             AudioTrack(
                 id = "curated_chaupai_darshan",
-                title = "Chaupai Sahib (Traditional)",
+                title = "Chaupai Sahib",
                 artist = "Master Darshan Singh Ji",
-                durationMs = 322270L,
+                durationMs = 322216L,
                 license = "Public Domain",
-                attribution = "Archive.org: Namdhari Nitnem Audio",
-                remoteUrl = "https://archive.org/download/namdhari-nitnem/11Chopai.mp3"
+                attribution = "Bundled Asset",
+                remoteUrl = "raw/chaupai_sahib_darshan_singh"
             ),
+
             AudioTrack(
                 id = "curated_chaupai_jarnail",
-                title = "Chaupai Sahib (Santhiya)",
-                artist = "Bhai Jarnail Singh Ji (Damdami Taksal)",
-                durationMs = 322000L,
+                title = "Chaupai Sahib",
+                artist = "Bhai Jarnail Singh Ji",
+                durationMs = 317251L,
                 license = "CC BY-SA",
-                attribution = "YouTube: Bhai Jarnail Singh Ji",
-                remoteUrl = "https://www.youtube.com/watch?v=0k5G6pLz6i0"
+                attribution = "Bundled Asset",
+                remoteUrl = "raw/chaupai_sahib_jarnail_singh"
+            ),
+
+            AudioTrack(
+                id = "curated_chaupai_harshdeep",
+                title = "Chaupai Sahib",
+                artist = "Harshdeep Kaur",
+                durationMs = 655400L,
+                license = "CC BY-SA",
+                attribution = "Bundled Asset",
+                remoteUrl = "raw/chaupai_sahib_harshdeep_kaur"
             )
         ),
+
+        /*
+         * ─────────────────────────────────────────
+         * ANAND SAHIB
+         * ─────────────────────────────────────────
+         */
+
         "anand-sahib" to listOf(
+
             AudioTrack(
                 id = "curated_anand_darshan",
-                title = "Anand Sahib (Traditional)",
+                title = "Anand Sahib",
                 artist = "Master Darshan Singh Ji",
-                durationMs = 892010L,
+                durationMs = 891948L,
                 license = "Public Domain",
-                attribution = "Archive.org: Namdhari Nitnem Audio",
-                remoteUrl = "https://archive.org/download/namdhari-nitnem/08AnandSahib.mp3"
+                attribution = "Bundled Asset",
+                remoteUrl = "raw/anand_sahib_darshan_singh"
             ),
+
             AudioTrack(
-                id = "curated_anand_jarnail",
-                title = "Anand Sahib (Santhiya)",
-                artist = "Bhai Jarnail Singh Ji (Damdami Taksal)",
-                durationMs = 892000L,
+                id = "curated_anand_thakur",
+                title = "Anand Sahib",
+                artist = "Giani Thakur Singh Ji",
+                durationMs = 984788L,
                 license = "CC BY-SA",
-                attribution = "YouTube: Bhai Jarnail Singh Ji",
-                remoteUrl = "https://www.youtube.com/watch?v=k2aB-VnI82U"
+                attribution = "Bundled Asset",
+                remoteUrl = "raw/anand_sahib_thakur_singh"
+            ),
+
+            AudioTrack(
+                id = "curated_anand_harshdeep",
+                title = "Anand Sahib",
+                artist = "Harshdeep Kaur",
+                durationMs = 242300L,
+                license = "CC BY-SA",
+                attribution = "Bundled Asset",
+                remoteUrl = "raw/anand_sahib_harshdeep_kaur"
             )
         ),
+
+        /*
+         * ─────────────────────────────────────────
+         * REHRAS SAHIB
+         * ─────────────────────────────────────────
+         */
+
         "rehras-sahib" to listOf(
+
             AudioTrack(
                 id = "curated_rehras_darshan",
-                title = "Rehras Sahib (Traditional)",
+                title = "Rehras Sahib",
                 artist = "Master Darshan Singh Ji",
-                durationMs = 1359280L,
+                durationMs = 1359244L,
                 license = "Public Domain",
-                attribution = "Archive.org: Namdhari Nitnem Audio",
-                remoteUrl = "https://archive.org/download/namdhari-nitnem/09Rahras.mp3"
+                attribution = "Bundled Asset",
+                remoteUrl = "raw/rehras_sahib_darshan_singh"
             ),
+
             AudioTrack(
                 id = "curated_rehras_jarnail",
-                title = "Rehras Sahib (Santhiya)",
-                artist = "Bhai Jarnail Singh Ji (Damdami Taksal)",
-                durationMs = 1359000L,
+                title = "Rehras Sahib",
+                artist = "Bhai Jarnail Singh Ji",
+                durationMs = 1445166L,
                 license = "CC BY-SA",
-                attribution = "YouTube: Bhai Jarnail Singh Ji",
-                remoteUrl = "https://www.youtube.com/watch?v=w7K4Pswp198"
+                attribution = "Bundled Asset",
+                remoteUrl = "raw/rehras_sahib_jarnail_singh"
             )
         ),
+
+        /*
+         * ─────────────────────────────────────────
+         * KIRTAN SOHILA
+         * ─────────────────────────────────────────
+         */
+
         "kirtan-sohila" to listOf(
+
             AudioTrack(
                 id = "curated_sohila_darshan",
-                title = "Kirtan Sohila (Traditional)",
+                title = "Kirtan Sohila",
                 artist = "Master Darshan Singh Ji",
-                durationMs = 227030L,
+                durationMs = 226993L,
                 license = "Public Domain",
-                attribution = "Archive.org: Namdhari Nitnem Audio",
-                remoteUrl = "https://archive.org/download/namdhari-nitnem/10KirtanSohila.mp3"
+                attribution = "Bundled Asset",
+                remoteUrl = "raw/kirtan_sohila_darshan_singh"
             ),
+
             AudioTrack(
-                id = "curated_sohila_jarnail",
-                title = "Kirtan Sohila (Santhiya)",
-                artist = "Bhai Jarnail Singh Ji (Damdami Taksal)",
-                durationMs = 227000L,
+                id = "curated_sohila_thakur",
+                title = "Kirtan Sohila",
+                artist = "Giani Thakur Singh Ji",
+                durationMs = 275156L,
                 license = "CC BY-SA",
-                attribution = "YouTube: Bhai Jarnail Singh Ji",
-                remoteUrl = "https://www.youtube.com/watch?v=y70jS-2xQyY"
+                attribution = "Bundled Asset",
+                remoteUrl = "raw/kirtan_sohila_thakur_singh"
+            ),
+
+            AudioTrack(
+                id = "curated_sohila_annie",
+                title = "Kirtan Sohila",
+                artist = "Annie Ahluwalia",
+                durationMs = 472500L,
+                license = "CC BY-SA",
+                attribution = "Bundled Asset",
+                remoteUrl = "raw/kirtan_sohila_annie_ahluwalia"
             )
         ),
+
+        /*
+         * ─────────────────────────────────────────
+         * ARDAS
+         * ─────────────────────────────────────────
+         */
+
         "ardas" to listOf(
+
             AudioTrack(
                 id = "curated_ardas_darshan",
-                title = "Ardas (Traditional)",
+                title = "Ardas",
                 artist = "Master Darshan Singh Ji",
-                durationMs = 137740L,
+                durationMs = 137689L,
                 license = "Public Domain",
-                attribution = "Archive.org: Namdhari Nitnem Audio",
-                remoteUrl = "https://archive.org/download/namdhari-nitnem/30Ardas.mp3"
-            ),
-            AudioTrack(
-                id = "curated_ardas_jarnail",
-                title = "Ardas (Santhiya)",
-                artist = "Bhai Jarnail Singh Ji (Damdami Taksal)",
-                durationMs = 137000L,
-                license = "CC BY-SA",
-                attribution = "YouTube: Bhai Jarnail Singh Ji",
-                remoteUrl = "https://www.youtube.com/watch?v=7uK7g-Q9QzE"
+                attribution = "Bundled Asset",
+                remoteUrl = "raw/ardas_darshan_singh"
             )
         ),
+
+        /*
+         * ─────────────────────────────────────────
+         * SUKHMANI SAHIB
+         * ─────────────────────────────────────────
+         */
+
         "sukhmani-sahib" to listOf(
+
             AudioTrack(
-                id = "curated_sukhmani_jarnail",
-                title = "Sukhmani Sahib (Santhiya)",
-                artist = "Bhai Jarnail Singh Ji (Damdami Taksal)",
-                durationMs = 3900000L,
+                id = "curated_sukhmani_darshan",
+                title = "Sukhmani Sahib",
+                artist = "Master Darshan Singh Ji",
+                durationMs = 1179104L,
+                license = "Public Domain",
+                attribution = "Bundled Asset",
+                remoteUrl = "raw/sukhmani_sahib_darshan_singh"
+            ),
+
+            AudioTrack(
+                id = "curated_sukhmani_thakur",
+                title = "Sukhmani Sahib",
+                artist = "Giani Thakur Singh Ji",
+                durationMs = 2652090L,
                 license = "CC BY-SA",
-                attribution = "YouTube: Bhai Jarnail Singh Ji",
-                remoteUrl = "https://www.youtube.com/watch?v=D-a61Uv5vQ0"
+                attribution = "Bundled Asset",
+                remoteUrl = "raw/sukhmani_sahib_thakur_singh"
+            ),
+
+            AudioTrack(
+                id = "curated_sukhmani_hargun",
+                title = "Sukhmani Sahib",
+                artist = "Hargun Kaur",
+                durationMs = 11534100L,
+                license = "CC BY-SA",
+                attribution = "Bundled Asset",
+                remoteUrl = "raw/sukhmani_sahib_hargun_kaur"
             )
         ),
+
+        /*
+         * ─────────────────────────────────────────
+         * ASA DI VAAR
+         * ─────────────────────────────────────────
+         */
+
         "asa-di-vaar" to listOf(
+
             AudioTrack(
-                id = "curated_asa_divaar_jarnail",
-                title = "Asa Di Vaar (Santhiya)",
-                artist = "Bhai Jarnail Singh Ji (Damdami Taksal)",
-                durationMs = 1800000L,
+                id = "curated_asa_darbar_sahib",
+                title = "Asa Di Vaar (Darbar Sahib)",
+                artist = "Hazoori Ragi Sri Darbar Sahib",
+                durationMs = 4500000L,
+                license = "Public Domain",
+                attribution = "Archive.org",
+                remoteUrl = "https://archive" +
+                        ".org/download/AsaDiVaar/Asa%20Di%20Vaar%20June%2018%2C%202017.mp3"
+            ),
+
+            AudioTrack(
+                id = "curated_asa_kamaljit",
+                title = "Asa Di Vaar (Kirtan)",
+                artist = "Bhai Kamaljit Singh Ji",
+                durationMs = 5200000L,
                 license = "CC BY-SA",
-                attribution = "YouTube: Bhai Jarnail Singh Ji",
-                remoteUrl = "https://www.youtube.com/watch?v=y70jS-2xQyY"
+                attribution = "Archive.org",
+                remoteUrl = "https://archive.org/download/asa-di-vaar-bhai-kamaljit-singh-jee-31" +
+                        ".05.2015/Asa%20Di%20Vaar%20Bhai%20Kamaljit%20Singh%20Jee%2031.05.2015.mp3"
             )
         ),
+
+        /*
+         * ─────────────────────────────────────────
+         * SHABAD HAZARE
+         * ─────────────────────────────────────────
+         */
+
         "shabad-hazare" to listOf(
+
             AudioTrack(
                 id = "curated_hazare_darshan",
-                title = "Shabad Hazare (Traditional)",
+                title = "Shabad Hazare (Patshahi 1–9)",
                 artist = "Master Darshan Singh Ji",
-                durationMs = 435570L,
+                durationMs = 435514L,
                 license = "Public Domain",
-                attribution = "Archive.org: Namdhari Nitnem Audio",
-                remoteUrl = "https://archive.org/download/namdhari-nitnem/03Hazare.mp3"
+                attribution = "Bundled Asset",
+                remoteUrl = "raw/shabad_hazare_darshan_singh_1_9"
             ),
+
             AudioTrack(
-                id = "curated_hazare_jarnail",
-                title = "Shabad Hazare (Santhiya)",
-                artist = "Bhai Jarnail Singh Ji (Damdami Taksal)",
-                durationMs = 435000L,
-                license = "CC BY-SA",
-                attribution = "YouTube: Bhai Jarnail Singh Ji",
-                remoteUrl = "https://www.youtube.com/watch?v=0lWv1_V0h1g"
+                id = "curated_hazare_darshan2",
+                title = "Shabad Hazare (Patshahi 10)",
+                artist = "Master Darshan Singh Ji",
+                durationMs = 355977L,
+                license = "Public Domain",
+                attribution = "Bundled Asset",
+                remoteUrl = "raw/shabad_hazare_darshan_singh_10"
             )
         ),
+
+        /*
+         * ─────────────────────────────────────────
+         * SALOK MAHALLA 9
+         * ─────────────────────────────────────────
+         */
+
         "salok-mahalla-9" to listOf(
+
             AudioTrack(
-                id = "curated_salok_m9_jarnail",
-                title = "Salok Mahalla 9 (Santhiya)",
-                artist = "Bhai Jarnail Singh Ji (Damdami Taksal)",
-                durationMs = 900000L,
-                license = "CC BY-SA",
-                attribution = "YouTube: Bhai Jarnail Singh Ji",
-                remoteUrl = "https://www.youtube.com/watch?v=7s2K0j0V6yY"
+                id = "curated_salok_m9_darshan",
+                title = "Salok Mahalla 9",
+                artist = "Master Darshan Singh Ji",
+                durationMs = 1131186L,
+                license = "Public Domain",
+                attribution = "Bundled Asset",
+                remoteUrl = "raw/salok_mahalla_9_darshan_singh"
             )
         ),
+
+        /*
+         * ─────────────────────────────────────────
+         * BARAH MAHA
+         * ─────────────────────────────────────────
+         */
+
         "barah-maha" to listOf(
+
             AudioTrack(
                 id = "curated_barah_darshan",
-                title = "Barah Maha (Traditional)",
+                title = "Barah Maha",
                 artist = "Master Darshan Singh Ji",
-                durationMs = 516340L,
+                durationMs = 516290L,
                 license = "Public Domain",
-                attribution = "Archive.org: Namdhari Nitnem Audio",
-                remoteUrl = "https://archive.org/download/namdhari-nitnem/23BarahMaah.mp3"
-            ),
-            AudioTrack(
-                id = "curated_barah_jarnail",
-                title = "Barah Maha (Santhiya)",
-                artist = "Bhai Jarnail Singh Ji (Damdami Taksal)",
-                durationMs = 516000L,
-                license = "CC BY-SA",
-                attribution = "YouTube: Bhai Jarnail Singh Ji",
-                remoteUrl = "https://www.youtube.com/watch?v=P6k9P0oK_dY"
+                attribution = "Bundled Asset",
+                remoteUrl = "raw/barah_maha_darshan_singh"
             )
         ),
-        "dakhni-oankar" to listOf(
-            AudioTrack(
-                id = "curated_oankar_jarnail",
-                title = "Dakhni Oankar (Santhiya)",
-                artist = "Bhai Jarnail Singh Ji (Damdami Taksal)",
-                durationMs = 1200000L,
-                license = "CC BY-SA",
-                attribution = "YouTube: Bhai Jarnail Singh Ji",
-                remoteUrl = "https://www.youtube.com/watch?v=b4b6jV-0h1g"
-            )
-        ),
-        "sidha-gosht" to listOf(
-            AudioTrack(
-                id = "curated_sidha_gosht_jarnail",
-                title = "Sidha Gosht (Santhiya)",
-                artist = "Bhai Jarnail Singh Ji (Damdami Taksal)",
-                durationMs = 1500000L,
-                license = "CC BY-SA",
-                attribution = "YouTube: Bhai Jarnail Singh Ji",
-                remoteUrl = "https://www.youtube.com/watch?v=p4b6jV-0h1g"
-            )
-        ),
+
+        /*
+         * ─────────────────────────────────────────
+         * EMPTY
+         * ─────────────────────────────────────────
+         */
+
+        "dakhni-oankar" to emptyList(),
+
+        "sidha-gosht" to emptyList(),
+
+        /*
+         * ─────────────────────────────────────────
+         * BASANT KI VAAR
+         * ─────────────────────────────────────────
+         */
+
         "basant-ki-vaar" to listOf(
+
             AudioTrack(
-                id = "curated_basant_jarnail",
-                title = "Basant Ki Vaar (Santhiya)",
-                artist = "Bhai Jarnail Singh Ji (Damdami Taksal)",
-                durationMs = 300000L,
-                license = "CC BY-SA",
-                attribution = "YouTube: Bhai Jarnail Singh Ji",
-                remoteUrl = "https://www.youtube.com/watch?v=q4b6jV-0h1g"
+                id = "curated_basant_satvinder_harvinder",
+                title = "Basant Ki Vaar (Kirtan)",
+                artist = "Bhai Satvinder Singh Ji & Harvinder Singh Ji",
+                durationMs = 280620L,
+                license = "Public Domain",
+                attribution = "Bundled Asset",
+                remoteUrl = "raw/basant_ki_vaar_satvinder_harvinder_singh"
             )
         ),
+
+        /*
+         * ─────────────────────────────────────────
+         * RAMKALI KI VAAR
+         * ─────────────────────────────────────────
+         */
+
         "ramkali-ki-vaar" to listOf(
+
             AudioTrack(
-                id = "curated_ramkali_jarnail",
-                title = "Ramkali Ki Vaar (Santhiya)",
-                artist = "Bhai Jarnail Singh Ji (Damdami Taksal)",
-                durationMs = 1500000L,
-                license = "CC BY-SA",
-                attribution = "YouTube: Bhai Jarnail Singh Ji",
-                remoteUrl = "https://www.youtube.com/watch?v=r4b6jV-0h1g"
+                id = "curated_ramkali_darshan",
+                title = "Ramkali Ki Vaar",
+                artist = "Master Darshan Singh Ji",
+                durationMs = 344176L,
+                license = "Public Domain",
+                attribution = "Bundled Asset",
+                remoteUrl = "raw/ramkali_ki_vaar_darshan_singh"
             )
         ),
+
+        /*
+         * ─────────────────────────────────────────
+         * AARTI
+         * ─────────────────────────────────────────
+         */
+
         "aarti" to listOf(
+
             AudioTrack(
-                id = "curated_aarti_jarnail",
-                title = "Aarti (Santhiya)",
-                artist = "Bhai Jarnail Singh Ji (Damdami Taksal)",
-                durationMs = 600000L,
-                license = "CC BY-SA",
-                attribution = "YouTube: Bhai Jarnail Singh Ji",
-                remoteUrl = "https://www.youtube.com/watch?v=s4b6jV-0h1g"
+                id = "curated_aarti_jujhar",
+                title = "Aarti (Sri Darbar Sahib)",
+                artist = "Bhai Jujhar Singh Ji",
+                durationMs = 5626305L,
+                license = "Public Domain",
+                attribution = "Bundled Asset",
+                remoteUrl = "raw/aarti_jujhar_singh"
             )
         ),
+
+        /*
+         * ─────────────────────────────────────────
+         * CHANDI DI VAAR
+         * ─────────────────────────────────────────
+         */
+
         "chandi-di-vaar" to listOf(
+
             AudioTrack(
                 id = "curated_chandi_darshan",
-                title = "Chandi Di Vaar (Traditional)",
+                title = "Chandi Di Vaar",
                 artist = "Master Darshan Singh Ji",
-                durationMs = 1140820L,
+                durationMs = 1140768L,
                 license = "Public Domain",
-                attribution = "Archive.org: Namdhari Nitnem Audio",
-                remoteUrl = "https://archive.org/download/namdhari-nitnem/06ChandiDiVar.mp3"
-            ),
-            AudioTrack(
-                id = "curated_chandi_jarnail",
-                title = "Chandi Di Vaar (Santhiya)",
-                artist = "Bhai Jarnail Singh Ji (Damdami Taksal)",
-                durationMs = 1140000L,
-                license = "CC BY-SA",
-                attribution = "YouTube: Bhai Jarnail Singh Ji",
-                remoteUrl = "https://www.youtube.com/watch?v=t4b6jV-0h1g"
+                attribution = "Bundled Asset",
+                remoteUrl = "raw/chandi_di_vaar_darshan_singh"
             )
         ),
+
+        /*
+         * ─────────────────────────────────────────
+         * RAGMALA
+         * ─────────────────────────────────────────
+         */
+
         "ragmala" to listOf(
+
             AudioTrack(
                 id = "curated_ragmala_darshan",
-                title = "Sri Guru Granth Sahib Paath Bhog (Ragmala)",
+                title = "Ragmala",
                 artist = "Master Darshan Singh Ji",
-                durationMs = 1131240L,
+                durationMs = 1131186L,
                 license = "Public Domain",
-                attribution = "Archive.org: Namdhari Nitnem Audio",
-                remoteUrl = "https://archive.org/download/namdhari-nitnem/29BhogSalok.mp3"
-            ),
-            AudioTrack(
-                id = "curated_ragmala_jarnail",
-                title = "Sri Guru Granth Sahib Paath Bhog (Ragmala - Santhiya)",
-                artist = "Bhai Jarnail Singh Ji (Damdami Taksal)",
-                durationMs = 1131000L,
-                license = "CC BY-SA",
-                attribution = "YouTube: Bhai Jarnail Singh Ji",
-                remoteUrl = "https://www.youtube.com/watch?v=u4b6jV-0h1g"
+                attribution = "Bundled Asset",
+                remoteUrl = "raw/salok_mahalla_9_darshan_singh"
             )
         )
     )

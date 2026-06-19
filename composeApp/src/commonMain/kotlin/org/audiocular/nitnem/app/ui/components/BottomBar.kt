@@ -45,6 +45,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.geometry.Offset
+import java.util.Calendar
 @Composable
 fun BottomBar(
     selectedTab: AppTab,
@@ -125,65 +128,9 @@ val baniTheme = remember(currentBani?.title) {
     )
 }
 
-val infiniteTransition =
-    rememberInfiniteTransition(
-        label = ""
-    )
-
-val pulseAnim by infiniteTransition.animateFloat(
-
-    initialValue = 0.96f,
-
-    targetValue = 1.03f,
-
-    animationSpec = infiniteRepeatable(
-
-        animation = tween(
-            durationMillis = 2600,
-            easing = EaseInOutSine
-        ),
-
-        repeatMode = RepeatMode.Reverse
-    ),
-
-    label = ""
-)
-
-val floatingAnim by infiniteTransition.animateFloat(
-
-    initialValue = -4f,
-
-    targetValue = 5f,
-
-    animationSpec = infiniteRepeatable(
-
-        animation = tween(
-            durationMillis = 3200,
-            easing = EaseInOutSine
-        ),
-
-        repeatMode = RepeatMode.Reverse
-    ),
-
-    label = ""
-)
-
-val rotateAnim by infiniteTransition.animateFloat(
-
-    initialValue = 0f,
-
-    targetValue = 360f,
-
-    animationSpec = infiniteRepeatable(
-
-        animation = tween(
-            durationMillis = 28000,
-            easing = LinearEasing
-        )
-    ),
-
-    label = ""
-)
+/*
+ * MINI PLAYER
+ */
 
 Surface(
 
@@ -191,42 +138,37 @@ Surface(
         .weight(1.45f)
         .height(42.dp)
         .padding(horizontal = 4.dp)
-        .scale(
+        .clickable(
 
-            if (playback.isPlaying)
-                1f
-            else
-                0.985f
-        )
-   .clickable(
+            indication = null,
 
-    indication = null,
+            interactionSource =
+                remember {
+                    MutableInteractionSource()
+                }
 
-    interactionSource =
-        remember {
-            MutableInteractionSource()
-        }
-
-) {
-    onToggleMiniPlayer()
-},
+        ) {
+            onToggleMiniPlayer()
+        },
 
     shape = RoundedCornerShape(18.dp),
 
-    color = Color.Transparent,
+    color = baniTheme.accent,
 
     border = BorderStroke(
 
         1.dp,
 
-        baniTheme.accent.copy(
+        Color.White.copy(
 
             alpha =
 
-                if (playback.isPlaying)
+                if (
+    playback.isPlaying
+)
                     0.20f
                 else
-                    0.08f
+                    0.10f
         )
     ),
 
@@ -237,181 +179,98 @@ Surface(
             AppTheme.themeMode ==
             ThemeMode.Light
         ) {
-            10.dp
+            6.dp
         } else {
             0.dp
         }
 ) {
 
     Box(
-
-        modifier = Modifier
-            .fillMaxSize()
-            .background(
-
-                Brush.linearGradient(
-                    baniTheme.gradient
-                )
-            )
+        modifier = Modifier.fillMaxSize()
     ) {
+      
+        val baseText =
+            (currentBani?.title ?: "Nitnem")
+                .translate(language)
 
-        /*
-         * AMBIENT GLOW
-         */
+        Box(
 
-        if (playback.isPlaying) {
+            modifier = Modifier
+                .fillMaxSize(),
 
-            Box(
+            contentAlignment = Alignment.Center
+        ) {
+
+            Text(
+
+                text = baseText,
 
                 modifier = Modifier
-                    .fillMaxSize()
-                    .scale(pulseAnim)
-                    .background(
+                    .fillMaxWidth()
+                    .padding(horizontal = 6.dp)
+                    .basicMarquee(),
 
-                        Brush.radialGradient(
+                color = Color.White,
 
-                            colors = listOf(
+                maxLines = 1,
 
-                                Color.White.copy(alpha = 0.12f),
+                textAlign = TextAlign.Center,
 
-                                baniTheme.accent.copy(alpha = 0.10f),
+                fontSize = 12.sp,
 
-                                Color.Transparent
-                            )
-                        )
-                    )
+                fontWeight = FontWeight.Bold
             )
         }
 
         /*
-         * FLOATING ICON
-         */
-
-        Icon(
-
-            imageVector =
-                baniTheme.ambientIcon,
-
-            contentDescription = null,
-
-            tint =
-                Color.White.copy(alpha = 0.08f),
-
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .padding(end = 10.dp)
-                .size(34.dp)
-                .graphicsLayer {
-
-                    rotationZ = rotateAnim
-
-                    translationY = floatingAnim
-                }
-        )
-
-        /*
-         * CONTENT
+         * PROGRESS
          */
 
         Box(
 
             modifier = Modifier
-                .fillMaxSize()
-         
-        ) {
+                .align(Alignment.BottomStart)
+                .fillMaxWidth()
+                .height(1.5.dp)
+                .clip(
 
-            /*
-             * TEXT CONTENT
-             */
+                    RoundedCornerShape(
 
-            Column(
-
-                modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .fillMaxWidth()
-                    .padding(
-                        horizontal = 14.dp,
-                        vertical = 2.dp
-                    ),
-
-                verticalArrangement =
-                    Arrangement.Center,
-
-                horizontalAlignment =
-                    Alignment.Start
-            ) {
-
-                val baseText = (currentBani?.title ?: "Nitnem").translate(language)
-                Text(
-
-                    text =
-                        // if (playback.isLoading) "$baseText (Loading...)" else 
-                        baseText,
-
-                    modifier =
-                        Modifier.basicMarquee(),
-
-                    color = Color.White,
-
-                    maxLines = 1,
-
-                    fontSize = 12.sp,
-
-                    fontWeight =
-                        FontWeight.Bold
+                        bottomStart = 18.dp,
+                        bottomEnd = 18.dp
+                    )
                 )
-            }
-
-            /*
-             * PROGRESS
-             */
+                .background(
+                    Color.White.copy(alpha = 0.15f)
+                )
+        ) {
 
             Box(
 
                 modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .fillMaxWidth()
-                    .height(1.5.dp)
-                    .clip(
+                    .fillMaxWidth(
 
-                        RoundedCornerShape(
+                        (
+                            playback.positionMs
+                                .toFloat() /
 
-                            bottomStart = 18.dp,
-                            bottomEnd = 18.dp
-                        )
+                                playback.durationMs
+                                    .coerceAtLeast(1L)
+                                    .toFloat()
+                        ).coerceIn(0f, 1f)
                     )
+                    .fillMaxHeight()
                     .background(
-                        Color.White.copy(alpha = 0.10f)
-                    )
-            ) {
 
-                Box(
+                        Brush.horizontalGradient(
 
-                    modifier = Modifier
-                        .fillMaxWidth(
-
-                            (
-                                playback.positionMs
-                                    .toFloat() /
-
-                                    playback.durationMs
-                                        .coerceAtLeast(1L)
-                                        .toFloat()
-                            ).coerceIn(0f, 1f)
-                        )
-                        .fillMaxHeight()
-                        .background(
-
-                            Brush.horizontalGradient(
-
-                                colors = listOf(
-                                    Gold,
-                                    Color.White
-                                )
+                            colors = listOf(
+                                Gold,
+                                Color.White
                             )
                         )
-                )
-            }
+                    )
+            )
         }
     }
 }
@@ -479,11 +338,7 @@ private fun RowScope.BottomItem(
                 )
             }
 
-            // Text(
-            //     text = label,
-            //     fontSize = 9.sp,
-            //     color = if (selected) Accent else TextPrimary.copy(alpha = 0.45f)
-            // )
+         
         }
     }
 }

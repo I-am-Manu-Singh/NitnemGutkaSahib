@@ -504,11 +504,11 @@ class SettingsRepository(
 
                 widgetTheme =
                     prefs[WIDGET_THEME]
-                        ?: "Classic Gold",
+                        ?: "Dark",
 
                 widgetContent =
                     prefs[WIDGET_CONTENT]
-                        ?: "Next Bani"
+                        ?: "Mascot Assistant"
             )
         }
 
@@ -974,6 +974,14 @@ class SettingsRepository(
             preferences[WIDGET_THEME] = widgetTheme
             preferences[WIDGET_CONTENT] = widgetContent
             preferences[ONBOARDING_DONE] = true
+
+            val showEn = language == DisplayLanguage.English
+            val showPa = language == DisplayLanguage.Punjabi
+            val showHi = language == DisplayLanguage.Hindi
+            preferences[SHOW_ENGLISH] = showEn
+            preferences[SHOW_PUNJABI] = showPa
+            preferences[SHOW_DEVANAGARI] = showHi
+            preferences[SHOW_ROMAN] = showEn
         }
     }
 }

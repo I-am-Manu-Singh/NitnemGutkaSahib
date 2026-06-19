@@ -13,7 +13,7 @@ fun generatedRagmala(): Bani = Bani(
     estimatedMinutes = 40,
     audio = null,
     source = ContentSource(text = "ShabadOS Database 5.0.0-next.0, generated from local SQLite package.", audio = "Audio source not wired yet.", licenseNote = "Gurbani text and supporting translations are from the ShabadOS database package. Review ShabadOS content/source licenses before release."),
-    author = "Sri Guru Granth Sahib Ji",
+    author = "Multiple Gurus",
     ang = "Ang 1429",
     structure = "Salok Mahalla 9, Mundavni, Ragmala",
     lines = generatedRagmalaLines()

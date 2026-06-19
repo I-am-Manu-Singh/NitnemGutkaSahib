@@ -32,9 +32,12 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import org.audiocular.nitnem.app.ui.theme.*
 import org.audiocular.nitnem.data.preferences.AppPreferences
+import org.audiocular.nitnem.app.models.DisplayLanguage
+import org.audiocular.nitnem.utils.translate
 
 @Composable
 fun SplashRoute(
+    displayLanguage: DisplayLanguage,
     onOpenHome: () -> Unit,
     onOpenOnboarding: () -> Unit
 ) {
@@ -57,11 +60,11 @@ fun SplashRoute(
         }
     }
 
-    SplashScreen()
+    SplashScreen(displayLanguage)
 }
 
 @Composable
-fun SplashScreen() {
+fun SplashScreen(displayLanguage: DisplayLanguage) {
 
     val backgroundGradient = when (AppTheme.themeMode) {
 
@@ -561,7 +564,7 @@ FloatingPremiumIcon(
 
             Text(
 
-                text = "Nitnem Gutka",
+                text = "Nitnem Gutka".translate(displayLanguage),
 
                 color =
 
@@ -585,7 +588,7 @@ FloatingPremiumIcon(
             Text(
 
                 text =
-                    "Immersive Gurbani reading,\naudio listening and daily Nitnem.",
+                    "Immersive Gurbani reading,\naudio listening and daily Nitnem.".translate(displayLanguage),
 
                 textAlign =
                     TextAlign.Center,
@@ -664,7 +667,7 @@ FloatingPremiumIcon(
                 Text(
 
                     text =
-                        "Peaceful • Focused • Sacred",
+                        "Peaceful • Focused • Sacred".translate(displayLanguage),
 
                     color =
 

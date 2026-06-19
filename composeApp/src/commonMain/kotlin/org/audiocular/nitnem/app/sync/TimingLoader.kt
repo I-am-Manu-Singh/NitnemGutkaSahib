@@ -1,74 +1,105 @@
 package org.audiocular.nitnem.app.sync
 
 import android.content.Context
+import android.util.Log
 import kotlinx.serialization.json.Json
 import org.audiocular.nitnem.models.LineTiming
 import java.io.File
 
 object TimingLoader {
 
-    private val parser = Json {
+    private const val TAG = "TimingLoader"
 
+    private val parser = Json {
         ignoreUnknownKeys = true
     }
 
     fun loadTimings(
         context: Context,
-        baniId: String
+        timingKey: String
     ): List<LineTiming> {
-        val prefs = context.getSharedPreferences("audio_state", Context.MODE_PRIVATE)
-        val activeTrackId = prefs.getString("active_track_id_$baniId", "default") ?: "default"
-        return loadTimings(context, baniId, activeTrackId)
-    }
 
-    fun loadTimings(
-        context: Context,
-        baniId: String,
-        trackId: String
-    ): List<LineTiming> {
+        Log.d(
+            TAG,
+            "Loading timings for key -> $timingKey"
+        )
 
         return try {
-            val localTimingFile = if (trackId != "default") {
-                File(context.filesDir, "audio/${baniId}_${trackId}_timings.json")
-            } else {
-                File(context.filesDir, "audio/${baniId}_timings.json")
+
+            /*
+             * 1. CHECK DOWNLOADED FILE
+             */
+
+            val localFile = File(
+                context.filesDir,
+                "audio/${timingKey}_timing.json"
+            )
+
+            if (
+                localFile.exists() &&
+                localFile.length() > 0
+            ) {
+
+                Log.d(
+                    TAG,
+                    "Using local timing file -> ${localFile.name}"
+                )
+
+                return parser.decodeFromString(
+                    localFile.readText()
+                )
             }
 
-            if (localTimingFile.exists() && localTimingFile.length() > 0) {
-                val jsonContent = localTimingFile.readText()
-                parser.decodeFromString<List<LineTiming>>(jsonContent)
-            } else {
-                val resourceName =
-                    "${baniId.replace("-", "_")}_timing"
+            /*
+             * 2. CHECK ASSET FILE
+             */
 
-                val resourceId =
-                    context.resources.getIdentifier(
-                        resourceName,
-                        "raw",
-                        context.packageName
-                    )
+            val assetPath =
+                "timing/${timingKey}_timing.json"
 
-                if (resourceId == 0) {
+            val assetExists = try {
 
-                    emptyList()
+                context.assets
+                    .open(assetPath)
+                    .close()
 
-                } else {
+                true
 
-                    val json =
-                        context.resources
-                            .openRawResource(resourceId)
-                            .bufferedReader()
-                            .use {
-                                it.readText()
-                            }
+            } catch (_: Exception) {
 
-                    parser.decodeFromString<List<LineTiming>>(json)
-                }
+                false
             }
+
+            if (!assetExists) {
+
+                Log.d(
+                    TAG,
+                    "No timing file found for -> $timingKey"
+                )
+
+                return emptyList()
+            }
+
+            val json =
+                context.assets
+                    .open(assetPath)
+                    .bufferedReader()
+                    .use { it.readText() }
+
+            Log.d(
+                TAG,
+                "Using asset timing file -> $assetPath"
+            )
+
+            parser.decodeFromString(json)
 
         } catch (e: Exception) {
 
-            e.printStackTrace()
+            Log.e(
+                TAG,
+                "Failed loading timing file for -> $timingKey",
+                e
+            )
 
             emptyList()
         }

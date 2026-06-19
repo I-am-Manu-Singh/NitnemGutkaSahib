@@ -1,19 +1,18 @@
 package org.audiocular.nitnem.app.ui.screens
 
 import android.widget.Toast
+import org.audiocular.nitnem.utils.timingKey
 import androidx.compose.animation.core.animateDpAsState
 import org.audiocular.nitnem.app.models.ExperienceTab
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.scrollBy
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -25,27 +24,27 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Bookmarks
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.PlayCircleFilled
 import androidx.compose.material.icons.filled.Speed
-import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -53,7 +52,7 @@ import androidx.compose.ui.unit.Dp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import org.audiocular.nitnem.app.audio.StreamAudioController
+import org.audiocular.nitnem.audio.StreamAudioController
 import org.audiocular.nitnem.app.sync.TimingLoader
 import org.audiocular.nitnem.app.ui.components.GurbaniLineCard
 import org.audiocular.nitnem.app.ui.components.GurbaniLineUiConfig
@@ -67,8 +66,6 @@ import org.audiocular.nitnem.utils.translateDigits
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.material.icons.filled.KeyboardDoubleArrowDown
 import androidx.compose.material.icons.filled.KeyboardDoubleArrowUp
-import androidx.compose.material.icons.filled.ArrowDownward
-import androidx.compose.material.icons.filled.ArrowUpward
 import org.audiocular.nitnem.viewmodel.NitnemViewModel
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.material3.Scaffold
@@ -78,517 +75,800 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.foundation.lazy.LazyListState
+import org.audiocular.nitnem.data.CuratedAudioCatalog
 
-@Composable
-fun GurbaniExperienceScreen(
-    viewModel: NitnemViewModel,
-    audioController: StreamAudioController,
-    onSeekToLine: (BaniLine) -> Unit,
-    onChromeVisibilityChanged: (Boolean) -> Unit = {}
-) {
-
-    var compactHeader by rememberSaveable {
-        mutableStateOf(false)
-    }
-
-    var selectedMeaningLine by remember {
-        mutableStateOf<BaniLine?>(null)
-    }
-
-    val uiState by
-        viewModel.uiState.collectAsState()
-
-    var activeTab by rememberSaveable {
-        mutableStateOf(
-            uiState.selectedExperienceTab
-        )
-    }
-
-    LaunchedEffect(
-        uiState.selectedExperienceTab
+    @Composable
+    fun GurbaniExperienceScreen(
+        viewModel: NitnemViewModel,
+        audioController: StreamAudioController,
+        onSeekToLine: (BaniLine) -> Unit,
+        onChromeVisibilityChanged: (Boolean) -> Unit = {}
     ) {
 
-        activeTab =
-            uiState.selectedExperienceTab
-    }
-
-    val bani =
-        uiState.currentBani
-
-    val playback =
-        uiState.playback
-
-    val scope =
-        rememberCoroutineScope()
-
-    val context =
-        LocalContext.current
-
-    var manualSegmentIndex by remember {
-        mutableStateOf(-1)
-    }
-
-    var pauseReadAutoScroll by remember {
-        mutableStateOf(false)
-    }
-
-    var wasAutoScrolling by remember {
-        mutableStateOf(false)
-    }
-
-    val fabBottomPadding by animateDpAsState(
-
-        targetValue =
-
-            if (uiState.miniPlayerVisible)
-                80.dp
-            else
-                8.dp,
-
-        label = ""
-    )
-
-    val syncedLines by produceState(
-
-        initialValue =
-            emptyList<BaniLine>(),
-
-        key1 = bani?.id,
-        key2 = uiState.activeTrackId
-    ) {
-
-        val currentBani =
-            bani
-
-        if (currentBani == null) {
-
-            value = emptyList()
-
-            return@produceState
+        var compactHeader by rememberSaveable {
+            mutableStateOf(false)
         }
 
-        val timings =
-            TimingLoader.loadTimings(
+        var selectedMeaningLine by remember {
+            mutableStateOf<BaniLine?>(null)
+        }
 
-                context = context,
+        val uiState by
+            viewModel.uiState.collectAsState()
 
-                baniId = currentBani.id,
-
-                trackId = uiState.activeTrackId
+        var activeTab by rememberSaveable {
+            mutableStateOf(
+                uiState.selectedExperienceTab
             )
-
-        if (timings.isEmpty()) {
-
-            value =
-                currentBani.lines
-
-            return@produceState
         }
 
-        val timingMap =
-            timings.associateBy {
-                it.id
+        LaunchedEffect(
+            uiState.selectedExperienceTab
+        ) {
+
+            activeTab =
+                uiState.selectedExperienceTab
+        }
+
+        val bani =
+            uiState.currentBani
+
+        val playback by
+            audioController.playback.collectAsState()
+
+        val currentActiveTrackId =
+            remember(
+                bani?.id,
+                uiState.activeTrackId
+            ) {
+                uiState.activeTrackId.ifEmpty {
+                    "default"
+                }
             }
 
-        value =
-            currentBani.lines.map { line ->
+        val scope =
+            rememberCoroutineScope()
 
-                val timing =
-                    timingMap[line.id]
+        val context =
+            LocalContext.current
 
-                if (timing != null) {
+        val density = LocalDensity.current
+        // Use a small positive offset (20dp) so the active synchronized card lands just below
+        // the header, fully visible rather than half-hidden above the viewport top.
+        val scrollOffsetPx = with(density) { 20.dp.roundToPx() }
 
-                    line.copy(
+        var pauseReadAutoScroll by remember {
+            mutableStateOf(false)
+        }
 
-                        startsAtMs =
-                            timing.startsAtMs,
+        var wasAutoScrolling by remember {
+            mutableStateOf(false)
+        }
 
-                        endsAtMs =
-                            timing.endsAtMs
+        val fabBottomPadding by animateDpAsState(
+
+            targetValue =
+
+                if (uiState.miniPlayerVisible)
+                    80.dp
+                else
+                    8.dp,
+
+            label = ""
+        )
+
+        var timingLoadState by remember {
+            mutableStateOf<Boolean?>(null)
+        }
+
+        val syncedLines by produceState(
+
+            initialValue = emptyList<BaniLine>(),
+
+            key1 = bani?.id,
+
+            key2 = currentActiveTrackId
+
+        ) {
+
+            if (bani == null) {
+
+                timingLoadState = null
+                value = emptyList()
+
+                return@produceState
+            }
+
+            /*
+             * GET ACTUAL ACTIVE AUDIO URL
+             */
+
+            val activeAudioUrl =
+                audioController.getActiveAudioUrl(
+                    bani.id
+                )
+
+            /*
+             * RESOLVE TRACK USING ACTIVE TRACK ID
+             */
+
+            val track =
+                (
+                        audioController
+                            .getCustomTracks(bani.id)
+
+                                +
+
+                                CuratedAudioCatalog
+                                    .getTracksForBani(bani.id)
+
+                        ).firstOrNull {
+                        it.id == currentActiveTrackId
+                    }
+
+            /*
+             * RESOLVE TIMING KEY
+             */
+
+            val timingKey = when {
+
+                track != null -> {
+
+                    track.timingKey()
+                }
+
+                activeAudioUrl
+                    ?.contains("audio/") == true -> {
+
+                    activeAudioUrl
+                        .substringAfterLast("/")
+                        .substringBeforeLast(".")
+                }
+
+                activeAudioUrl
+                    ?.startsWith("raw/") == true -> {
+
+                    activeAudioUrl
+                        .removePrefix("raw/")
+                        .substringBeforeLast(".")
+                }
+
+                else -> {
+
+                    currentActiveTrackId
+                        .replace("-", "_")
+                }
+            }
+
+            println(
+                "TIMING DEBUG -> " +
+                        "bani=${bani.id}, " +
+                        "track=$currentActiveTrackId, " +
+                        "timingKey=$timingKey, " +
+                        "audioUrl=$activeAudioUrl"
+            )
+            println(
+                "TIMING DEBUG -> " +
+                        "bani=${bani.id}, " +
+                        "uiTrack=${uiState.activeTrackId}, " +
+                        "controllerTrack=${audioController.getActiveTrackId(bani.id)}, " +
+                        "resolvedTrack=$currentActiveTrackId, " +
+                        "timingKey=$timingKey, " +
+                        "audioUrl=$activeAudioUrl"
+            )
+            val hasTimingFile =
+                audioController.hasTimingFile(
+                    bani.id,
+                    currentActiveTrackId
+                )
+
+            println(
+                "TIMING CHECK -> " +
+                        "bani=${bani.id}, " +
+                        "track=$currentActiveTrackId, " +
+                        "timingKey=$timingKey, " +
+                        "hasTimingFile=$hasTimingFile"
+            )
+            val timings =
+                if (hasTimingFile) {
+
+                    val loaded =
+                        TimingLoader.loadTimings(
+                            context,
+                            timingKey
+                        )
+
+                    println(
+                        "TIMING LOAD -> " +
+                                "timingKey=$timingKey, " +
+                                "count=${loaded.size}"
                     )
+
+                    loaded
 
                 } else {
 
-                    line
+                    println(
+                        "TIMING LOAD -> NO TIMING FILE"
+                    )
+
+                    emptyList()
+                }
+
+            timingLoadState = timings.isNotEmpty()
+
+            if (timings.isEmpty()) {
+
+                value = bani.lines.map { it.copy(startsAtMs = 0L, endsAtMs = 0L) }
+
+                return@produceState
+            }
+
+
+            val timingMap =
+                timings.associateBy {
+                    it.id
+                }
+            println(
+                "TIMING MAP SIZE -> ${timingMap.size}"
+            )
+
+            println(
+                "FIRST TIMING IDS -> ${
+                    timings.take(5).joinToString {
+                        it.id
+                    }
+                }"
+            )
+
+            println(
+                "FIRST BANI IDS -> ${
+                    bani.lines.take(5).joinToString {
+                        it.id
+                    }
+                }"
+            )
+            value =
+                bani.lines.map { line ->
+
+                    val timing =
+                        timingMap[line.id]
+
+                    if (timing != null) {
+
+                        line.copy(
+
+                            startsAtMs =
+                                timing.startsAtMs,
+
+                            endsAtMs =
+                                timing.endsAtMs
+                        )
+
+                    } else {
+
+                        line
+                    }
+                }
+        }
+
+    LaunchedEffect(
+        timingLoadState
+    ) {
+
+        when (timingLoadState) {
+
+            true -> {
+
+                Toast.makeText(
+
+                    context,
+
+                    "Timings loaded successfully."
+                        .translate(uiState.displayLanguage),
+
+                    Toast.LENGTH_SHORT
+
+                ).show()
+            }
+
+            false -> Unit
+
+            null -> Unit
+        }
+    }
+        val synchronizer = remember {
+            AudioLineSynchronizer()
+        }
+
+        val activeLine =
+            synchronizer.activeLine(
+                syncedLines,
+                playback.positionMs
+            )
+        val currentScrollSpeed by rememberUpdatedState(uiState.autoScrollSpeed)
+        var showSpeedSlider by remember { mutableStateOf(false) }
+
+
+        val segmentListState =
+            rememberLazyListState()
+
+        val lazyListState =
+            rememberLazyListState()
+
+        val notificationBridge = rememberNotificationBridge()
+        /*
+           * AUTO-COMPLETION TRIGGERS
+           */
+        val lastItemVisible by remember(syncedLines) {
+            derivedStateOf {
+                val layoutInfo = lazyListState.layoutInfo
+                val visibleItemsInfo = layoutInfo.visibleItemsInfo
+                if (syncedLines.isEmpty() || visibleItemsInfo.isEmpty()) {
+                    false
+                } else {
+                    val lastVisibleItem = visibleItemsInfo.last()
+                    lastVisibleItem.index >= syncedLines.size - 1
                 }
             }
-    }
-
-    val synchronizer = remember {
-        AudioLineSynchronizer()
-    }
-
-    val activeLine = remember(
-
-        playback.positionMs,
-        syncedLines
-
-    ) {
-
-        synchronizer.activeLine(
-
-            syncedLines,
-
-            playback.positionMs
-        )
-    }
-
-    val playbackProgress = remember(
-        playback.positionMs,
-        playback.durationMs
-    ) {
-
-        if (playback.durationMs > 0) {
-
-            playback.positionMs.toFloat() /
-                playback.durationMs.toFloat()
-
-        } else {
-            0f
         }
-    }
-
-    val animatedPlaybackProgress by animateFloatAsState(
-
-        targetValue = playbackProgress,
-
-        label = ""
-    )
-
-    val segmentListState =
-        rememberLazyListState()
-
-    val lazyListState =
-        rememberLazyListState()
-
-    val notificationBridge = rememberNotificationBridge()
-
-    val readingProgressPercent = remember(lazyListState.firstVisibleItemIndex, syncedLines) {
-        val totalLines = syncedLines.size
-        if (totalLines > 0) {
-            ((lazyListState.firstVisibleItemIndex.toFloat() / totalLines.toFloat()) * 100).toInt().coerceIn(0, 100)
-        } else {
-            0
-        }
-    }
-
-    LaunchedEffect(bani, readingProgressPercent) {
-        if (bani != null && readingProgressPercent in 1..99) {
-            notificationBridge.showReadingProgressNotification(
-                baniId = bani.id,
-                baniTitle = bani.title,
-                progress = readingProgressPercent
-            )
-        } else {
-            notificationBridge.dismissReadingProgressNotification()
-        }
-    }
-
-    DisposableEffect(bani?.id) {
-        onDispose {
-            notificationBridge.dismissReadingProgressNotification()
-        }
-    }
-
-    val hasTimings = remember(syncedLines) {
-        syncedLines.any { it.startsAtMs > 0L || it.endsAtMs > 0L }
-    }
-
-    val currentLineIndex = remember(
-        activeLine,
-        syncedLines,
-        activeTab,
-        lazyListState.firstVisibleItemIndex,
-        hasTimings
-    ) {
-        if (activeTab == ExperienceTab.Listen && hasTimings && activeLine != null) {
-            val idx = syncedLines.indexOfFirst {
-                it.id == activeLine.id
+        val hasTimings by remember(syncedLines) {
+            derivedStateOf {
+                syncedLines.any {
+                    it.startsAtMs > 0L || it.endsAtMs > 0L
+                }
             }
-            if (idx != -1) idx else lazyListState.firstVisibleItemIndex
-        } else {
-            lazyListState.firstVisibleItemIndex
         }
-    }
-
-    val segments = remember(bani, syncedLines) {
-        if (bani != null) {
-            getBaniSegments(bani.title, syncedLines)
-        } else {
-            emptyList()
+        val currentLineIndex = remember(
+            activeLine,
+            syncedLines,
+            activeTab,
+            lazyListState.firstVisibleItemIndex,
+            hasTimings
+        ) {
+            if (activeTab == ExperienceTab.Listen && hasTimings && activeLine != null) {
+                val idx = syncedLines.indexOfFirst {
+                    it.id == activeLine?.id
+                }
+                if (idx != -1) idx else lazyListState.firstVisibleItemIndex
+            } else {
+                lazyListState.firstVisibleItemIndex
+            }
         }
-    }
 
-    val activeSegmentIndex = remember(
-        currentLineIndex,
-        segments
-    ) {
-        val idx = segments.indexOfFirst { currentLineIndex in it.startIndex..it.endIndex }
-        if (idx != -1) idx else 0
-    }
+        val readingProgressPercent by remember(
+            activeTab,
+            syncedLines,
+            currentLineIndex,
+            lastItemVisible
+        ) {
+            derivedStateOf {
+                val totalLines = syncedLines.size
+                if (totalLines == 0) return@derivedStateOf 0
 
-    val lineUiConfig = remember(uiState) {
+                if (activeTab == ExperienceTab.Read) {
+                    if (lastItemVisible) {
+                        100
+                    } else {
+                        val lastVisibleIndex =
+                            lazyListState.layoutInfo
+                                .visibleItemsInfo
+                                .lastOrNull()
+                                ?.index ?: 0
+                        (((lastVisibleIndex + 1).toFloat() / totalLines) * 100f).toInt().coerceIn(0, 99)
+                    }
+                } else {
+                    // Listen mode progress
+                    if (currentLineIndex >= totalLines - 1) {
+                        100
+                    } else {
+                        (((currentLineIndex + 1).toFloat() / totalLines) * 100f).toInt().coerceIn(0, 99)
+                    }
+                }
+            }
+        }
 
-        GurbaniLineUiConfig(
+        LaunchedEffect(
+            bani?.id,
+            readingProgressPercent,
+            activeTab
+        ) {
 
-            gurmukhiFontSize =
-                uiState.gurmukhiFontSize,
+            if (
+                bani != null &&
+                readingProgressPercent in 1..100
+            ) {
 
-            romanTransliterationFontSize =
-                uiState.romanTransliterationFontSize,
+                notificationBridge.showReadingProgressNotification(
+                    baniId = bani.id,
+                    baniTitle = bani.title,
+                    progress = readingProgressPercent
+                )
 
-            translationFontSize =
-                uiState.translationFontSize,
+            } else {
 
-            wordMeaningFontSize =
-                uiState.wordMeaningFontSize,
+                notificationBridge.dismissReadingProgressNotification()
+            }
+        }
 
-            lineSpacing =
-                uiState.lineSpacing,
+        val segments = remember(
+            bani?.id,
+            syncedLines
+        ) {
+            if (bani != null) {
+                getBaniSegments(
+                    bani.title,
+                    syncedLines
+                )
+            } else {
+                emptyList()
+            }
+        }
+        val activeSegmentIndex by remember(
+            currentLineIndex,
+            segments
+        ) {
 
-            showTranslation =
-                uiState.showTranslation,
+            derivedStateOf {
 
-            showRomanTransliteration =
-                uiState.showRomanTransliteration,
+                segments.indexOfFirst { segment ->
 
-            showEnglishTranslation =
-                uiState.showEnglishTranslation,
+                    currentLineIndex in
+                            segment.startIndex..segment.endIndex
 
-            showPunjabiTranslation =
-                uiState.showPunjabiTranslation,
+                }.let {
 
-            showDevanagariTransliteration =
-                uiState.showDevanagariTransliteration,
+                    if (it == -1) 0 else it
+                }
+            }
+        }
 
-            showWordMeaning =
-                uiState.showWordMeaning,
+        val lineUiConfig = remember(uiState) {
 
-            gurmukhiColorMode =
-                uiState.gurmukhiColorMode,
+            GurbaniLineUiConfig(
 
-            romantransliterationColorMode =
-                uiState.romanTransliterationColorMode,
+                gurmukhiFontSize =
+                    uiState.gurmukhiFontSize,
 
-            translationColorMode =
-                uiState.translationColorMode,
+                romanTransliterationFontSize =
+                    uiState.romanTransliterationFontSize,
 
-            wordMeaningColorMode =
-                uiState.wordMeaningColorMode,
+                translationFontSize =
+                    uiState.translationFontSize,
 
-            boldGurmukhi =
-                uiState.boldGurmukhi,
+                wordMeaningFontSize =
+                    uiState.wordMeaningFontSize,
 
-            italicRomanTransliteration =
-                uiState.italicRomanTransliteration,
+                lineSpacing =
+                    uiState.lineSpacing,
 
-            centerGurmukhi =
-                uiState.centerGurmukhi,
+                showTranslation =
+                    uiState.showTranslation,
 
-            highlightActiveLine =
-                uiState.highlightActiveLine,
+                showRomanTransliteration =
+                    uiState.showRomanTransliteration,
 
-            showLineProgress =
-                uiState.showLineProgress,
+                showEnglishTranslation =
+                    uiState.showEnglishTranslation,
 
-            compactMode =
-                uiState.compactMode,
+                showPunjabiTranslation =
+                    uiState.showPunjabiTranslation,
 
-            larivaarMode =
-                uiState.larivaarMode
-        )
-    }
+                showDevanagariTransliteration =
+                    uiState.showDevanagariTransliteration,
 
-    LaunchedEffect(Unit) {
+                showWordMeaning =
+                    uiState.showWordMeaning,
 
-        onChromeVisibilityChanged(
-            true
-        )
-    }
+                gurmukhiColorMode =
+                    uiState.gurmukhiColorMode,
 
-    /*
+                romantransliterationColorMode =
+                    uiState.romanTransliterationColorMode,
+
+                translationColorMode =
+                    uiState.translationColorMode,
+
+                wordMeaningColorMode =
+                    uiState.wordMeaningColorMode,
+
+                boldGurmukhi =
+                    uiState.boldGurmukhi,
+
+                italicRomanTransliteration =
+                    uiState.italicRomanTransliteration,
+
+                centerGurmukhi =
+                    uiState.centerGurmukhi,
+
+                highlightActiveLine =
+                    uiState.highlightActiveLine,
+
+                showLineProgress =
+                    uiState.showLineProgress,
+
+                compactMode =
+                    uiState.compactMode,
+
+                larivaarMode =
+                    uiState.larivaarMode
+            )
+        }
+
+        LaunchedEffect(Unit) {
+
+            onChromeVisibilityChanged(
+                true
+            )
+        }
+
+        /*
      * AUTO SCROLL
      */
 
-    LaunchedEffect(
-
-        activeLine,
-        uiState.autoScroll,
-        activeTab
-    ) {
-
-        if (
-
-            uiState.autoScroll &&
-            activeLine != null &&
-            activeTab == ExperienceTab.Listen
+        LaunchedEffect(
+            activeLine,
+            activeTab,
+            hasTimings
         ) {
-
-            val index =
-                syncedLines.indexOfFirst {
-
-                    it.id ==
-                        activeLine?.id
+            if (
+                hasTimings &&
+                activeLine != null &&
+                activeTab == ExperienceTab.Listen
+            ) {
+                val index =
+                    syncedLines.indexOfFirst {
+                        it.id == activeLine?.id
+                    }
+                if (index >= 0) {
+                    lazyListState.animateScrollToItem(index, scrollOffset = scrollOffsetPx)
                 }
-
-            if (index >= 0) {
-
-                lazyListState
-                    .animateScrollToItem(
-                        index
-                    )
             }
         }
-    }
+        LaunchedEffect(syncedLines) {
 
-    /*
-     * READ MODE AUTO SCROLL
-     */
+        viewModel.setSyncedLines(
+            syncedLines
+        )
+    }
+    LaunchedEffect(showSpeedSlider) {
+
+        if (showSpeedSlider) {
+
+            delay(3000)
+
+            showSpeedSlider = false
+        }
+    }
+        /*
+         * READ MODE AUTO SCROLL
+         */
+
 
     LaunchedEffect(
         uiState.autoScroll,
-        uiState.autoScrollSpeed,
         activeTab,
-        pauseReadAutoScroll
+        pauseReadAutoScroll,
+        hasTimings,
+        uiState.autoScrollSpeed
     ) {
-        val isAutoScrolling = uiState.autoScroll && activeTab == ExperienceTab.Read && !pauseReadAutoScroll
+
+        val isAutoScrolling =
+            uiState.autoScroll &&
+            (activeTab == ExperienceTab.Read ||
+                    (activeTab == ExperienceTab.Listen && !hasTimings)) &&
+            !pauseReadAutoScroll
+
         if (isAutoScrolling && !wasAutoScrolling) {
-            val speedText = String.format("%.1f", uiState.autoScrollSpeed)
-            val msg = "Auto Scroll Started".translate(uiState.displayLanguage) + 
-                " (${"Speed".translate(uiState.displayLanguage)}: $speedText)"
+
+            showSpeedSlider = true
+
+            val speedText = String.format("%.1f", currentScrollSpeed)
+
+            val msg =
+                "Auto Scroll Started".translate(uiState.displayLanguage) +
+                        " (${"Speed".translate(uiState.displayLanguage)}: $speedText)"
+
             Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
         }
+
         wasAutoScrolling = isAutoScrolling
 
         if (
             !uiState.autoScroll ||
-            activeTab != ExperienceTab.Read ||
+            (activeTab != ExperienceTab.Read &&
+                    (activeTab != ExperienceTab.Listen || hasTimings)) ||
             pauseReadAutoScroll
         ) {
-
+            showSpeedSlider = false
             return@LaunchedEffect
         }
 
         while (isActive) {
-
-            if (
-                !lazyListState.isScrollInProgress
-            ) {
-
-                lazyListState.scrollBy(
-
-                    uiState.autoScrollSpeed
-                        .coerceIn(0.5f, 12f)
-                )
+            try {
+                lazyListState.scroll(scrollPriority = androidx.compose.foundation.MutatePriority.Default) {
+                    var lastFrameTimeNanos = 0L
+                    while (isActive) {
+                        withFrameNanos { frameTimeNanos ->
+                            if (lastFrameTimeNanos > 0L) {
+                                val elapsedNanos = frameTimeNanos - lastFrameTimeNanos
+                                val elapsedSeconds = elapsedNanos / 1_000_000_000f
+                                val pixelsPerSecond = currentScrollSpeed.coerceIn(0.5f, 12f) * 25f
+                                val scrollAmount = pixelsPerSecond * elapsedSeconds
+                                scrollBy(scrollAmount)
+                            }
+                            lastFrameTimeNanos = frameTimeNanos
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                delay(100L)
+                while (lazyListState.isScrollInProgress && isActive) {
+                    delay(100L)
+                }
             }
-
-            delay(16L)
         }
     }
 
-    /*
-     * RESET MANUAL SEGMENT
-     */
-
-    LaunchedEffect(
-        currentLineIndex,
-        uiState.autoScroll
-    ) {
-
-        if (
-            uiState.autoScroll
+        LaunchedEffect(
+            activeSegmentIndex
         ) {
 
-            manualSegmentIndex = -1
+            if (
+                segments.isNotEmpty() &&
+                activeSegmentIndex >= 0
+            ) {
+
+                segmentListState.animateScrollToItem(
+                    activeSegmentIndex
+                )
+            }
+        }
+
+        /*
+         * VOLUME
+         */
+
+       LaunchedEffect(activeTab) {
+
+        if (activeTab == ExperienceTab.Read) {
+
+            audioController.setVolume(0f)
+             Toast.makeText(
+                        context,
+                        "Audio Muted".translate(uiState.displayLanguage),
+                        Toast.LENGTH_SHORT
+                    ).show()
+        } else {
+
+            audioController.setVolume(1f)
         }
     }
+        /*
+           * LISTEN MODE
+           */
+        val playbackCompleted by remember(
+            activeLine,
+            syncedLines,
+            hasTimings
+        ) {
+            derivedStateOf {
 
-    LaunchedEffect(
-        activeSegmentIndex,
-        syncedLines
-    ) {
+                hasTimings &&
+                        activeLine?.id ==
+                        syncedLines.lastOrNull()?.id
+            }
+        }
+        LaunchedEffect(
+            bani?.id,
+            activeTab,
+            playbackCompleted,
+            lastItemVisible
+        ) {
+            println(
+                "COMPLETION CHECK -> " +
+                        "position=${playback.positionMs}, " +
+                        "duration=${playback.durationMs}, " +
+                        "activeLine=${activeLine?.id}, " +
+                        "playbackCompleted=$playbackCompleted"
+            )
+            val currentBani =
+                bani ?: return@LaunchedEffect
 
-        if (syncedLines.isNotEmpty()) {
+            if (
+                uiState.completedBanis.contains(
+                    currentBani.id
+                )
+            ) {
+                return@LaunchedEffect
+            }
 
-            segmentListState.animateScrollToItem(
+            /*
+             * LISTEN MODE
+             */
+            if (
+                activeTab == ExperienceTab.Listen &&
+                playbackCompleted
+            ) {
+                viewModel.markComplete(currentBani)
+            }
 
-                activeSegmentIndex
-                    .coerceAtLeast(0)
+            /*
+             * READ MODE
+             */
+            if (
+                activeTab == ExperienceTab.Read &&
+                lastItemVisible
+            ) {
+
+
+
+                viewModel.markComplete(
+                    currentBani
+                )
+
+                notificationBridge.dismissReadingProgressNotification()
+            }
+        }
+
+        LaunchedEffect(activeLine?.id) {
+            activeLine?.let {
+                println("ACTIVE LINE -> ${it.id}")
+            }
+        }
+        LaunchedEffect(playbackCompleted) {
+            println(
+                "PLAYBACK COMPLETED -> $playbackCompleted"
             )
         }
-    }
+        LaunchedEffect(
+            bani?.id,
+            currentActiveTrackId
+        ) {
 
-    /*
-     * VOLUME
-     */
+            val currentBani =
+                bani ?: return@LaunchedEffect
 
-    LaunchedEffect(
-        activeTab
-    ) {
+            println(
+                "TRACK EFFECT -> bani=${currentBani.id}, track=$currentActiveTrackId"
+            )
 
-        when (activeTab) {
+            val url =
+                audioController.getActiveAudioUrl(
+                    currentBani.id
+                )
 
-            ExperienceTab.Listen,
-            ExperienceTab.Bookmarks -> {
+            println(
+                "TRACK EFFECT -> url=$url"
+            )
 
-                audioController.setVolume(1f)
-            }
+            if (url != null) {
 
-            ExperienceTab.Read -> {
-
-                audioController.setVolume(0f)
-                Toast.makeText(
-                    context,
-                    "Audio Muted".translate(uiState.displayLanguage),
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
-        }
-    }
-
-    /*
-     * AUTO-COMPLETION TRIGGERS
-     */
-    val lastItemVisible by remember(syncedLines) {
-        derivedStateOf {
-            val layoutInfo = lazyListState.layoutInfo
-            val visibleItemsInfo = layoutInfo.visibleItemsInfo
-            if (syncedLines.isEmpty() || visibleItemsInfo.isEmpty()) {
-                false
-            } else {
-                val lastVisibleItem = visibleItemsInfo.last()
-                lastVisibleItem.index >= syncedLines.size - 1
+                audioController.play(
+                    url = url,
+                    title = currentBani.title
+                )
             }
         }
-    }
+        LaunchedEffect(uiState.activeTrackId) {
 
-    LaunchedEffect(activeTab, playback.isEnded, lastItemVisible, bani) {
-        if (bani == null) return@LaunchedEffect
+            println("UI TRACK -> ${uiState.activeTrackId}")
 
-        val isAlreadyCompleted = uiState.completedBanis.contains(bani.id)
-        if (isAlreadyCompleted) return@LaunchedEffect
-
-        if (activeTab == ExperienceTab.Listen && playback.isEnded) {
-            viewModel.markComplete(bani)
-        } else if (activeTab == ExperienceTab.Read && lastItemVisible) {
-            viewModel.markComplete(bani)
         }
-    }
+        Scaffold(
 
-    Scaffold(
+        containerColor = Color.Transparent,
 
-    containerColor = Color.Transparent,
+        contentWindowInsets = WindowInsets(0)
 
-    contentWindowInsets = WindowInsets(0)
+    ) { paddingValues ->
 
-) { paddingValues ->
+        Box(
 
-    Box(
-
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(paddingValues)
-    ) {
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
 
         /*
          * MAIN LAYOUT
@@ -608,8 +888,8 @@ fun GurbaniExperienceScreen(
                     .fillMaxWidth(),
 
                 shape = RoundedCornerShape(
-                    bottomStart = 28.dp,
-                    bottomEnd = 28.dp
+                    bottomStart = 0.dp,
+                    bottomEnd = 0.dp
                 ),
 
                 color = SurfaceColor,
@@ -737,53 +1017,53 @@ fun GurbaniExperienceScreen(
 
                                  if (syncedLines.size > 1 && segments.isNotEmpty()) {
 
-                                     SegmentJumpBar(
-                                          listState =
-                                              segmentListState,
-                                          segments =
-                                              segments,
-                                          currentSegmentIndex =
-                                              activeSegmentIndex,
-                                          displayLanguage =
-                                              uiState.displayLanguage,
+                                                SegmentJumpBar(
 
-                                         onJumpToIndex = { idx ->
+                                                    listState = segmentListState,
 
-                                             val targetSegment =
-                                                 segments.indexOfFirst { idx in it.startIndex..it.endIndex }.coerceAtLeast(0)
+                                                    segments = segments,
 
-                                             pauseReadAutoScroll = true
+                                                    currentSegmentIndex = activeSegmentIndex,
 
-                                             syncedLines
-                                                 .getOrNull(idx)
-                                                 ?.let { line ->
+                                                    displayLanguage = uiState.displayLanguage,
 
-                                                     if (
-                                                         line.startsAtMs >= 0L
-                                                     ) {
+                                                    onJumpToIndex = { idx ->
 
-                                                         onSeekToLine(line)
-                                                     }
-                                                 }
+                                                        val targetSegment =
+                                                            segments.indexOfFirst {
+                                                                idx in it.startIndex..it.endIndex
+                                                            }.coerceAtLeast(0)
 
-                                             scope.launch {
+                                                        pauseReadAutoScroll = true
+   //to stop clipping of top card for active synchronized card
+                                                        syncedLines
+                                                            .getOrNull(idx)
+                                                            ?.let { line ->
 
-                                                 lazyListState
-                                                     .animateScrollToItem(idx)
+                                                                if (
+                                                                    hasTimings &&
+                                                                    line.endsAtMs > line.startsAtMs
+                                                                ) {
 
-                                                 segmentListState
-                                                     .animateScrollToItem(
-                                                         targetSegment
-                                                     )
+                                                                    onSeekToLine(line)
+                                                                }
+                                                            }
 
-                                                 delay(1200L)
+                                                        scope.launch {
 
-                                                 pauseReadAutoScroll = false
-                                             }
-                                         }
-                                     )
-                                 }
+                                                            lazyListState.animateScrollToItem(idx, scrollOffset = scrollOffsetPx)
 
+                                                            segmentListState.animateScrollToItem(
+                                                                targetSegment
+                                                            )
+
+                                                            delay(1500)
+
+                                                            pauseReadAutoScroll = false
+                                                        }
+                                                    }
+                                                )
+                                            }
                                 Spacer(
                                     Modifier.height(12.dp)
                                 )
@@ -791,12 +1071,11 @@ fun GurbaniExperienceScreen(
                         }
                     }
                 }
-
             /*
              * CONTENT AREA
              */
- Spacer(
-                        Modifier.height(12.dp)
+                    Spacer(
+                        Modifier.height(6.dp)
                     )
             Box(
 
@@ -849,33 +1128,35 @@ fun GurbaniExperienceScreen(
                                 val isActive =
                                     activeLine?.id == line.id
 
-                                val lineProgress =
-
+                                val targetProgress =
                                     if (
-
                                         isActive &&
-
                                         line.endsAtMs >
                                         line.startsAtMs
-
                                     ) {
-
                                         (
                                             (
                                                 playback.positionMs -
                                                     line.startsAtMs
                                             ).toFloat() /
-
                                                 (
                                                     line.endsAtMs -
                                                         line.startsAtMs
                                                     ).toFloat()
                                             )
                                                 .coerceIn(0f, 1f)
-
                                     } else {
                                         0f
                                     }
+
+                                val lineProgress by animateFloatAsState(
+                                    targetValue = targetProgress,
+                                    animationSpec = androidx.compose.animation.core.tween(
+                                        durationMillis = 100,
+                                        easing = androidx.compose.animation.core.LinearEasing
+                                    ),
+                                    label = "lineProgress"
+                                )
 
                                 GurbaniLineCard(
 
@@ -907,9 +1188,10 @@ fun GurbaniExperienceScreen(
 
                                     onClick = {
 
-                                        if (
-                                            line.startsAtMs >= 0L
-                                        ) {
+                                       if (
+                                            hasTimings &&
+                                            line.endsAtMs > line.startsAtMs
+                                        ){
 
                                             onSeekToLine(line)
                                         }
@@ -1003,9 +1285,10 @@ fun GurbaniExperienceScreen(
 
                                         onClick = {
 
-                                            if (
-                                                line.startsAtMs >= 0L
-                                            ) {
+                                          if (
+                                                hasTimings &&
+                                                line.endsAtMs > line.startsAtMs
+                                            ){
 
                                                 onSeekToLine(line)
                                             }
@@ -1028,32 +1311,32 @@ fun GurbaniExperienceScreen(
          * FLOATING BUTTONS
          */
 
-        Column(
+        val showAutoscrollSlider = (activeTab == ExperienceTab.Read) || (activeTab == ExperienceTab.Listen && !hasTimings)
 
+        Column(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(
-
                     bottom = fabBottomPadding,
-
                     end = 8.dp
                 ),
-
-            verticalArrangement =
-                Arrangement.spacedBy(10.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
+            if (showAutoscrollSlider) {
+                FloatingJumpButton(
+                    icon = Icons.Default.Speed,
+                    onClick = {
+                        showSpeedSlider = !showSpeedSlider
+                    },
+                    onDoubleTap = {}
+                )
+            }
 
             FloatingJumpButton(
-
-                icon =
-                    Icons.Default.KeyboardDoubleArrowUp,
-
+                icon = Icons.Default.KeyboardDoubleArrowUp,
                 onClick = {
-
                     pauseReadAutoScroll = true
-
                     scope.launch {
-
                         val firstVisible = lazyListState.firstVisibleItemIndex
                         val currentSegmentIdx = segments.indexOfFirst { firstVisible in it.startIndex..it.endIndex }
                         val targetSegmentIdx = (if (currentSegmentIdx != -1) currentSegmentIdx - 1 else 0).coerceAtLeast(0)
@@ -1062,35 +1345,36 @@ fun GurbaniExperienceScreen(
                         syncedLines
                             .getOrNull(targetIndex)
                             ?.let { line ->
-
-                                if (
-                                    line.startsAtMs >= 0L
-                                ) {
-
+                               if (
+                                        hasTimings &&
+                                        line.endsAtMs > line.startsAtMs
+                                    ){
                                     onSeekToLine(line)
                                 }
                             }
 
                         lazyListState
                             .animateScrollToItem(
-                                targetIndex
+                                targetIndex,
+                                scrollOffset = 20
                             )
 
                         segmentListState
                             .animateScrollToItem(
                                 targetSegmentIdx
                             )
+pauseReadAutoScroll = true
 
-                        delay(1200L)
+scope.launch {
 
-                        pauseReadAutoScroll = false
+    delay(1500)
+
+    pauseReadAutoScroll = false
+}
                     }
                 },
-
                 onDoubleTap = {
-
                     scope.launch {
-
                         lazyListState
                             .animateScrollToItem(0)
                     }
@@ -1098,16 +1382,10 @@ fun GurbaniExperienceScreen(
             )
 
             FloatingJumpButton(
-
-                icon =
-                    Icons.Default.KeyboardDoubleArrowDown,
-
+                icon = Icons.Default.KeyboardDoubleArrowDown,
                 onClick = {
-
                     pauseReadAutoScroll = true
-
                     scope.launch {
-
                         val firstVisible = lazyListState.firstVisibleItemIndex
                         val currentSegmentIdx = segments.indexOfFirst { firstVisible in it.startIndex..it.endIndex }
                         val targetSegmentIdx = (if (currentSegmentIdx != -1) currentSegmentIdx + 1 else 0).coerceAtMost(segments.lastIndex)
@@ -1116,35 +1394,36 @@ fun GurbaniExperienceScreen(
                         syncedLines
                             .getOrNull(targetIndex)
                             ?.let { line ->
-
-                                if (
-                                    line.startsAtMs >= 0L
-                                ) {
-
+                               if (
+                                hasTimings &&
+                                line.endsAtMs > line.startsAtMs
+                            ){
                                     onSeekToLine(line)
                                 }
                             }
 
                         lazyListState
                             .animateScrollToItem(
-                                targetIndex
+                                targetIndex,
+                                scrollOffset = 20
                             )
 
                         segmentListState
                             .animateScrollToItem(
                                 targetSegmentIdx
                             )
+                                    pauseReadAutoScroll = true
 
-                        delay(1200L)
+                                    scope.launch {
 
-                        pauseReadAutoScroll = false
+                                        delay(1500)
+
+                                        pauseReadAutoScroll = false
+                                    }
                     }
                 },
-
                 onDoubleTap = {
-
                     scope.launch {
-
                         lazyListState
                             .animateScrollToItem(
                                 syncedLines.lastIndex
@@ -1155,67 +1434,129 @@ fun GurbaniExperienceScreen(
         }
 
         /*
+         * AUTO SCROLL MANUAL SPEED SLIDER
+         */
+        if (showAutoscrollSlider && showSpeedSlider) {
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(start = 24.dp, end = 24.dp, bottom = fabBottomPadding + 8.dp)
+                    .fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                color = SurfaceColor.copy(alpha = 0.95f),
+                tonalElevation = 6.dp,
+                shadowElevation = 6.dp,
+                border = BorderStroke(1.dp, Accent.copy(alpha = 0.15f))
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(
+                        onClick = { viewModel.setAutoScroll(!uiState.autoScroll) }
+                    ) {
+                        Icon(
+                            imageVector = if (uiState.autoScroll) Icons.Default.Pause else Icons.Default.PlayArrow,
+                            contentDescription = "Toggle Autoscroll",
+                            tint = Accent
+                        )
+                    }
+                    Text(
+                        text = "Auto Scroll".translate(uiState.displayLanguage),
+                        color = TextPrimary,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.width(75.dp)
+                    )
+                    Spacer(Modifier.width(4.dp))
+                  androidx.compose.material3.Slider(
+                            value = uiState.autoScrollSpeed,
+
+                            onValueChange = {
+                                viewModel.setAutoScrollSpeed(it)
+
+                                // keep visible while changing
+                                showSpeedSlider = true
+                            },
+
+                            valueRange = 0.5f..8.0f,
+
+                            modifier = Modifier.weight(1f),
+
+                            colors = androidx.compose.material3.SliderDefaults.colors(
+                                activeTrackColor = Accent,
+                                thumbColor = Accent
+                            )
+                        )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        text = String.format("%.1f", uiState.autoScrollSpeed),
+                        color = TextSecondary,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.width(30.dp)
+                    )
+                }
+            }
+        }
+
+        /*
          * MEANING SHEET
          */
 
         GurbaniMeaningSheet(
-
             line = selectedMeaningLine,
-
             onDismiss = {
                 selectedMeaningLine = null
             },
-
             gurmukhiFontSize =
                 uiState.gurmukhiFontSize,
-
             lineSpacing =
                 uiState.lineSpacing,
-
             boldGurmukhi =
                 uiState.boldGurmukhi,
-
             centerGurmukhi =
                 uiState.centerGurmukhi,
-
             showEnglishTranslation =
                 uiState.showEnglishTranslation,
-
             showPunjabiTranslation =
                 uiState.showPunjabiTranslation,
-
             showDevanagariTransliteration =
                 uiState.showDevanagariTransliteration,
-
             showWordMeaning =
                 uiState.showWordMeaning,
-
+            showRomanTransliteration =
+                uiState.showRomanTransliteration,
+            larivaarMode =
+                uiState.larivaarMode,
             gurmukhiColorMode =
                 uiState.gurmukhiColorMode,
-
             translationColorMode =
                 uiState.translationColorMode,
-
             wordMeaningColorMode =
                 uiState.wordMeaningColorMode,
-
             displayLanguage =
                 uiState.displayLanguage,
-
             onToggleEnglish = {
                 viewModel.setShowEnglishTranslation(it)
             },
-
             onTogglePunjabi = {
                 viewModel.setShowPunjabiTranslation(it)
             },
-
             onToggleHindi = {
                 viewModel.setShowDevanagariTransliteration(it)
             },
-
             onToggleWordMeaning = {
                 viewModel.setShowWordMeaning(it)
+            },
+            onToggleRoman = {
+                viewModel.setShowRomanTransliteration(it)
+            },
+            onToggleCenter = {
+                viewModel.setCenterGurmukhi(it)
+            },
+            onToggleLarivaar = {
+                viewModel.setLarivaarMode(it)
             }
         )
     }
@@ -1272,83 +1613,6 @@ private fun EmptyBookmarks(displayLanguage: DisplayLanguage) {
     }
 }
 
-@Composable
-private fun InfoPill(
-
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-
-    text: String
-) {
-
-    Surface(
-
-        shape =
-            RoundedCornerShape(100.dp),
-
-        color =
-            Gold.copy(alpha = 0.12f)
-    ) {
-
-        Row(
-
-            modifier = Modifier.padding(
-
-                horizontal = 10.dp,
-                vertical = 6.dp
-            ),
-
-            verticalAlignment =
-                Alignment.CenterVertically
-        ) {
-
-            Icon(
-
-                imageVector = icon,
-
-                contentDescription = null,
-
-                tint = Gold,
-
-                modifier = Modifier.size(14.dp)
-            )
-
-            Spacer(
-                Modifier.width(6.dp)
-            )
-
-            Text(
-
-                text = text,
-
-                color = Primary,
-
-                fontSize = 12.sp,
-
-                fontWeight =
-                    FontWeight.SemiBold
-            )
-        }
-    }
-}
-
-private fun formatMillis(
-    ms: Long
-): String {
-
-    val totalSeconds =
-        ms / 1000
-
-    val minutes =
-        totalSeconds / 60
-
-    val seconds =
-        totalSeconds % 60
-
-    return "%02d:%02d".format(
-        minutes,
-        seconds
-    )
-}
 @Composable
 private fun PremiumTabSwitcher(
     modifier: Modifier = Modifier,
@@ -1532,126 +1796,7 @@ private fun PremiumTabSwitcher(
         }
     }
 }
-@Composable
-private fun DownloadButton(
 
-    viewModel: NitnemViewModel,
-
-    audioController: StreamAudioController,
-
-    buttonSize: Dp = 50.dp
-) {
-
-    val uiState by viewModel.uiState.collectAsState()
-
-    val bani =
-        uiState.currentBani
-            ?: return
-
-    val isDownloaded =
-        uiState.downloadedBaniIds
-            .contains(bani.id)
-
-    val isDownloading =
-        uiState.downloadingBaniIds
-            .contains(bani.id)
-
-    Surface(
-
-        onClick = {
-
-            if (isDownloaded) {
-
-                viewModel.deleteBaniAudio(
-                    bani.id,
-                    audioController
-                )
-
-            } else if (!isDownloading) {
-
-                bani.audio?.remoteUrl?.let { url ->
-
-                    viewModel.startDownload(
-                        bani.id,
-                        url,
-                        audioController
-                    )
-                }
-            }
-        },
-
-        shape = CircleShape,
-
-        color = Gold.copy(alpha = 0.10f),
-
-        border = BorderStroke(
-            1.dp,
-            Gold.copy(alpha = 0.10f)
-        )
-    ) {
-
-        Box(
-
-            modifier = Modifier.size(buttonSize),
-
-            contentAlignment =
-                Alignment.Center
-        ) {
-
-            when {
-
-                isDownloading -> {
-
-                    CircularProgressIndicator(
-
-                        modifier =
-                            Modifier.size(
-                                buttonSize * 0.42f
-                            ),
-
-                        color = Gold,
-
-                        strokeWidth = 2.dp
-                    )
-                }
-
-                isDownloaded -> {
-
-                    Icon(
-
-                        imageVector =
-                            Icons.Default.CloudDone,
-
-                        contentDescription = null,
-
-                        tint = Gold.copy(alpha = 0.92f),
-
-                        modifier = Modifier.size(
-                            buttonSize * 0.42f
-                        )
-                    )
-                }
-
-                else -> {
-
-                    Icon(
-
-                        imageVector =
-                            Icons.Default.CloudDownload,
-
-                        contentDescription = null,
-
-                        tint = Gold.copy(alpha = 0.82f),
-
-                        modifier = Modifier.size(
-                            buttonSize * 0.42f
-                        )
-                    )
-                }
-            }
-        }
-    }
-}
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun SegmentJumpBar(
@@ -1844,7 +1989,7 @@ private fun SegmentJumpBar(
                                 else
                                     13.dp,
 
-                            vertical = 10.dp
+                            vertical = 5.dp
                         ),
 
                     verticalAlignment =

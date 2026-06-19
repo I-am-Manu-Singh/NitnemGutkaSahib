@@ -1,7 +1,9 @@
 package org.audiocular.nitnem.app.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import org.audiocular.nitnem.utils.translate
@@ -30,6 +32,8 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.GraphicEq
+import org.audiocular.nitnem.data.CuratedAudioCatalog
 import android.widget.Toast
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -45,14 +49,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
-import org.audiocular.nitnem.app.audio.StreamAudioController
+import org.audiocular.nitnem.audio.StreamAudioController
 import org.audiocular.nitnem.app.models.DisplayLanguage
 import org.audiocular.nitnem.app.ui.theme.*
 import org.audiocular.nitnem.data.preferences.SettingsRepository
 import org.audiocular.nitnem.viewmodel.NitnemViewModel
-import org.audiocular.nitnem.utils.translate
 import org.audiocular.nitnem.utils.rememberAudioPicker
-import org.audiocular.nitnem.models.AudioTrack
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.material3.TimePicker
 import org.audiocular.nitnem.app.sync.SyncEditorScreen
@@ -78,8 +80,11 @@ private enum class SettingsCategory(
 
     Reminders("Reminders"),
 
+    Widget("Widget Settings"),
+
     Audio("Manage Audio")
 }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
@@ -143,7 +148,7 @@ var selectedReminder by remember {
     val activeTrackId = remember(selectedBaniForAudio?.id, tracksRefreshTrigger, uiState.activeTrackId) {
         selectedBaniForAudio?.id?.let { audioController.getActiveTrackId(it) } ?: "default"
     }
-    val customTracks = remember(selectedBaniForAudio?.id, tracksRefreshTrigger) {
+    val customTracks = remember(selectedBaniForAudio?.id, tracksRefreshTrigger, uiState.downloadedBaniIds) {
         selectedBaniForAudio?.id?.let { audioController.getCustomTracks(it) } ?: emptyList()
     }
 
@@ -1167,559 +1172,548 @@ if (
         }
     }
 }
-
-    if (
-        selectedCategory ==
-        SettingsCategory.Audio
-    ) {
-        val currentBani = selectedBaniForAudio
-        if (currentBani != null) {
-
+        if (
+            selectedCategory ==
+            SettingsCategory.Widget
+        ) {
             item {
                 SettingsSectionCard(
-                    title = "Manage Audio".translate(uiState.displayLanguage),
-                    icon = Icons.Default.PlayCircle
+                    title = "Widget Styling".translate(uiState.displayLanguage),
+                    icon = Icons.Default.ColorLens
                 ) {
-                    val defaultTrack = currentBani.audio
-                    val defaultLocalPath = audioController.getLocalAudioPath(currentBani.id)
-                    val defaultIsLocal = defaultLocalPath != null
+                    WidgetMockPreview(
+                        widgetTheme = uiState.widgetTheme,
+                        widgetContent = uiState.widgetContent,
+                        displayLanguage = uiState.displayLanguage
+                    )
 
-                    val localTracks = customTracks.filter { it.localPath != null }
-                    val onlineTracks = customTracks.filter { it.localPath == null }
+                    Spacer(Modifier.height(18.dp))
 
-                    // 1. Select Bani dropdown row
                     Text(
-                        text = "Select Bani".translate(uiState.displayLanguage),
-                        color = Accent,
-                        fontWeight = FontWeight.Bold,
+                        text = "Widget Theme".translate(uiState.displayLanguage),
                         fontSize = 14.sp,
-                        modifier = Modifier.padding(top = 4.dp, bottom = 6.dp)
-                    )
-                    Box(modifier = Modifier.fillMaxWidth()) {
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { showBaniSelectMenu = true },
-                            shape = RoundedCornerShape(12.dp),
-                            color = SurfaceColor,
-                            border = BorderStroke(1.dp, Accent.copy(alpha = 0.15f))
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = currentBani.title.translate(uiState.displayLanguage),
-                                    color = TextPrimary,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 15.sp
-                                )
-                                Icon(
-                                    imageVector = Icons.Default.ArrowDropDown,
-                                    contentDescription = null,
-                                    tint = Accent
-                                )
-                            }
-                        }
-
-                        DropdownMenu(
-                            expanded = showBaniSelectMenu,
-                            onDismissRequest = { showBaniSelectMenu = false },
-                            modifier = Modifier.fillMaxWidth(0.9f)
-                        ) {
-                            uiState.banis.forEach { b ->
-                                DropdownMenuItem(
-                                    text = { Text(b.title.translate(uiState.displayLanguage)) },
-                                    onClick = {
-                                        selectedBaniForAudio = b
-                                        showBaniSelectMenu = false
-                                    }
-                                )
-                            }
-                        }
-                    }
-
-                    HorizontalDivider(
-                        modifier = Modifier.padding(vertical = 14.dp),
-                        color = Accent.copy(alpha = 0.08f)
-                    )
-
-                    // 2. Audio tracks list
-                    // --- Downloaded / Imported Audio Files ---
-                    Text(
-                        text = "Downloaded / Imported Audio Files".translate(uiState.displayLanguage),
-                        color = Accent,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp
+                        color = TextPrimary
                     )
-                    Text(
-                        text = "Stored offline on your device".translate(uiState.displayLanguage),
-                        color = TextSecondary,
-                        fontSize = 11.sp,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-
-                    val hasLocal = defaultIsLocal || localTracks.isNotEmpty()
-                    if (!hasLocal) {
-                        Text(
-                            text = "No offline audio files. Download the default track or import custom audio below.".translate(uiState.displayLanguage),
-                            color = TextSecondary.copy(alpha = 0.7f),
-                            fontSize = 12.sp,
-                            modifier = Modifier.padding(vertical = 8.dp, horizontal = 4.dp)
-                        )
-                    } else {
-                        // Render default track if it is local
-                        if (defaultIsLocal) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                RadioButton(
-                                    selected = activeTrackId == "default",
-                                    onClick = {
-                                        viewModel.selectBani(currentBani.id)
-                                        viewModel.setActiveTrackId(currentBani.id, "default", audioController)
-                                        val url = defaultLocalPath ?: ""
-                                        if (url.isNotBlank()) {
-                                            if (uiState.playback.isPlaying) {
-                                                audioController.play(url, currentBani.title)
-                                            } else {
-                                                audioController.prepare(url, currentBani.title)
-                                            }
-                                        }
-                                        tracksRefreshTrigger++
-                                    }
-                                )
-                                Column(modifier = Modifier.weight(1f).padding(start = 8.dp)) {
-                                    Text(
-                                        text = "Default Recitation (Offline)".translate(uiState.displayLanguage),
-                                        color = TextPrimary,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 14.sp
-                                    )
-                                    Text(
-                                        text = (defaultTrack?.artist ?: "Unknown Artist").translate(uiState.displayLanguage),
-                                        color = TextSecondary,
-                                        fontSize = 12.sp
-                                    )
-                                }
-                                IconButton(
-                                    onClick = {
-                                        syncEditorTrackId = "default"
-                                        showSyncEditor = true
-                                    }
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Edit,
-                                        contentDescription = null,
-                                        tint = Accent
-                                    )
-                                }
-                                IconButton(
-                                    onClick = {
-                                        viewModel.selectBani(currentBani.id)
-                                        val url = defaultLocalPath ?: ""
-                                        if (url.isNotBlank()) {
-                                            audioController.play(url, currentBani.title)
-                                        }
-                                    }
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.PlayArrow,
-                                        contentDescription = null,
-                                        tint = Accent
-                                    )
-                                }
-                            }
-                        }
-
-                        // Render user imported local tracks
-                        localTracks.forEach { track ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                RadioButton(
-                                    selected = activeTrackId == track.id,
-                                    onClick = {
-                                        viewModel.selectBani(currentBani.id)
-                                        viewModel.setActiveTrackId(currentBani.id, track.id, audioController)
-                                        val url = track.localPath ?: ""
-                                        if (url.isNotBlank()) {
-                                            if (uiState.playback.isPlaying) {
-                                                audioController.play(url, currentBani.title)
-                                            } else {
-                                                audioController.prepare(url, currentBani.title)
-                                            }
-                                        }
-                                        tracksRefreshTrigger++
-                                    }
-                                )
-                                Column(modifier = Modifier.weight(1f).padding(start = 8.dp)) {
-                                    Text(
-                                        text = if (track.title.isNotBlank()) track.title else track.artist,
-                                        color = TextPrimary,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 14.sp
-                                    )
-                                    val durationStr = remember(track.durationMs) {
-                                        if (track.durationMs > 0L) {
-                                            val min = track.durationMs / 60000L
-                                            val sec = (track.durationMs % 60000L) / 1000L
-                                            "$min min $sec sec"
-                                        } else {
-                                            ""
-                                        }
-                                    }
-                                    val subtitle = buildString {
-                                        append(track.artist)
-                                        if (durationStr.isNotEmpty()) {
-                                            append(" • ")
-                                            append(durationStr)
-                                        }
-                                    }
-                                    Text(
-                                        text = subtitle.translate(uiState.displayLanguage),
-                                        color = TextSecondary,
-                                        fontSize = 12.sp
-                                    )
-                                }
-                                IconButton(
-                                    onClick = {
-                                        syncEditorTrackId = track.id
-                                        showSyncEditor = true
-                                    }
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Edit,
-                                        contentDescription = null,
-                                        tint = Accent
-                                    )
-                                }
-                                IconButton(
-                                    onClick = {
-                                        viewModel.selectBani(currentBani.id)
-                                        val url = track.localPath ?: ""
-                                        if (url.isNotBlank()) {
-                                            audioController.play(url, currentBani.title)
-                                        }
-                                    }
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.PlayArrow,
-                                        contentDescription = null,
-                                        tint = Accent
-                                    )
-                                }
-                                IconButton(
-                                    onClick = {
-                                        audioController.deleteCustomTrack(track.id)
-                                        tracksRefreshTrigger++
-                                        Toast.makeText(context, "Deleted track".translate(uiState.displayLanguage), Toast.LENGTH_SHORT).show()
-                                    }
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Delete,
-                                        contentDescription = null,
-                                        tint = Color(0xFFFF5252)
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    HorizontalDivider(
-                        modifier = Modifier.padding(vertical = 12.dp),
-                        color = Accent.copy(alpha = 0.08f)
-                    )
-
-                    // --- Online Streaming Tracks / Links ---
-                    Text(
-                        text = "Online Streaming Tracks / Links".translate(uiState.displayLanguage),
-                        color = Accent,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp
-                    )
-                    Text(
-                        text = "Requires active internet connection".translate(uiState.displayLanguage),
-                        color = TextSecondary,
-                        fontSize = 11.sp,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-
-                    val hasOnline = !defaultIsLocal || onlineTracks.isNotEmpty()
-                    if (!hasOnline) {
-                        Text(
-                            text = "No online streaming tracks available.".translate(uiState.displayLanguage),
-                            color = TextSecondary.copy(alpha = 0.7f),
-                            fontSize = 12.sp,
-                            modifier = Modifier.padding(vertical = 8.dp, horizontal = 4.dp)
-                        )
-                    } else {
-                        // Render default track if it is online (not downloaded)
-                        if (!defaultIsLocal) {
-                            val remoteUrl = defaultTrack?.remoteUrl ?: ""
-                            val isDownloading = uiState.downloadingBaniIds.contains(currentBani.id)
-
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                RadioButton(
-                                    selected = activeTrackId == "default",
-                                    onClick = {
-                                        viewModel.selectBani(currentBani.id)
-                                        viewModel.setActiveTrackId(currentBani.id, "default", audioController)
-                                        if (remoteUrl.isNotBlank()) {
-                                            if (uiState.playback.isPlaying) {
-                                                audioController.play(remoteUrl, currentBani.title)
-                                            } else {
-                                                audioController.prepare(remoteUrl, currentBani.title)
-                                            }
-                                        }
-                                        tracksRefreshTrigger++
-                                    }
-                                )
-                                Column(modifier = Modifier.weight(1f).padding(start = 8.dp)) {
-                                    Text(
-                                        text = "Default Recitation (Online Stream)".translate(uiState.displayLanguage),
-                                        color = TextPrimary,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 14.sp
-                                    )
-                                    Text(
-                                        text = (defaultTrack?.artist ?: "Unknown Artist").translate(uiState.displayLanguage),
-                                        color = TextSecondary,
-                                        fontSize = 12.sp
-                                    )
-                                }
-
-                                if (isDownloading) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(24.dp).padding(4.dp),
-                                        color = Accent,
-                                        strokeWidth = 2.dp
-                                    )
-                                } else {
-                                    IconButton(
-                                        onClick = {
-                                            if (remoteUrl.isNotBlank()) {
-                                                viewModel.startDownload(currentBani.id, remoteUrl, audioController)
-                                            }
-                                        }
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Download,
-                                            contentDescription = "Download default recitation",
-                                            tint = Accent
-                                        )
-                                    }
-                                }
-
-                                IconButton(
-                                    onClick = {
-                                        syncEditorTrackId = "default"
-                                        showSyncEditor = true
-                                    }
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Edit,
-                                        contentDescription = null,
-                                        tint = Accent
-                                    )
-                                }
-                                IconButton(
-                                    onClick = {
-                                        viewModel.selectBani(currentBani.id)
-                                        if (remoteUrl.isNotBlank()) {
-                                            audioController.play(remoteUrl, currentBani.title)
-                                        }
-                                    }
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.PlayArrow,
-                                        contentDescription = null,
-                                        tint = Accent
-                                    )
-                                }
-                            }
-                        }
-
-                        // Render online / curated streaming tracks
-                        onlineTracks.forEach { track ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                RadioButton(
-                                    selected = activeTrackId == track.id,
-                                    onClick = {
-                                        viewModel.selectBani(currentBani.id)
-                                        viewModel.setActiveTrackId(currentBani.id, track.id, audioController)
-                                        val url = track.remoteUrl ?: ""
-                                        if (url.isNotBlank()) {
-                                            if (uiState.playback.isPlaying) {
-                                                audioController.play(url, currentBani.title)
-                                            } else {
-                                                audioController.prepare(url, currentBani.title)
-                                            }
-                                        }
-                                        tracksRefreshTrigger++
-                                    }
-                                )
-                                Column(modifier = Modifier.weight(1f).padding(start = 8.dp)) {
-                                    Text(
-                                        text = if (track.title.isNotBlank()) track.title else track.artist,
-                                        color = TextPrimary,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 14.sp
-                                    )
-                                    val durationStr = remember(track.durationMs) {
-                                        if (track.durationMs > 0L) {
-                                            val min = track.durationMs / 60000L
-                                            val sec = (track.durationMs % 60000L) / 1000L
-                                            "$min min $sec sec"
-                                        } else {
-                                            ""
-                                        }
-                                    }
-                                    val subtitle = buildString {
-                                        append(track.artist)
-                                        if (durationStr.isNotEmpty()) {
-                                            append(" • ")
-                                            append(durationStr)
-                                        }
-                                    }
-                                    Text(
-                                        text = subtitle.translate(uiState.displayLanguage),
-                                        color = TextSecondary,
-                                        fontSize = 12.sp
-                                    )
-                                }
-                                IconButton(
-                                    onClick = {
-                                        syncEditorTrackId = track.id
-                                        showSyncEditor = true
-                                    }
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Edit,
-                                        contentDescription = null,
-                                        tint = Accent
-                                    )
-                                }
-                                IconButton(
-                                    onClick = {
-                                        viewModel.selectBani(currentBani.id)
-                                        val url = track.remoteUrl ?: ""
-                                        if (url.isNotBlank()) {
-                                            audioController.play(url, currentBani.title)
-                                        }
-                                    }
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.PlayArrow,
-                                        contentDescription = null,
-                                        tint = Accent
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    HorizontalDivider(
-                        modifier = Modifier.padding(vertical = 14.dp),
-                        color = Accent.copy(alpha = 0.08f)
-                    )
-
-                    // 3. Import and Sync Studio premium button row
+                    Spacer(Modifier.height(8.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Surface(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clickable { showImportDialog = true },
-                            shape = RoundedCornerShape(14.dp),
-                            color = Accent.copy(alpha = 0.06f),
-                            border = BorderStroke(1.dp, Accent.copy(alpha = 0.12f))
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 12.dp, horizontal = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center
+                        val themes = listOf("Light", "Dark")
+                        themes.forEach { themeName ->
+                            val selected = uiState.widgetTheme == themeName
+                            Surface(
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp),
+                                color = if (selected) Accent.copy(alpha = 0.15f) else SurfaceColor,
+                                border = BorderStroke(1.dp, if (selected) Accent else Color.Transparent),
+                                onClick = { viewModel.setWidgetTheme(themeName) }
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.UploadFile,
-                                    contentDescription = null,
-                                    tint = Accent,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(Modifier.width(6.dp))
-                                Text(
-                                    text = "Import".translate(uiState.displayLanguage),
-                                    color = Accent,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 12.sp
-                                )
+                                Box(
+                                    modifier = Modifier.padding(12.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = themeName.translate(uiState.displayLanguage),
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = if (selected) Accent else TextPrimary
+                                    )
+                                }
                             }
                         }
+                    }
 
-                        Surface(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clickable { showSyncEditor = true },
-                            shape = RoundedCornerShape(14.dp),
-                            color = Accent.copy(alpha = 0.06f),
-                            border = BorderStroke(1.dp, Accent.copy(alpha = 0.12f))
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 12.dp, horizontal = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center
+                    Spacer(Modifier.height(24.dp))
+
+                    Text(
+                        text = "Widget Content".translate(uiState.displayLanguage),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        val contents = listOf("Mascot Assistant", "Meditation & Quote")
+                        contents.forEach { contentName ->
+                            val selected = uiState.widgetContent == contentName
+                            val labelName = if (contentName == "Meditation & Quote") "Reflection & Progress" else contentName
+                            Surface(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                color = if (selected) Accent.copy(alpha = 0.15f) else SurfaceColor,
+                                border = BorderStroke(1.dp, if (selected) Accent else Color.Transparent),
+                                onClick = { viewModel.setWidgetContent(contentName) }
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.Sync,
-                                    contentDescription = null,
-                                    tint = Accent,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(Modifier.width(6.dp))
-                                Text(
-                                    text = "Sync Studio".translate(uiState.displayLanguage),
-                                    color = Accent,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 12.sp
-                                )
+                                Box(
+                                    modifier = Modifier.padding(12.dp).fillMaxWidth(),
+                                    contentAlignment = Alignment.CenterStart
+                                ) {
+                                    Text(
+                                        text = labelName.translate(uiState.displayLanguage),
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = if (selected) Accent else TextPrimary
+                                    )
+                                }
                             }
                         }
                     }
                 }
             }
         }
-    }
+        if (
+            selectedCategory ==
+            SettingsCategory.Audio
+        ) {
+
+            val currentBani =
+                selectedBaniForAudio
+
+            if (currentBani != null) {
+
+                /*
+                 * CURATED TRACKS
+                 */
+
+                val curatedTracks =
+                    CuratedAudioCatalog
+                        .getTracksForBani(
+                            currentBani.id
+                        )
+
+                /*
+                 * DEFAULT TRACK
+                 */
+
+
+                val localTracks =
+                    (
+                            curatedTracks.filter { track ->
+                                track.remoteUrl?.startsWith("raw/") == true
+                            }
+
+                                    +
+
+                                    customTracks.filter { track ->
+                                        (track.id.contains("_custom_") || !track.localPath.isNullOrBlank()) &&
+                                        track.id != "default"
+                                    }
+                            ).distinctBy {
+                            it.id
+                        }
+
+                /*
+                 * ONLINE TRACKS
+                 */
+
+                val onlineTracks =
+                    curatedTracks.filter { track ->
+                        val url = track.remoteUrl.orEmpty()
+                        (url.startsWith("http://") || url.startsWith("https://"))
+                    }
+
+                item {
+
+                    /*
+                     * SELECT BANI
+                     */
+
+                    Text(
+                        text = "Select Bani"
+                            .translate(
+                                uiState.displayLanguage
+                            ),
+
+                        color = Accent,
+
+                        fontWeight = FontWeight.Bold,
+
+                        fontSize = 14.sp,
+
+                        modifier = Modifier.padding(
+                            top = 4.dp,
+                            bottom = 6.dp
+                        )
+                    )
+
+                    Box(
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+
+                                    showBaniSelectMenu =
+                                        true
+                                },
+
+                            shape = RoundedCornerShape(12.dp),
+
+                            color = SurfaceColor,
+
+                            border = BorderStroke(
+                                1.dp,
+                                Accent.copy(alpha = 0.15f)
+                            )
+                        ) {
+
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(
+                                        horizontal = 16.dp,
+                                        vertical = 14.dp
+                                    ),
+
+                                horizontalArrangement =
+                                    Arrangement.SpaceBetween,
+
+                                verticalAlignment =
+                                    Alignment.CenterVertically
+                            ) {
+
+                                Text(
+                                    text = currentBani.title
+                                        .translate(
+                                            uiState.displayLanguage
+                                        ),
+
+                                    color = TextPrimary,
+
+                                    fontWeight = FontWeight.Bold,
+
+                                    fontSize = 15.sp
+                                )
+
+                                Icon(
+                                    imageVector =
+                                        Icons.Default.ArrowDropDown,
+
+                                    contentDescription = null,
+
+                                    tint = Accent
+                                )
+                            }
+                        }
+
+                        DropdownMenu(
+                            expanded =
+                                showBaniSelectMenu,
+
+                            onDismissRequest = {
+
+                                showBaniSelectMenu =
+                                    false
+                            }
+                        ) {
+
+                            uiState.banis.forEach { bani ->
+
+                                DropdownMenuItem(
+
+                                    text = {
+
+                                        Text(
+                                            bani.title.translate(
+                                                uiState.displayLanguage
+                                            )
+                                        )
+                                    },
+
+                                    onClick = {
+
+                                        selectedBaniForAudio =
+                                            bani
+
+                                        showBaniSelectMenu =
+                                            false
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(
+                            vertical = 14.dp
+                        ),
+
+                        color = Accent.copy(
+                            alpha = 0.08f
+                        )
+                    )
+
+                    /*
+                     * OFFLINE
+                     */
+
+                    AudioSectionHeader(
+
+                        title =
+                            "Downloaded / Imported Audio Files"
+                                .translate(
+                                    uiState.displayLanguage
+                                ),
+
+                        subtitle =
+                            "Stored offline on your device"
+                                .translate(
+                                    uiState.displayLanguage
+                                )
+                    )
+                    if (localTracks.isEmpty()) {
+
+                        Text(
+                            text =
+                                "No offline audio files. Import custom audio below."
+                                    .translate(
+                                        uiState.displayLanguage
+                                    ),
+
+                            color =
+                                TextSecondary.copy(
+                                    alpha = 0.7f
+                                ),
+
+                            fontSize = 12.sp,
+
+                            modifier = Modifier.padding(
+                                vertical = 8.dp,
+                                horizontal = 4.dp
+                            )
+                        )
+                    }
+                    /*
+                     * CUSTOM LOCAL TRACKS
+                     */
+
+                    localTracks.forEach { track ->
+
+                        val duration =
+                            formatDuration(
+                                track.durationMs
+                            )
+
+                        val subtitle =
+                            buildString {
+
+                                append(track.artist)
+
+                                if (
+                                    duration.isNotEmpty()
+                                ) {
+
+                                    append(" • ")
+                                    append(duration)
+                                }
+                            }
+
+                        AudioTrackRow(
+
+                            title =
+                                track.title.ifBlank {
+                                    track.artist
+                                },
+
+                            subtitle =
+                                subtitle.translate(
+                                    uiState.displayLanguage
+                                ),
+
+                            selected =
+                                activeTrackId ==
+                                        track.id,
+
+                            synced =
+                                audioController.hasTimingFile(
+                                    currentBani.id,
+                                    track.id
+                                ),
+
+                            showDelete = true,
+
+                            onSelect = {
+
+                                viewModel.setActiveTrackId(
+                                    currentBani.id,
+                                    track.id,
+                                    audioController
+                                )
+
+                                tracksRefreshTrigger++
+                            },
+
+                            onPlay = {
+
+                                val url =
+                                    track.localPath
+                                        ?: return@AudioTrackRow
+
+                                audioController.play(
+                                    url,
+                                    currentBani.title
+                                )
+                            },
+
+                            onEdit = {
+
+                                syncEditorTrackId =
+                                    track.id
+
+                                showSyncEditor = true
+                            },
+
+                            onDelete = {
+
+                                audioController
+                                    .deleteCustomTrack(
+                                        track.id
+                                    )
+
+                                tracksRefreshTrigger++
+                            }
+                        )
+                    }
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(
+                            vertical = 12.dp
+                        ),
+
+                        color =
+                            Accent.copy(alpha = 0.08f)
+                    )
+
+                    /*
+                     * ONLINE TRACKS
+                     */
+
+                    AudioSectionHeader(
+
+                        title =
+                            "Online Streaming Tracks / Links"
+                                .translate(
+                                    uiState.displayLanguage
+                                ),
+
+                        subtitle =
+                            "Requires active internet connection"
+                                .translate(
+                                    uiState.displayLanguage
+                                )
+                    )
+
+                    onlineTracks.forEach { track ->
+
+                        val duration =
+                            formatDuration(
+                                track.durationMs
+                            )
+
+                        val subtitle =
+                            buildString {
+
+                                append(track.artist)
+
+                                if (
+                                    duration.isNotEmpty()
+                                ) {
+
+                                    append(" • ")
+                                    append(duration)
+                                }
+                            }
+
+                        val isDownloading =
+                            uiState.downloadingBaniIds
+                                .contains(
+                                    "${currentBani.id}_${track.id}"
+                                )
+
+                        AudioTrackRow(
+
+                            title =
+                                track.title,
+
+                            subtitle =
+                                subtitle.translate(
+                                    uiState.displayLanguage
+                                ),
+
+                            selected =
+                                activeTrackId ==
+                                        track.id,
+
+                            synced =
+                                audioController.hasTimingFile(
+                                    currentBani.id,
+                                    track.id
+                                ),
+
+                            downloading =
+                                isDownloading,
+
+                            onSelect = {
+
+                                viewModel.setActiveTrackId(
+                                    currentBani.id,
+                                    track.id,
+                                    audioController
+                                )
+
+                                tracksRefreshTrigger++
+                            },
+
+                            onPlay = {
+
+                                val url =
+                                    track.remoteUrl
+                                        ?: return@AudioTrackRow
+
+                                audioController.play(
+                                    url,
+                                    currentBani.title
+                                )
+                            },
+
+                            onEdit = {
+
+                                syncEditorTrackId =
+                                    track.id
+
+                                showSyncEditor = true
+                            },
+
+                            onDownload = {
+
+                                val remoteUrl =
+                                    track.remoteUrl
+                                        ?: return@AudioTrackRow
+
+                                viewModel.startDownload(
+                                    currentBani.id,
+                                    remoteUrl,
+                                    audioController,
+                                    track.id
+                                )
+                            }
+                        )
+                    }
+                }
+            }
+        }
 
         item {
 
             Spacer(
                 modifier =
-                    Modifier.height(60.dp)
+                    Modifier.height(30.dp)
             )
         }
 
@@ -1925,20 +1919,7 @@ if (
                         //  * RESCHEDULE
                         //  */
 
-                        // scope.launch {
 
-                        //     PrayerReminderScheduler
-                        //         .schedulePrayerReminders(
-
-                        //             context = context,
-
-                        //             amritTime = amritTime,
-
-                        //             rehrasTime = rehrasTime,
-
-                        //             sohilaTime = sohilaTime
-                        //         )
-                        // }
 
                         showTimePicker = false
                     }
@@ -2768,4 +2749,359 @@ private fun ColorSelectorRow(
             }
         }
     }
+}/*
+ * HELPERS
+ */
+fun formatDuration(
+    durationMs: Long
+): String {
+
+    if (durationMs <= 0L) {
+        return ""
+    }
+
+    val totalSeconds =
+        durationMs / 1000
+
+    val hours =
+        totalSeconds / 3600
+
+    val minutes =
+        (totalSeconds % 3600) / 60
+
+    val seconds =
+        totalSeconds % 60
+
+    return when {
+
+        hours > 0 -> {
+
+            String.format(
+                "%d:%02d:%02d",
+                hours,
+                minutes,
+                seconds
+            )
+        }
+
+        else -> {
+
+            String.format(
+                "%02d:%02d",
+                minutes,
+                seconds
+            )
+        }
+    }
 }
+@Composable
+private fun SyncedBadge() {
+
+    Surface(
+        shape = RoundedCornerShape(6.dp),
+        color = Accent.copy(alpha = 0.12f),
+        modifier = Modifier.padding(start = 6.dp)
+    ) {
+
+        Row(
+            modifier = Modifier.padding(
+                horizontal = 6.dp,
+                vertical = 2.dp
+            ),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+
+            Icon(
+                imageVector = Icons.Default.GraphicEq,
+                contentDescription = null,
+                tint = Accent,
+                modifier = Modifier.size(10.dp)
+            )
+
+            Spacer(
+                modifier = Modifier.width(4.dp)
+            )
+
+            Text(
+                text = "Synced",
+                color = Accent,
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+@Composable
+private fun AudioSectionHeader(
+    title: String,
+    subtitle: String
+) {
+
+    Text(
+        text = title,
+        color = Accent,
+        fontWeight = FontWeight.Bold,
+        fontSize = 14.sp
+    )
+
+    Text(
+        text = subtitle,
+        color = TextSecondary,
+        fontSize = 11.sp,
+        modifier = Modifier.padding(
+            bottom = 8.dp
+        )
+    )
+}
+@Composable
+private fun AudioTrackRow(
+
+    title: String,
+
+    subtitle: String,
+
+    selected: Boolean,
+
+    synced: Boolean,
+
+    downloading: Boolean = false,
+
+    showDelete: Boolean = false,
+
+    onSelect: () -> Unit,
+
+    onPlay: () -> Unit,
+
+    onEdit: () -> Unit,
+
+    onDownload: (() -> Unit)? = null,
+
+    onDelete: (() -> Unit)? = null
+) {
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp),
+
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+
+        RadioButton(
+            selected = selected,
+            onClick = onSelect
+        )
+
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = 8.dp),
+
+            verticalArrangement = Arrangement.Center
+        ) {
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+
+                Text(
+                    text = title,
+
+                    modifier = Modifier.weight(
+                        1f,
+                        fill = false
+                    ),
+
+                    color = TextPrimary,
+
+                    fontWeight = FontWeight.Bold,
+
+                    fontSize = 14.sp,
+
+                    maxLines = 2,
+
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                if (synced) {
+                    SyncedBadge()
+                }
+            }
+
+            Spacer(
+                modifier = Modifier.height(2.dp)
+            )
+
+            Text(
+                text = subtitle,
+
+                color = TextSecondary,
+
+                fontSize = 12.sp,
+
+                maxLines = 1,
+
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+
+            if (downloading) {
+
+                CircularProgressIndicator(
+                    modifier = Modifier
+                        .size(20.dp)
+                        .padding(2.dp),
+
+                    color = Accent,
+
+                    strokeWidth = 2.dp
+                )
+
+            } else {
+
+                onDownload?.let {
+
+                    IconButton(
+                        onClick = it,
+                        modifier = Modifier.size(36.dp)
+                    ) {
+
+                        Icon(
+                            imageVector = Icons.Default.Download,
+                            contentDescription = null,
+                            tint = Accent,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            }
+
+            IconButton(
+                onClick = onEdit,
+                modifier = Modifier.size(36.dp)
+            ) {
+
+                Icon(
+                    imageVector = Icons.Default.Edit,
+                    contentDescription = null,
+                    tint = Accent,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+
+            IconButton(
+                onClick = onPlay,
+                modifier = Modifier.size(36.dp)
+            ) {
+
+                Icon(
+                    imageVector = Icons.Default.PlayArrow,
+                    contentDescription = null,
+                    tint = Accent,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            if (showDelete) {
+
+                IconButton(
+                    onClick = {
+                        onDelete?.invoke()
+                    },
+                    modifier = Modifier.size(36.dp)
+                ) {
+
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = null,
+                        tint = Color(0xFFFF5252),
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun WidgetMockPreview(
+    widgetTheme: String,
+    widgetContent: String,
+    displayLanguage: DisplayLanguage
+) {
+    val isDark = AppTheme.themeMode != ThemeMode.Light
+
+    val (bg, border, textPrimary, textSecondary, accentColor) = when (widgetTheme) {
+        "Light" -> Quintuple(Color(0xFFFDFBF7), BorderStroke(1.dp, Gold.copy(alpha = 0.5f)), Primary, TextPrimary.copy(alpha = 0.70f), Gold)
+        else -> Quintuple(Color(0xFF0F1115), BorderStroke(1.dp, Gold), Color.White, Color.White.copy(alpha = 0.65f), Gold)
+    }
+
+    Surface(
+        modifier = Modifier.fillMaxWidth().height(148.dp),
+        shape = RoundedCornerShape(24.dp),
+        color = bg,
+        border = border
+    ) {
+        Box(modifier = Modifier.fillMaxSize().padding(14.dp)) {
+            when (widgetContent) {
+                "Mascot Assistant" -> {
+                    Row(modifier = Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
+                        Box(modifier = Modifier.size(56.dp).clip(CircleShape).background(Brush.radialGradient(listOf(accentColor.copy(alpha = 0.55f), accentColor.copy(alpha = 0.20f)))), contentAlignment = Alignment.Center) {
+                            Text("🦅", fontSize = 28.sp)
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(text = "Daily Nitnem".translate(displayLanguage), color = textPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                            Spacer(Modifier.height(3.dp))
+                            Text(text = "Begin your Nitnem today 🌅".translate(displayLanguage), color = textSecondary, fontSize = 11.sp)
+                            Spacer(Modifier.height(6.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                listOf("Japji".translate(displayLanguage), "Jaap".translate(displayLanguage), "Chaupai".translate(displayLanguage)).forEach { name ->
+                                    Box(modifier = Modifier.background(accentColor.copy(alpha = 0.12f), RoundedCornerShape(6.dp)).padding(horizontal = 6.dp, vertical = 2.dp)) {
+                                        Text(name, color = accentColor, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+                        }
+                        Spacer(Modifier.width(8.dp))
+                        Box(modifier = Modifier.background(accentColor.copy(alpha = 0.15f), RoundedCornerShape(10.dp)).padding(horizontal = 8.dp, vertical = 5.dp)) {
+                            Text("🔥 0", color = accentColor, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+                else -> {
+                    // Meditation & Quote
+                    Row(modifier = Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
+                        Box(modifier = Modifier.size(44.dp).clip(CircleShape).background(accentColor.copy(alpha = 0.15f)), contentAlignment = Alignment.Center) {
+                            Text("✨", fontSize = 20.sp)
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(text = "ੴ Satnam Waheguru", color = textPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                            Spacer(Modifier.height(2.dp))
+                            Text(text = "Reflection • Upcoming: Japji Sahib".translate(displayLanguage), color = textSecondary, fontSize = 11.sp)
+                        }
+                        Box(modifier = Modifier.background(accentColor.copy(alpha = 0.15f), RoundedCornerShape(100.dp)).padding(horizontal = 10.dp, vertical = 5.dp)) {
+                            Text("🔥 0/5", color = textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private data class Quintuple<A, B, C, D, E>(
+    val first: A,
+    val second: B,
+    val third: C,
+    val fourth: D,
+    val fifth: E
+)

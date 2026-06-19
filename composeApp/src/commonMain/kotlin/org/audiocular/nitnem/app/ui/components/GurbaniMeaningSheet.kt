@@ -1,5 +1,7 @@
 package org.audiocular.nitnem.app.ui.components
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -7,13 +9,17 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoStories
+import androidx.compose.material.icons.filled.FormatAlignCenter
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -22,21 +28,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import org.audiocular.nitnem.models.BaniLine
-import org.audiocular.nitnem.app.ui.theme.Accent
-import org.audiocular.nitnem.app.ui.theme.TextPrimary
 import org.audiocular.nitnem.app.models.DisplayLanguage
+import org.audiocular.nitnem.app.ui.theme.Accent
+import org.audiocular.nitnem.app.ui.theme.Gold
+import org.audiocular.nitnem.app.ui.theme.TextPrimary
+import org.audiocular.nitnem.app.ui.theme.TextSecondary
+import org.audiocular.nitnem.models.BaniLine
 import org.audiocular.nitnem.utils.translate
 import org.audiocular.nitnem.utils.translateHindiTransliteration
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
-import androidx.compose.ui.draw.clip
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.ui.graphics.Brush
-
-import org.audiocular.nitnem.app.ui.theme.Gold
-import org.audiocular.nitnem.app.ui.theme.SurfaceVariant
-import org.audiocular.nitnem.app.ui.theme.TextSecondary
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -51,6 +50,8 @@ fun GurbaniMeaningSheet(
     showPunjabiTranslation: Boolean,
     showDevanagariTransliteration: Boolean,
     showWordMeaning: Boolean,
+    showRomanTransliteration: Boolean = false,
+    larivaarMode: Boolean = false,
     gurmukhiColorMode: String,
     translationColorMode: String,
     wordMeaningColorMode: String,
@@ -58,8 +59,12 @@ fun GurbaniMeaningSheet(
     onToggleEnglish: (Boolean) -> Unit = {},
     onTogglePunjabi: (Boolean) -> Unit = {},
     onToggleHindi: (Boolean) -> Unit = {},
-    onToggleWordMeaning: (Boolean) -> Unit = {}
+    onToggleWordMeaning: (Boolean) -> Unit = {},
+    onToggleRoman: (Boolean) -> Unit = {},
+    onToggleCenter: (Boolean) -> Unit = {},
+    onToggleLarivaar: (Boolean) -> Unit = {}
 ) {
+
     if (line == null) return
 
     val colors = MaterialTheme.colorScheme
@@ -81,197 +86,474 @@ fun GurbaniMeaningSheet(
         colors = colors,
         default = Accent
     )
-ModalBottomSheet(
 
-    onDismissRequest = onDismiss,
+    /*
+     * CONTENT AVAILABILITY
+     */
 
-    sheetState =
-        rememberModalBottomSheetState(
-            skipPartiallyExpanded = true
-        )
+    val hasEnglish = remember(line.translation) {
+        line.translation.hasMeaningContent()
+    }
 
-) {
+    val hasPunjabi = remember(line.punjabi) {
+        line.punjabi.hasMeaningContent()
+    }
 
-    Column(
+    val hasHindi = remember(line.hindi) {
+        line.hindi.hasMeaningContent()
+    }
 
-        modifier = Modifier
-            .fillMaxWidth()
-            .navigationBarsPadding()
-            .padding(horizontal = 20.dp)
-            .padding(
-                top = 4.dp,
-                bottom = 24.dp
-            )
-            .verticalScroll(
-                rememberScrollState()
-            )
+    val hasRoman = remember(line.transliteration) {
+        line.transliteration.hasMeaningContent()
+    }
+
+    val hasWordMeaning = remember(line.wordMeaning) {
+        line.wordMeaning.hasMeaningContent()
+    }
+
+    val hasAnyExtraContent = remember(
+        hasEnglish,
+        hasPunjabi,
+        hasHindi,
+        hasRoman,
+        hasWordMeaning
+    ) {
+        hasEnglish ||
+            hasPunjabi ||
+            hasHindi ||
+            hasRoman ||
+            hasWordMeaning
+    }
+
+    val sheetState = rememberModalBottomSheetState(
+        skipPartiallyExpanded = true
+    )
+
+    ModalBottomSheet(
+
+        onDismissRequest = onDismiss,
+
+        sheetState = sheetState
     ) {
 
+        Column(
 
-            // ── Header ──────────────────────────────────────────────────
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(horizontal = 20.dp)
+                .padding(
+                    top = 4.dp,
+                    bottom = 24.dp
+                )
+                .verticalScroll(
+                    rememberScrollState()
+                )
+        ) {
+
+            /*
+             * HEADER
+             */
+
             Text(
-                text = "Line Meaning".translate(displayLanguage),
+
+                text = "Line Meaning"
+                    .translate(displayLanguage),
+
                 style = MaterialTheme.typography.titleLarge,
+
                 fontWeight = FontWeight.Bold,
+
                 color = Accent,
-                modifier = Modifier.padding(bottom = 4.dp)
+
+                modifier =
+                    Modifier.padding(bottom = 4.dp)
             )
+
             Text(
-                text = "Tap chips below to toggle visible sections".translate(displayLanguage),
+
+                text =
+                    "Tap chips below to toggle visible sections"
+                        .translate(displayLanguage),
+
                 fontSize = 12.sp,
-                color = colors.onSurfaceVariant.copy(alpha = 0.55f),
-                modifier = Modifier.padding(bottom = 14.dp)
+
+                color =
+                    colors.onSurfaceVariant.copy(alpha = 0.55f),
+
+                modifier =
+                    Modifier.padding(bottom = 14.dp)
             )
 
-            // ── Inline settings chips ────────────────────────────────────
-           /*
- * PREMIUM TOGGLE SWITCHER
- *
- * Replace your entire Row(...) chips section with this.
- * Current chips look like default Material leftovers.
- * These feel intentional, compact, and premium.
- */
+            /*
+             * TOGGLES
+             */
 
-PremiumMeaningSwitcher(
+            PremiumMeaningSwitcher(
 
-    showHindi = showDevanagariTransliteration,
+                showHindi =
+                    showDevanagariTransliteration,
 
-    showEnglish = showEnglishTranslation,
+                showEnglish =
+                    showEnglishTranslation,
 
-    showPunjabi = showPunjabiTranslation,
+                showPunjabi =
+                    showPunjabiTranslation,
 
-    showWordMeaning = showWordMeaning,
+                showRoman =
+                    showRomanTransliteration,
 
-    hasWordMeaning =
-        line.wordMeaning.isNotBlank(),
+                showCenter =
+                    centerGurmukhi,
 
-    displayLanguage = displayLanguage,
+                showLarivaar =
+                    larivaarMode,
 
-    onToggleHindi = {
-        onToggleHindi(
-            !showDevanagariTransliteration
-        )
-    },
+                showWordMeaning =
+                    showWordMeaning,
 
-    onToggleEnglish = {
-        onToggleEnglish(
-            !showEnglishTranslation
-        )
-    },
+                hasEnglish =
+                    hasEnglish,
 
-    onTogglePunjabi = {
-        onTogglePunjabi(
-            !showPunjabiTranslation
-        )
-    },
+                hasPunjabi =
+                    hasPunjabi,
 
-    onToggleWordMeaning = {
-        onToggleWordMeaning(
-            !showWordMeaning
-        )
-    }
-)
+                hasHindi =
+                    hasHindi,
 
-            Spacer(modifier = Modifier.height(20.dp))
+                hasRoman =
+                    hasRoman,
 
-            // ── Gurmukhi ─────────────────────────────────────────────────
+                hasWordMeaning =
+                    hasWordMeaning,
+
+                displayLanguage =
+                    displayLanguage,
+
+                onToggleHindi = {
+
+                    onToggleHindi(
+                        !showDevanagariTransliteration
+                    )
+                },
+
+                onToggleEnglish = {
+
+                    onToggleEnglish(
+                        !showEnglishTranslation
+                    )
+                },
+
+                onTogglePunjabi = {
+
+                    onTogglePunjabi(
+                        !showPunjabiTranslation
+                    )
+                },
+
+                onToggleRoman = {
+
+                    onToggleRoman(
+                        !showRomanTransliteration
+                    )
+                },
+
+                onToggleCenter = {
+
+                    onToggleCenter(
+                        !centerGurmukhi
+                    )
+                },
+
+                onToggleLarivaar = {
+
+                    onToggleLarivaar(
+                        !larivaarMode
+                    )
+                },
+
+                onToggleWordMeaning = {
+
+                    onToggleWordMeaning(
+                        !showWordMeaning
+                    )
+                }
+            )
+
+            Spacer(
+                modifier = Modifier.height(20.dp)
+            )
+
+            /*
+             * GURMUKHI
+             */
+
+            val gurmukhiText =
+
+                if (larivaarMode) {
+
+                    line.gurmukhi
+                        .replace("\\s+".toRegex(), "")
+
+                } else {
+
+                    line.gurmukhi
+                }
+
             Text(
-                text = line.gurmukhi,
-                fontSize = gurmukhiFontSize.sp,
-                lineHeight = lineSpacing.sp,
-                color = gurmukhiColor,
-                fontWeight = if (boldGurmukhi) FontWeight.Bold else FontWeight.Medium,
-                textAlign = if (centerGurmukhi) TextAlign.Center else TextAlign.Start,
-                modifier = Modifier.fillMaxWidth()
+
+                text = gurmukhiText,
+
+                fontSize =
+                    gurmukhiFontSize.sp,
+
+                lineHeight =
+                    lineSpacing.sp,
+
+                color =
+                    gurmukhiColor,
+
+                fontWeight =
+
+                    if (boldGurmukhi)
+                        FontWeight.Bold
+                    else
+                        FontWeight.Medium,
+
+                textAlign =
+
+                    if (centerGurmukhi)
+                        TextAlign.Center
+                    else
+                        TextAlign.Start,
+
+                modifier =
+                    Modifier.fillMaxWidth()
             )
 
-            // ── Roman Transliteration ─────────────────────────────────────
-            if (line.transliteration.isNotBlank()) {
-                Spacer(modifier = Modifier.height(10.dp))
+            /*
+             * EMPTY STATE
+             */
+
+            if (!hasAnyExtraContent) {
+
+                Spacer(
+                    modifier = Modifier.height(16.dp)
+                )
+
+                HorizontalDivider(
+                    color = colors.outlineVariant.copy(alpha = 0.25f)
+                )
+
+                Spacer(
+                    modifier = Modifier.height(16.dp)
+                )
+
+                Text(
+
+                    text =
+                        "No additional meanings available"
+                            .translate(displayLanguage),
+
+                    color =
+                        TextSecondary.copy(alpha = 0.7f),
+
+                    fontSize = 13.sp
+                )
+            }
+
+            /*
+             * ROMAN
+             */
+
+            if (
+                showRomanTransliteration
+            ) {
+
+                Spacer(
+                    modifier = Modifier.height(10.dp)
+                )
+
                 MeaningRow(
+
                     icon = Icons.Default.Language,
-                    text = line.transliteration,
-                    color = colors.onSurfaceVariant.copy(alpha = 0.82f),
-                    fontSize = (gurmukhiFontSize * 0.62f),
-                    lineSpacing = lineSpacing,
+
+                    text = if (hasRoman) line.transliteration else "Transliteration not available".translate(displayLanguage),
+
+                    color =
+                        colors.onSurfaceVariant.copy(alpha = 0.82f),
+
+                    fontSize =
+                        gurmukhiFontSize * 0.62f,
+
+                    lineSpacing =
+                        lineSpacing,
+
                     italic = true
                 )
             }
 
-            // ── Hindi Transliteration ─────────────────────────────────────
-            if (showDevanagariTransliteration && line.hindi.isNotBlank()) {
-                Spacer(modifier = Modifier.height(12.dp))
-                HorizontalDivider(color = colors.outlineVariant.copy(alpha = 0.25f))
-                Spacer(modifier = Modifier.height(12.dp))
+            /*
+             * HINDI
+             */
+
+            if (
+                showDevanagariTransliteration
+            ) {
+
+                SectionSpacer()
+
                 SectionLabel(
+
                     icon = Icons.Default.AutoStories,
-                    label = "Hindi Translation".translate(displayLanguage)
+
+                    label =
+                        "Hindi Translation"
+                            .translate(displayLanguage)
                 )
-                Spacer(modifier = Modifier.height(6.dp))
+
+                Spacer(
+                    modifier = Modifier.height(6.dp)
+                )
+
                 MeaningRow(
+
                     icon = Icons.Default.AutoStories,
-                    text = line.hindi.translateHindiTransliteration(),
-                    color = translationColor,
-                    fontSize = (gurmukhiFontSize * 0.72f),
-                    lineSpacing = lineSpacing,
+
+                    text =
+                        if (hasHindi) line.hindi.translateHindiTransliteration() else "Hindi translation not available".translate(displayLanguage),
+
+                    color =
+                        translationColor,
+
+                    fontSize =
+                        gurmukhiFontSize * 0.72f,
+
+                    lineSpacing =
+                        lineSpacing,
+
                     showIcon = false
                 )
             }
 
-            // ── Word Meanings ─────────────────────────────────────────────
-            if (showWordMeaning && line.wordMeaning.isNotBlank()) {
-                Spacer(modifier = Modifier.height(12.dp))
-                HorizontalDivider(color = colors.outlineVariant.copy(alpha = 0.25f))
-                Spacer(modifier = Modifier.height(12.dp))
+            /*
+             * WORD MEANINGS
+             */
+
+            if (
+                showWordMeaning
+            ) {
+
+                SectionSpacer()
+
                 SectionLabel(
+
                     icon = Icons.Default.MenuBook,
-                    label = "Word Meanings".translate(displayLanguage)
+
+                    label =
+                        "Word Meanings"
+                            .translate(displayLanguage)
                 )
-                Spacer(modifier = Modifier.height(6.dp))
+
+                Spacer(
+                    modifier = Modifier.height(6.dp)
+                )
+
                 Text(
-                    text = line.wordMeaning,
-                    fontSize = (gurmukhiFontSize * 0.68f).sp,
-                    lineHeight = (lineSpacing * 0.85f).sp,
-                    color = wordMeaningColor
+
+                    text = if (hasWordMeaning) line.wordMeaning else "Word meanings not available".translate(displayLanguage),
+
+                    fontSize =
+                        (gurmukhiFontSize * 0.68f).sp,
+
+                    lineHeight =
+                        (lineSpacing * 0.85f).sp,
+
+                    color =
+                        wordMeaningColor
                 )
             }
 
-            // ── English Translation ───────────────────────────────────────
-            if (showEnglishTranslation && line.translation.isNotBlank()) {
-                Spacer(modifier = Modifier.height(12.dp))
-                HorizontalDivider(color = colors.outlineVariant.copy(alpha = 0.25f))
-                Spacer(modifier = Modifier.height(12.dp))
+            /*
+             * ENGLISH
+             */
+
+            if (
+                showEnglishTranslation
+            ) {
+
+                SectionSpacer()
+
                 SectionLabel(
+
                     icon = Icons.Default.Translate,
-                    label = "English Translation".translate(displayLanguage)
+
+                    label =
+                        "English Translation"
+                            .translate(displayLanguage)
                 )
-                Spacer(modifier = Modifier.height(6.dp))
+
+                Spacer(
+                    modifier = Modifier.height(6.dp)
+                )
+
                 MeaningRow(
+
                     icon = Icons.Default.Translate,
-                    text = line.translation,
-                    color = translationColor,
-                    fontSize = (gurmukhiFontSize * 0.72f),
-                    lineSpacing = lineSpacing,
+
+                    text = if (hasEnglish) line.translation else "English translation not available".translate(displayLanguage),
+
+                    color =
+                        translationColor,
+
+                    fontSize =
+                        gurmukhiFontSize * 0.72f,
+
+                    lineSpacing =
+                        lineSpacing,
+
                     showIcon = false
                 )
             }
 
-            // ── Punjabi Translation ───────────────────────────────────────
-            if (showPunjabiTranslation && line.punjabi.isNotBlank()) {
-                Spacer(modifier = Modifier.height(12.dp))
-                HorizontalDivider(color = colors.outlineVariant.copy(alpha = 0.25f))
-                Spacer(modifier = Modifier.height(12.dp))
+            /*
+             * PUNJABI
+             */
+
+            if (
+                showPunjabiTranslation
+            ) {
+
+                SectionSpacer()
+
                 SectionLabel(
+
                     icon = Icons.Default.MenuBook,
-                    label = "Punjabi Translation".translate(displayLanguage)
+
+                    label =
+                        "Punjabi Translation"
+                            .translate(displayLanguage)
                 )
-                Spacer(modifier = Modifier.height(6.dp))
+
+                Spacer(
+                    modifier = Modifier.height(6.dp)
+                )
+
                 MeaningRow(
+
                     icon = Icons.Default.MenuBook,
-                    text = line.punjabi,
-                    color = translationColor,
-                    fontSize = (gurmukhiFontSize * 0.72f),
-                    lineSpacing = lineSpacing,
+
+                    text = if (hasPunjabi) line.punjabi else "Punjabi translation not available".translate(displayLanguage),
+
+                    color =
+                        translationColor,
+
+                    fontSize =
+                        gurmukhiFontSize * 0.72f,
+
+                    lineSpacing =
+                        lineSpacing,
+
                     showIcon = false
                 )
             }
@@ -279,27 +561,68 @@ PremiumMeaningSwitcher(
     }
 }
 
+private fun String?.hasMeaningContent(): Boolean {
+
+    return !this.isNullOrBlank() &&
+        this.trim().isNotEmpty()
+}
+
+@Composable
+private fun SectionSpacer() {
+
+    val colors = MaterialTheme.colorScheme
+
+    Spacer(
+        modifier = Modifier.height(12.dp)
+    )
+
+    HorizontalDivider(
+        color = colors.outlineVariant.copy(alpha = 0.25f)
+    )
+
+    Spacer(
+        modifier = Modifier.height(12.dp)
+    )
+}
+
 @Composable
 private fun SectionLabel(
     icon: ImageVector,
     label: String
 ) {
-    val colors = MaterialTheme.colorScheme
+
     Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
+
+        verticalAlignment =
+            Alignment.CenterVertically,
+
+        horizontalArrangement =
+            Arrangement.spacedBy(6.dp)
     ) {
+
         Icon(
+
             imageVector = icon,
+
             contentDescription = null,
+
             tint = Accent.copy(alpha = 0.72f),
-            modifier = Modifier.size(14.dp)
+
+            modifier =
+                Modifier.size(14.dp)
         )
+
         Text(
+
             text = label,
-            style = MaterialTheme.typography.labelMedium,
+
+            style =
+                MaterialTheme.typography.labelMedium,
+
             color = Accent,
-            fontWeight = FontWeight.SemiBold
+
+            fontWeight =
+                FontWeight.SemiBold
         )
     }
 }
@@ -314,64 +637,60 @@ private fun MeaningRow(
     italic: Boolean = false,
     showIcon: Boolean = true
 ) {
+
     Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.Top
+
+        modifier =
+            Modifier.fillMaxWidth(),
+
+        verticalAlignment =
+            Alignment.Top
     ) {
+
         if (showIcon) {
+
             Icon(
+
                 imageVector = icon,
+
                 contentDescription = null,
-                tint = color.copy(alpha = 0.55f),
+
+                tint =
+                    color.copy(alpha = 0.55f),
+
                 modifier = Modifier
                     .padding(top = 3.dp)
                     .size(13.dp)
             )
-            Spacer(Modifier.width(8.dp))
+
+            Spacer(
+                Modifier.width(8.dp)
+            )
         }
+
         Text(
+
             text = text,
+
             color = color,
-            fontSize = fontSize.sp,
-            lineHeight = lineSpacing.sp,
-            fontStyle = if (italic) FontStyle.Italic else FontStyle.Normal,
-            modifier = Modifier.weight(1f)
+
+            fontSize =
+                fontSize.sp,
+
+            lineHeight =
+                lineSpacing.sp,
+
+            fontStyle =
+
+                if (italic)
+                    FontStyle.Italic
+                else
+                    FontStyle.Normal,
+
+            modifier =
+                Modifier.weight(1f)
         )
     }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun MeaningChip(
-    icon: ImageVector,
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit
-) {
-    FilterChip(
-        selected = selected,
-        onClick = onClick,
-        label = {
-            Text(
-                text = label,
-                fontSize = 12.sp,
-                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
-            )
-        },
-        leadingIcon = {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.size(14.dp)
-            )
-        },
-        shape = RoundedCornerShape(50),
-        colors = FilterChipDefaults.filterChipColors(
-            selectedContainerColor = Accent.copy(alpha = 0.14f),
-            selectedLabelColor = Accent,
-            selectedLeadingIconColor = Accent
-        )
-    )
 }
 
 private fun resolveTextColor(
@@ -379,16 +698,39 @@ private fun resolveTextColor(
     colors: ColorScheme,
     default: Color
 ): Color {
+
     return when (mode) {
-        "gold" -> Color(0xFFD6B25E)
-        "accent" -> colors.primary
-        "muted" -> colors.onSurfaceVariant.copy(alpha = 0.72f)
-        "white" -> if (colors.surface.luminance() > 0.5f) colors.onSurface else Color.White
-        "purple" -> Color(0xFFB39DFF)
-        "blue" -> Color(0xFF7AB8FF)
-        "green" -> Color(0xFF63D8B6)
-        "orange" -> Color(0xFFFFB36A)
-        else -> default
+
+        "gold" ->
+            Color(0xFFD6B25E)
+
+        "accent" ->
+            colors.primary
+
+        "muted" ->
+            colors.onSurfaceVariant.copy(alpha = 0.72f)
+
+        "white" ->
+
+            if (colors.surface.luminance() > 0.5f)
+                colors.onSurface
+            else
+                Color.White
+
+        "purple" ->
+            Color(0xFFB39DFF)
+
+        "blue" ->
+            Color(0xFF7AB8FF)
+
+        "green" ->
+            Color(0xFF63D8B6)
+
+        "orange" ->
+            Color(0xFFFFB36A)
+
+        else ->
+            default
     }
 }
 
@@ -401,7 +743,21 @@ private fun PremiumMeaningSwitcher(
 
     showPunjabi: Boolean,
 
+    showRoman: Boolean,
+
+    showCenter: Boolean,
+
+    showLarivaar: Boolean,
+
     showWordMeaning: Boolean,
+
+    hasEnglish: Boolean,
+
+    hasPunjabi: Boolean,
+
+    hasHindi: Boolean,
+
+    hasRoman: Boolean,
 
     hasWordMeaning: Boolean,
 
@@ -412,6 +768,12 @@ private fun PremiumMeaningSwitcher(
     onToggleEnglish: () -> Unit,
 
     onTogglePunjabi: () -> Unit,
+
+    onToggleRoman: () -> Unit,
+
+    onToggleCenter: () -> Unit,
+
+    onToggleLarivaar: () -> Unit,
 
     onToggleWordMeaning: () -> Unit
 ) {
@@ -428,58 +790,45 @@ private fun PremiumMeaningSwitcher(
             Arrangement.spacedBy(10.dp)
     ) {
 
-        PremiumToggleChip(
+        if (hasEnglish) {
 
-            icon =
-                Icons.Default.AutoStories,
+            PremiumToggleChip(
 
-            label =
-                "Hindi".translate(
-                    displayLanguage
-                ),
+                icon =
+                    Icons.Default.Translate,
 
-            selected =
-                showHindi,
+                label =
+                    "English"
+                        .translate(displayLanguage),
 
-            onClick =
-                onToggleHindi
-        )
+                selected =
+                    showEnglish,
 
-        PremiumToggleChip(
+                onClick =
+                    onToggleEnglish
+            )
+        }
 
-            icon =
-                Icons.Default.Translate,
+        if (hasPunjabi) {
 
-            label =
-                "English".translate(
-                    displayLanguage
-                ),
+            PremiumToggleChip(
 
-            selected =
-                showEnglish,
+                icon =
+                    Icons.Default.MenuBook,
 
-            onClick =
-                onToggleEnglish
-        )
+                label =
+                    "Punjabi"
+                        .translate(displayLanguage),
 
-        PremiumToggleChip(
+                selected =
+                    showPunjabi,
 
-            icon =
-                Icons.Default.MenuBook,
+                onClick =
+                    onTogglePunjabi
+            )
+        }
 
-            label =
-                "Punjabi".translate(
-                    displayLanguage
-                ),
-
-            selected =
-                showPunjabi,
-
-            onClick =
-                onTogglePunjabi
-        )
-
-        if (hasWordMeaning) {
+        if (hasRoman) {
 
             PremiumToggleChip(
 
@@ -487,9 +836,46 @@ private fun PremiumMeaningSwitcher(
                     Icons.Default.Language,
 
                 label =
-                    "Meanings".translate(
-                        displayLanguage
-                    ),
+                    "Roman"
+                        .translate(displayLanguage),
+
+                selected =
+                    showRoman,
+
+                onClick =
+                    onToggleRoman
+            )
+        }
+
+        if (hasHindi) {
+
+            PremiumToggleChip(
+
+                icon =
+                    Icons.Default.AutoStories,
+
+                label =
+                    "Hindi"
+                        .translate(displayLanguage),
+
+                selected =
+                    showHindi,
+
+                onClick =
+                    onToggleHindi
+            )
+        }
+
+        if (hasWordMeaning) {
+
+            PremiumToggleChip(
+
+                icon =
+                    Icons.Default.MenuBook,
+
+                label =
+                    "Words"
+                        .translate(displayLanguage),
 
                 selected =
                     showWordMeaning,
@@ -498,10 +884,43 @@ private fun PremiumMeaningSwitcher(
                     onToggleWordMeaning
             )
         }
+
+        PremiumToggleChip(
+
+            icon =
+                Icons.Default.FormatAlignCenter,
+
+            label =
+                "Center"
+                    .translate(displayLanguage),
+
+            selected =
+                showCenter,
+
+            onClick =
+                onToggleCenter
+        )
+
+        PremiumToggleChip(
+
+            icon =
+                Icons.Default.TextFields,
+
+            label =
+                "Larivaar"
+                    .translate(displayLanguage),
+
+            selected =
+                showLarivaar,
+
+            onClick =
+                onToggleLarivaar
+        )
     }
 }
+
 @Composable
-private fun PremiumToggleChip(
+fun PremiumToggleChip(
 
     icon: ImageVector,
 
@@ -512,42 +931,44 @@ private fun PremiumToggleChip(
     onClick: () -> Unit
 ) {
 
-   val backgroundBrush =
+    val backgroundBrush =
 
-    if (selected) {
+        if (selected) {
 
-        Brush.horizontalGradient(
+            Brush.horizontalGradient(
 
-            listOf(
+                listOf(
 
-                Accent.copy(alpha = 0.14f),
+                    Accent.copy(alpha = 0.14f),
 
-                Gold.copy(alpha = 0.08f)
+                    Gold.copy(alpha = 0.08f)
+                )
             )
-        )
 
-    } else {
+        } else {
 
-        Brush.horizontalGradient(
+            Brush.horizontalGradient(
 
-            listOf(
+                listOf(
 
-                Color.Transparent,
+                    Color.Transparent,
 
-                Color.Transparent
+                    Color.Transparent
+                )
             )
-        )
-    }
-  val borderColor =
+        }
 
-    if (selected) {
+    val borderColor =
 
-        Accent.copy(alpha = 0.16f)
+        if (selected) {
 
-    } else {
+            Accent.copy(alpha = 0.16f)
 
-        TextSecondary.copy(alpha = 0.06f)
-    }
+        } else {
+
+            TextSecondary.copy(alpha = 0.06f)
+        }
+
     val contentColor =
 
         if (selected)
@@ -557,15 +978,16 @@ private fun PremiumToggleChip(
 
     Surface(
 
-        modifier = Modifier
-            .height(34.dp),
+        modifier =
+            Modifier.height(34.dp),
 
         onClick = onClick,
 
         shape =
             RoundedCornerShape(12.dp),
 
-        color = Color.Transparent,
+        color =
+            Color.Transparent,
 
         border = BorderStroke(
             1.dp,

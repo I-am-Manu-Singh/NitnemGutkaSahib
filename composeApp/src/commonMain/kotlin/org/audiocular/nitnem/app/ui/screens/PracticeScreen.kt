@@ -3,6 +3,7 @@ package org.audiocular.nitnem.app.ui.screens
 
 import org.audiocular.nitnem.app.ui.practice.SimranAbhyasTab
 import org.audiocular.nitnem.app.ui.practice.AiGurbaniQuizTab
+import org.audiocular.nitnem.app.ui.practice.BaniAiAssistantTab
 import org.audiocular.nitnem.app.ui.practice.practiceColors
 import org.audiocular.nitnem.app.ui.practice.PracticeColors
 import androidx.compose.animation.AnimatedContent
@@ -11,12 +12,8 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -25,34 +22,24 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.animation.fadeIn
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
-import kotlinx.coroutines.delay
 import androidx.compose.animation.AnimatedVisibility
-import org.audiocular.nitnem.app.audio.StreamAudioController
+import org.audiocular.nitnem.audio.StreamAudioController
 import org.audiocular.nitnem.app.ui.theme.*
 import org.audiocular.nitnem.models.Bani
-import org.audiocular.nitnem.models.BaniLine
+import org.audiocular.nitnem.models.NitnemUiState
+import org.audiocular.nitnem.viewmodel.NitnemViewModel
 import org.audiocular.nitnem.app.models.DisplayLanguage
 import org.audiocular.nitnem.utils.translate
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.foundation.border
 
 
 enum class PracticeTab(
@@ -60,6 +47,7 @@ enum class PracticeTab(
     val icon: ImageVector
 ) {
     Quiz("AI Quiz", Icons.Default.AutoStories),
+    AiAssist("Bani AI", Icons.Default.SmartToy),
     Meditate("Meditate", Icons.Default.SelfImprovement)
 }
 
@@ -73,7 +61,9 @@ enum class PracticeTab(
 fun PracticeScreen(
     audioController: StreamAudioController,
     bani: Bani,
-    displayLanguage: DisplayLanguage
+    displayLanguage: DisplayLanguage,
+    uiState: NitnemUiState,
+    viewModel: NitnemViewModel
 ) {
 
     val context =
@@ -102,6 +92,10 @@ fun PracticeScreen(
             tab.title
         }
 
+        PracticeTab.AiAssist -> {
+            tab.title
+        }
+
         PracticeTab.Meditate -> {
             tab.title
         }
@@ -111,6 +105,10 @@ fun PracticeScreen(
 
         PracticeTab.Quiz -> {
             "Practice Gurbani Through Interactive Questions"
+        }
+
+        PracticeTab.AiAssist -> {
+            "Ask Bani anything about Gurbani"
         }
 
         PracticeTab.Meditate -> {
@@ -175,84 +173,82 @@ fun PracticeScreen(
                         verticalAlignment =
                             Alignment.CenterVertically
                     ) {
+                        val activeSession = uiState.activeQuizSession
 
                         Column(
                             modifier = Modifier.weight(1f)
                         ) {
-
                             Text(
-
                                 text = headerTitle.translate(displayLanguage),
-
                                 color = Primary,
-
-                                fontSize =
-
-                                    if (compactHeader)
-                                        17.sp
-                                    else
-                                        25.sp,
-
-                                fontWeight =
-                                    FontWeight.Bold
+                                fontSize = if (compactHeader) 17.sp else 25.sp,
+                                fontWeight = FontWeight.Bold
                             )
 
                             AnimatedVisibility(
                                 visible = !compactHeader
                             ) {
-
                                 Text(
-
-                                    text =
-                                        headerSubtitle.translate(displayLanguage),
-
-                                    color =
-                                        TextSecondary,
-
+                                    text = headerSubtitle.translate(displayLanguage),
+                                    color = TextSecondary,
                                     fontSize = 12.sp,
-
                                     lineHeight = 18.sp,
-
-                                    modifier =
-                                        Modifier.padding(
-                                            top = 2.dp
-                                        )
+                                    modifier = Modifier.padding(top = 2.dp)
                                 )
                             }
                         }
 
-                        Surface(
-
-                            shape = CircleShape,
-
-                            color =
-                                Gold.copy(alpha = 0.12f)
-                        ) {
-
-                            Box(
-
-                                modifier = Modifier
-                                    .size(34.dp),
-
-                                contentAlignment =
-                                    Alignment.Center
+                        // Hearts and XP overlay for AI Quiz top bar
+                        if (tab == PracticeTab.Quiz && activeSession != null && !activeSession.quizFinished) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(end = 12.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
+                                // Hearts
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                                ) {
+                                    repeat(5) { index ->
+                                        Icon(
+                                            imageVector = Icons.Default.Favorite,
+                                            contentDescription = null,
+                                            tint = if (index < activeSession.hearts) Color(0xFFE53935) else colors.textSecondary.copy(alpha = 0.22f),
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
 
+                                // XP Badge
+                                Surface(
+                                    shape = RoundedCornerShape(100.dp),
+                                    color = Color.Transparent
+                                ) {
+                                    Text(
+                                        text = "${uiState.totalXp} XP",
+                                        color = colors.accent,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 11.sp,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        Surface(
+                            shape = CircleShape,
+                            color = Gold.copy(alpha = 0.12f)
+                        ) {
+                            Box(
+                                modifier = Modifier.size(34.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
                                 Icon(
-
-                                    imageVector =
-
-                                        if (compactHeader)
-                                            Icons.Default.KeyboardArrowDown
-                                        else
-                                            Icons.Default.KeyboardArrowUp,
-
+                                    imageVector = if (compactHeader) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp,
                                     contentDescription = null,
-
                                     tint = Gold,
-
-                                    modifier =
-                                        Modifier.size(20.dp)
+                                    modifier = Modifier.size(20.dp)
                                 )
                             }
                         }
@@ -309,7 +305,9 @@ fun PracticeScreen(
 
                 targetState = tab,
 
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
 transitionSpec = {
 
     fadeIn(
@@ -344,7 +342,19 @@ transitionSpec = {
                             AiGurbaniQuizTab(
                                 bani = bani,
                                 colors = colors,
-                                displayLanguage = displayLanguage
+                                displayLanguage = displayLanguage,
+                                uiState = uiState,
+                                viewModel = viewModel
+                            )
+                        }
+
+                        PracticeTab.AiAssist -> {
+
+                            BaniAiAssistantTab(
+                                bani = bani,
+                                colors = colors,
+                                displayLanguage = displayLanguage,
+                                uiState = uiState
                             )
                         }
 
@@ -353,7 +363,9 @@ transitionSpec = {
                             SimranAbhyasTab(
                                 colors = colors,
                                 displayLanguage =
-                                    displayLanguage
+                                    displayLanguage,
+                                uiState = uiState,
+                                viewModel = viewModel
                             )
                         }
 

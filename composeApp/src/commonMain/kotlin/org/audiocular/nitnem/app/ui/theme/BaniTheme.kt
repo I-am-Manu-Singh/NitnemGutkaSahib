@@ -285,7 +285,7 @@ fun resolveBaniTheme(
                     Icons.Default.WbTwilight,
 
                 ambientIcon =
-                    Icons.Default.WbTwilight,
+                    Icons.Default.AutoAwesome,
 
                 author =
                     "Multiple Gurus",
@@ -328,7 +328,7 @@ fun resolveBaniTheme(
                     Icons.Default.NightlightRound,
 
                 ambientIcon =
-                    Icons.Default.NightsStay,
+                    Icons.Default.Stars,
 
                 author =
                     "Multiple Gurus",
@@ -909,7 +909,7 @@ fun resolveBaniTheme(
                     Icons.Default.QueueMusic,
 
                 author =
-                    "Sri Guru Granth Sahib Ji",
+                    "Compilation",
 
                 ang =
                     "Ang 1429",

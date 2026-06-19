@@ -11,7 +11,6 @@ fun generatedJapjiSahib(): Bani = Bani(
     title = "Japji Sahib",
     time = BaniTime.Morning,
     estimatedMinutes = 16,
-    audio = AudioTrack(id = "audio-japji", title = "Japji Sahib", artist = "Hari Singh", durationMs = 939000L, license = "CC BY-SA 3.0 / GFDL", attribution = "Audio: JapjiSahib.ogg by Hari Singh, Wikimedia Commons", remoteUrl = "https://upload.wikimedia.org/wikipedia/commons/5/5d/JapjiSahib.ogg"),
     source = ContentSource(text = "ShabadOS Database 5.0.0-next.0, generated from local SQLite package.", audio = "Audio: JapjiSahib.ogg by Hari Singh, Wikimedia Commons", licenseNote = "Gurbani text and supporting translations are from the ShabadOS database package. Review ShabadOS content/source licenses before release."),
     author = "Guru Nanak Dev Ji",
     ang = "Ang 1",

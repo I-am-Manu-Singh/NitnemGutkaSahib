@@ -2,12 +2,10 @@ package org.audiocular.nitnem.app.audio
 
 import android.app.PendingIntent
 import android.content.Intent
-import android.content.pm.ServiceInfo
-import android.os.Build
-import androidx.core.app.NotificationCompat
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import androidx.media3.session.DefaultMediaNotificationProvider
+import org.audiocular.nitnem.audio.AndroidStreamAudioController
 
 class NitnemAudioService :
     MediaSessionService() {

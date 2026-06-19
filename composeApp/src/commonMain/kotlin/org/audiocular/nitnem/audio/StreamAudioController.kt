@@ -1,4 +1,4 @@
-package org.audiocular.nitnem.app.audio
+package org.audiocular.nitnem.audio
 
 import androidx.compose.runtime.Composable
 import kotlinx.coroutines.flow.StateFlow
@@ -19,7 +19,9 @@ interface StreamAudioController {
         url: String,
         title: String = "Nitnem",
         initialPositionMs: Long = 0L
-    )
+    ){
+        println("PREPARE CALLED -> $url")
+    }
 
     /*
      * PLAY
@@ -27,9 +29,8 @@ interface StreamAudioController {
 
     fun play(
         url: String,
-        title: String = "Nitnem"
+        title: String
     )
-
     fun pause()
 
     fun resume()
@@ -128,19 +129,23 @@ interface StreamAudioController {
 
         baniId: String,
 
-        remoteUrl: String
+        remoteUrl: String,
+        trackId: String? = null
     ): Boolean
 
     fun isAudioDownloaded(
-        baniId: String
+        baniId: String,
+        trackId: String? = null
     ): Boolean
 
     fun getLocalAudioPath(
-        baniId: String
+        baniId: String,
+        trackId: String? = null
     ): String?
 
     fun deleteAudio(
-        baniId: String
+        baniId: String,
+        trackId: String? = null
     )
 
     fun getCustomTracks(): List<AudioTrack> = emptyList()
@@ -150,6 +155,14 @@ interface StreamAudioController {
     fun getActiveTrackId(baniId: String): String = "default"
     fun setActiveTrackId(baniId: String, trackId: String) {}
     fun getActiveAudioUrl(baniId: String): String? = null
+    fun hasTimingFile(baniId: String, trackId: String): Boolean = false
+    fun playRawResource(
+
+        rawName: String,
+
+        title: String
+
+    )
 }
 
 @Composable

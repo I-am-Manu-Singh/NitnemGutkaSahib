@@ -39,92 +39,160 @@ class AndroidNotificationBridge(
     }
 
     override fun sendReminderNotification(
+
         title: String,
+
         message: String
+
     ) {
 
         val baniId = when {
 
             title.contains(
+
                 "Amrit Vela",
+
                 ignoreCase = true
+
             ) ||
 
-            title.contains(
-                "Japji",
-                ignoreCase = true
-            ) -> {
+                    title.contains(
 
-                "japji-sahib"
-            }
+                        "Japji",
+
+                        ignoreCase = true
+
+                    ) -> "japji-sahib"
 
             title.contains(
+
                 "Rehras",
-                ignoreCase = true
-            ) -> {
 
-                "rehras-sahib"
-            }
+                ignoreCase = true
+
+            ) -> "rehras-sahib"
 
             title.contains(
+
                 "Sohila",
+
                 ignoreCase = true
-            ) -> {
 
-                "kirtan-sohila"
-            }
+            ) -> "kirtan-sohila"
 
+            else -> null
+
+        }
+
+        val targetTab = when {
+            title.contains("Reflection", ignoreCase = true) || title.contains("Simran", ignoreCase = true) -> "Practice"
             else -> null
         }
 
         val intent =
+
             Intent(
+
                 context,
+
                 MainActivity::class.java
+
             ).apply {
 
                 flags =
+
                     Intent.FLAG_ACTIVITY_CLEAR_TOP or
+
                             Intent.FLAG_ACTIVITY_SINGLE_TOP
 
-                if (baniId != null) {
+                baniId?.let {
 
                     putExtra(
+
                         "bani_id",
-                        baniId
+
+                        it
+
                     )
+
                 }
+
+                targetTab?.let {
+                    putExtra("target_tab", it)
+                }
+
             }
 
+        val requestCode =
+
+            baniId?.hashCode()
+
+                ?: title.hashCode()
+
         val pendingIntent =
+
             PendingIntent.getActivity(
 
                 context,
 
-                100,
+                requestCode,
 
                 intent,
 
                 PendingIntent.FLAG_UPDATE_CURRENT or
+
                         PendingIntent.FLAG_IMMUTABLE
+
             )
 
         val builder =
+
             NotificationCompat.Builder(
+
                 context,
+
                 NitnemNotificationChannels.REMINDERS
+
             )
+
                 .setSmallIcon(
+
                     org.audiocular.nitnem.R.drawable.ic_notification
-                )
-                .setContentTitle(title)
-                .setContentText(message)
-                .setContentIntent(pendingIntent)
-                .setAutoCancel(true)
-                .setPriority(
-                    NotificationCompat.PRIORITY_DEFAULT
+
                 )
 
+                .setContentTitle(title)
+
+                .setContentText(message)
+
+                .setStyle(
+
+                    NotificationCompat.BigTextStyle()
+
+                        .bigText(message)
+
+                )
+
+                .setContentIntent(
+
+                    pendingIntent
+
+                )
+
+                .setAutoCancel(true)
+
+                .setCategory(
+
+                    NotificationCompat.CATEGORY_REMINDER
+
+                )
+
+                .setPriority(
+                    NotificationCompat.PRIORITY_HIGH
+                )
+                .setColor(0xFFFFB300.toInt())
+                .setLights(0xFFFFB300.toInt(), 1000, 1000)
+                .setVibrate(longArrayOf(0, 250, 250, 250))
         /*
          * ACTIONS
          */
@@ -216,6 +284,7 @@ class AndroidNotificationBridge(
             1,
             builder.build()
         )
+
     }
 
     override fun sendStreakNotification(
@@ -231,6 +300,7 @@ class AndroidNotificationBridge(
                 flags =
                     Intent.FLAG_ACTIVITY_CLEAR_TOP or
                             Intent.FLAG_ACTIVITY_SINGLE_TOP
+                putExtra("target_tab", "Home")
             }
 
         val pendingIntent =
@@ -260,15 +330,26 @@ class AndroidNotificationBridge(
                 .setContentText(
                     "You've maintained your Nitnem streak for $streakDays days."
                 )
+                .setStyle(
+                    NotificationCompat.BigTextStyle()
+                        .bigText(
+                            "You've maintained your Nitnem streak for $streakDays days."
+                        )
+                )
+                .setCategory(
+                    NotificationCompat.CATEGORY_STATUS
+                )
                 .setContentIntent(
                     pendingIntent
                 )
                 .setAutoCancel(true)
                 .setPriority(
-                    NotificationCompat.PRIORITY_DEFAULT
+                    NotificationCompat.PRIORITY_HIGH
                 )
+                .setColor(0xFFFFB300.toInt())
+                .setLights(0xFFFFB300.toInt(), 1000, 1000)
+                .setVibrate(longArrayOf(0, 250, 250, 250))
                 .build()
-
         notificationManager.notify(
             2,
             notification
@@ -288,6 +369,7 @@ class AndroidNotificationBridge(
                 flags =
                     Intent.FLAG_ACTIVITY_CLEAR_TOP or
                             Intent.FLAG_ACTIVITY_SINGLE_TOP
+                putExtra("target_tab", "Home")
             }
 
         val pendingIntent =
@@ -317,13 +399,25 @@ class AndroidNotificationBridge(
                 .setContentText(
                     "You completed $baniTitle."
                 )
+                .setStyle(
+                    NotificationCompat.BigTextStyle()
+                        .bigText(
+                            "You completed $baniTitle."
+                        )
+                )
+                .setCategory(
+                    NotificationCompat.CATEGORY_STATUS
+                )
                 .setContentIntent(
                     pendingIntent
                 )
                 .setAutoCancel(true)
                 .setPriority(
-                    NotificationCompat.PRIORITY_DEFAULT
+                    NotificationCompat.PRIORITY_HIGH
                 )
+                .setColor(0xFFFFB300.toInt())
+                .setLights(0xFFFFB300.toInt(), 1000, 1000)
+                .setVibrate(longArrayOf(0, 250, 250, 250))
                 .build()
 
         notificationManager.notify(
@@ -345,6 +439,10 @@ class AndroidNotificationBridge(
         if (progress >= 100) {
 
             dismissReadingProgressNotification()
+
+            sendCompletionNotification(
+                baniTitle = baniTitle
+            )
 
             return
         }
@@ -409,7 +507,7 @@ class AndroidNotificationBridge(
                     "Reading $baniTitle"
                 )
                 .setContentText(
-                    "$progress% completed"
+                    "${progress.coerceIn(0, 100)}% completed"
                 )
                 .setProgress(
                     100,
@@ -421,22 +519,15 @@ class AndroidNotificationBridge(
                 )
                 .setOngoing(true)
                 .setAutoCancel(false)
-
-                /*
-                 * IMPORTANT
-                 */
-
                 .setOnlyAlertOnce(true)
                 .setSilent(true)
-
-                /*
-                 * LOW PRIORITY
-                 */
-
+                .setCategory(
+                    NotificationCompat.CATEGORY_PROGRESS
+                )
                 .setPriority(
                     NotificationCompat.PRIORITY_LOW
                 )
-
+                .setColor(0xFFFFB300.toInt())
                 .build()
 
         notificationManager.notify(
@@ -452,6 +543,18 @@ class AndroidNotificationBridge(
         notificationManager.cancel(
             1001
         )
+    }
+
+    companion object {
+
+        const val REMINDER_ID = 1
+
+        const val STREAK_ID = 2
+
+        const val COMPLETION_ID = 3
+
+        const val READING_PROGRESS_ID = 1001
+
     }
 }
 

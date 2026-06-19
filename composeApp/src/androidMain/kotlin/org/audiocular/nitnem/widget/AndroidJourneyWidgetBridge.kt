@@ -1,6 +1,9 @@
 package org.audiocular.nitnem.app.widget
 
 import android.content.Context
+import android.content.Intent
+import android.content.ComponentName
+import android.appwidget.AppWidgetManager
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
@@ -10,6 +13,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import org.audiocular.nitnem.widget.NitnemWidget
+import org.audiocular.nitnem.widget.NitnemJourneyWidgetProvider
+
 private class AndroidJourneyWidgetBridge(
     private val context: Context
 ) : JourneyWidgetBridge {
@@ -31,7 +36,9 @@ private class AndroidJourneyWidgetBridge(
         streakDays: Int,
         weeklyCompleted: Int,
         monthlyConsistencyDays: Int,
-        completedBaniIds: List<String>
+        completedBaniIds: List<String>,
+        widgetTheme: String,
+        widgetContent: String
     ) {
 
         val safeTotal =
@@ -81,10 +88,20 @@ private class AndroidJourneyWidgetBridge(
                 completedBaniIds.toSet()
             )
 
-            .apply()
+            .putString(
+                "widget_theme",
+                widgetTheme
+            )
+
+            .putString(
+                "widget_content",
+                widgetContent
+            )
+
+            .commit()
 
         /*
-         * UPDATE GLANCE WIDGET
+         * UPDATE GLANCE WIDGET & BROADCAST
          */
 
         scope.launch {
@@ -93,6 +110,17 @@ private class AndroidJourneyWidgetBridge(
 
                 NitnemWidget()
                     .updateAll(context)
+
+                // Send a direct system broadcast to the widget provider to force instant redraw
+                val intent = Intent(context, NitnemJourneyWidgetProvider::class.java).apply {
+                    action = AppWidgetManager.ACTION_APPWIDGET_UPDATE
+                    val appWidgetManager = AppWidgetManager.getInstance(context)
+                    val ids = appWidgetManager.getAppWidgetIds(
+                        ComponentName(context, NitnemJourneyWidgetProvider::class.java)
+                    )
+                    putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, ids)
+                }
+                context.sendBroadcast(intent)
 
             } catch (e: Exception) {
 

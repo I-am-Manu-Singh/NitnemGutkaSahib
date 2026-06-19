@@ -10,6 +10,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import org.audiocular.nitnem.app.models.AppTab
 import org.audiocular.nitnem.app.models.ExperienceTab
+import org.audiocular.nitnem.app.models.DisplayLanguage
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
@@ -200,19 +201,29 @@ private fun MainRoot() {
 
     LaunchedEffect(notificationIntent) {
         val intent = notificationIntent
-        val baniId = intent?.getStringExtra("bani_id")
-        if (baniId != null) {
-            viewModel.selectBani(baniId)
-            viewModel.selectTab(AppTab.Experience)
-
-            val action = intent.getStringExtra("action")
-            if (action == "LISTEN") {
-                viewModel.selectExperienceTab(ExperienceTab.Listen)
-            } else if (action == "READ") {
-                viewModel.selectExperienceTab(ExperienceTab.Read)
+        if (intent != null) {
+            val targetTab = intent.getStringExtra("target_tab")
+            if (targetTab != null) {
+                runCatching {
+                    viewModel.selectTab(AppTab.valueOf(targetTab))
+                }
+                mainActivity?.clearNotificationIntent()
             }
 
-            mainActivity?.clearNotificationIntent()
+            val baniId = intent.getStringExtra("bani_id")
+            if (baniId != null) {
+                viewModel.selectBani(baniId)
+                viewModel.selectTab(AppTab.Experience)
+
+                val action = intent.getStringExtra("action")
+                if (action == "LISTEN") {
+                    viewModel.selectExperienceTab(ExperienceTab.Listen)
+                } else if (action == "READ") {
+                    viewModel.selectExperienceTab(ExperienceTab.Read)
+                }
+
+                mainActivity?.clearNotificationIntent()
+            }
         }
     }
 
@@ -231,11 +242,17 @@ private fun MainRoot() {
      * LOAD THEME + ACCENT
      */
 
+    var displayLanguage by remember {
+        mutableStateOf(DisplayLanguage.English)
+    }
+
     LaunchedEffect(Unit) {
 
         settingsRepository
             .preferencesFlow
             .collectLatest { settings ->
+
+                displayLanguage = settings.displayLanguage
 
                 /*
                  * ACCENT
@@ -283,6 +300,8 @@ private fun MainRoot() {
         AppRoute.Splash -> {
 
             SplashRoute(
+
+                displayLanguage = displayLanguage,
 
                 onOpenHome = {
 

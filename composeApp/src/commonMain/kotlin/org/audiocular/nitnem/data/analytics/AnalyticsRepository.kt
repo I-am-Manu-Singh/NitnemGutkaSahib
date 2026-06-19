@@ -23,7 +23,9 @@ data class DailyProgress(
 
     val completedBanis: Set<String>,
 
-    val readingMinutes: Int
+   val readingMinutes: Int,
+
+val listeningMinutes: Int = 0
 )
 
 @Serializable
@@ -77,7 +79,86 @@ class AnalyticsRepository(
                     )
                 }
             }
+suspend fun addListeningMinutes(
+    minutes: Int
+) {
 
+    val today =
+        LocalDate.now().toString()
+
+    context.analyticsDataStore.edit { prefs ->
+
+        val current =
+            prefs[ANALYTICS_KEY]
+
+        val state =
+
+            if (current == null) {
+
+                AnalyticsState()
+
+            } else {
+
+                runCatching {
+
+                    json.decodeFromString<
+                        AnalyticsState
+                    >(current)
+
+                }.getOrDefault(
+                    AnalyticsState()
+                )
+            }
+
+        val existing =
+            state.history.firstOrNull {
+                it.date == today
+            }
+
+        val updatedDay =
+
+            if (existing != null) {
+
+                existing.copy(
+
+                    listeningMinutes =
+                        existing.listeningMinutes +
+                            minutes
+                )
+
+            } else {
+
+                DailyProgress(
+
+                    date = today,
+
+                    completedBanis =
+                        emptySet(),
+
+                    readingMinutes = 0,
+
+                    listeningMinutes =
+                        minutes
+                )
+            }
+
+        val updatedHistory =
+            state.history
+                .filterNot {
+                    it.date == today
+                } + updatedDay
+
+        prefs[ANALYTICS_KEY] =
+
+            json.encodeToString(
+
+                AnalyticsState(
+                    history =
+                        updatedHistory
+                )
+            )
+    }
+}
     suspend fun markCompleted(
 
         baniId: String,

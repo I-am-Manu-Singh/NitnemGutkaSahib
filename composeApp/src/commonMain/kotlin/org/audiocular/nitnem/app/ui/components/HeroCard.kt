@@ -20,12 +20,18 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
+import kotlinx.coroutines.flow.update
 import kotlin.math.sin
 import kotlin.math.cos
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.platform.LocalClipboardManager
+import org.audiocular.nitnem.data.HukamnamaLine
+import androidx.compose.ui.text.AnnotatedString
 import kotlin.math.PI
 import kotlin.math.absoluteValue
 import androidx.compose.foundation.layout.FlowRow
@@ -55,10 +61,13 @@ import org.audiocular.nitnem.models.NitnemUiState
 import org.audiocular.nitnem.viewmodel.NitnemViewModel
 import android.content.Context
 import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.ui.text.font.FontStyle
+
 private data class HeroPrayerUi(
 
     val title: String,
@@ -186,7 +195,7 @@ val prayerInfo = HeroPrayerUi(
     ThemeMode.Amoled ->
         prayerInfo.accent
 }
-val hukamnamaWhite =
+    val hukamnamaWhite =
     Color(0xFFF8F6F2)
     /*
      * ANIMATION
@@ -376,13 +385,16 @@ val hukamnamaWhite =
         }
     }
 
-val hukamnamaText = remember(hukamnama, uiState.larivaarMode) {
+val hukamnamaText = remember(hukamnama, uiState.larivaarMode, displayLanguage) {
 
     hukamnama
         ?.lines
         ?.joinToString("\n") {
 
-            val text = if (uiState.larivaarMode) it.larivaar else it.gurmukhi
+            val text = when (displayLanguage) {
+                DisplayLanguage.Hindi -> if (it.transliterationHi.isNotBlank()) it.transliterationHi else it.gurmukhi
+                else -> if (uiState.larivaarMode) it.larivaar else it.gurmukhi
+            }
             text.trim()
         }
 
@@ -451,7 +463,24 @@ val hukamnamaText = remember(hukamnama, uiState.larivaarMode) {
                         shape = CircleShape
                     )
             )
+                  Box(
 
+    modifier = Modifier
+        .fillMaxWidth()
+        .height(120.dp)
+        .background(
+
+            Brush.verticalGradient(
+
+                listOf(
+
+                    Color.White.copy(alpha = 0.08f),
+
+                    Color.Transparent
+                )
+            )
+        )
+)
             /*
              * STARS & CLOUDS BACKGROUND EFFECTS
              */
@@ -459,83 +488,385 @@ val hukamnamaText = remember(hukamnama, uiState.larivaarMode) {
                 val width = size.width
                 val height = size.height
                 if (width > 0f && height > 0f) {
-                    
-                    // Draw 6 Twinkling Stars
-                    val starPositions = listOf(
-                        Offset(0.12f, 0.22f),
-                        Offset(0.45f, 0.15f),
-                        Offset(0.78f, 0.28f),
-                        Offset(0.28f, 0.65f),
-                        Offset(0.60f, 0.78f),
-                        Offset(0.88f, 0.60f)
-                    )
-                    
-                    starPositions.forEachIndexed { i, pos ->
-                        val angle = (twinkleTime + i * 60f) % 360f
-                        val rad = angle * PI.toFloat() / 180f
-                        val starAlpha = (0.15f + 0.5f * sin(rad).absoluteValue).coerceIn(0f, 1f)
-                        
-                        val starSize = if (i % 2 == 0) 10f else 7f
-                        val x = pos.x * width
-                        val y = pos.y * height
-                        
-                        val starPath = Path().apply {
-                            moveTo(x, y - starSize)
-                            quadraticTo(x, y, x + starSize, y)
-                            quadraticTo(x, y, x, y + starSize)
-                            quadraticTo(x, y, x - starSize, y)
-                            quadraticTo(x, y, x, y - starSize)
-                            close()
-                        }
-                        drawPath(starPath, color = Color.White.copy(alpha = starAlpha))
+                    // Full height sky gradient (no separate cut!)
+                    val skyColors = when {
+                        // Amrit Vela: deep twilight
+                        hour in 3..5 -> listOf(
+                            Color(0xFF030712), // Deep Space Black
+                            Color(0xFF0F172A), // Midnight Navy
+                            Color(0xFF1E1B4B), // Dark Indigo
+                            Color(0xFF31102F)  // Dawn Horizon Wine
+                        )
+                        // Sunrise: golden-orange-purple
+                        hour in 6..8 -> listOf(
+                            Color(0xFF4C1D95), // Deep Purple
+                            Color(0xFF8B5CF6), // Violet
+                            Color(0xFFEC4899), // Pink
+                            Color(0xFFF59E0B)  // Sunrise Gold
+                        )
+                        // Day: bright warm blues
+                        hour in 9..16 -> listOf(
+                            Color(0xFF0284C7), // Sky Blue
+                            Color(0xFF38BDF8), // Warm Blue
+                            Color(0xFF7DD3FC), // Light Blue
+                            Color(0xFFE0F2FE)  // Soft Blue
+                        )
+                        // Sunset: dramatic crimson/purple/amber
+                        hour in 17..18 -> listOf(
+                            Color(0xFF31102F), // Dusk Wine
+                            Color(0xFFBE123C), // Crimson
+                            Color(0xFFF59E0B), // Sunset Orange
+                            Color(0xFFFEF08A)  // Light Amber
+                        )
+                        // Twilight / Early Night: dark violet-indigo
+                        hour in 19..20 -> listOf(
+                            Color(0xFF0B0F19), // Dark Blue
+                            Color(0xFF1E1B4B), // Indigo
+                            Color(0xFF111827), // Grey-black
+                            Color(0xFF030712)
+                        )
+                        // Late Night: space black-blue
+                        else -> listOf(
+                            Color(0xFF030712), // Cosmic Black
+                            Color(0xFF080E1E), // Deep Space
+                            Color(0xFF0F172A), // Navy
+                            Color(0xFF1E293B)  // Slate Blue
+                        )
                     }
+
+                    drawRect(
+                        brush = Brush.verticalGradient(
+                            colors = skyColors,
+                            startY = 0f,
+                            endY = height
+                        ),
+                        size = size
+                    )
+drawRect(
+
+    brush = Brush.verticalGradient(
+
+        colors = listOf(
+
+            Color.Transparent,
+
+            prayerInfo.accent.copy(alpha = 0.08f)
+
+        ),
+
+        startY = height * 0.55f,
+
+        endY = height
+    ),
+
+    size = size
+)
+                    // Draw Sun or Moon based on time
+                  val sunMoonX = width * 0.9f;
+                    val sunMoonY = height * 0.14f
+                    val isNight = hour >= 19 || hour < 6
                     
-                    // Draw drifting Cloud 1 (Left to Right)
-                    val cloud1X = -120f + (width + 240f) * cloudProgress1
-                    val cloud1Y = height * 0.35f
-                    val c1Color = Color.White.copy(alpha = 0.05f)
-                    drawCircle(c1Color, radius = 22f, center = Offset(cloud1X, cloud1Y))
-                    drawCircle(c1Color, radius = 30f, center = Offset(cloud1X + 24f, cloud1Y - 8f))
-                    drawCircle(c1Color, radius = 26f, center = Offset(cloud1X + 48f, cloud1Y))
-                    drawCircle(c1Color, radius = 18f, center = Offset(cloud1X - 20f, cloud1Y + 4f))
-                    
-                    // Draw drifting Cloud 2 (Right to Left)
-                    val cloud2X = (width + 120f) - (width + 240f) * cloudProgress2
-                    val cloud2Y = height * 0.72f
-                    val c2Color = Color.White.copy(alpha = 0.06f)
-                    drawCircle(c2Color, radius = 26f, center = Offset(cloud2X, cloud2Y))
-                    drawCircle(c2Color, radius = 36f, center = Offset(cloud2X + 28f, cloud2Y - 10f))
-                    drawCircle(c2Color, radius = 30f, center = Offset(cloud2X + 56f, cloud2Y))
-                    drawCircle(c2Color, radius = 20f, center = Offset(cloud2X - 24f, cloud2Y + 6f))
+                    if (isNight) {
+                        // --- REALISTIC GLOWING MOON ---
+                       drawCircle(
+    color = Color.White.copy(alpha = 0.08f),
+    radius = 42f,
+    center = Offset(sunMoonX, sunMoonY)
+)
+
+drawCircle(
+    color = Color.White.copy(alpha = 0.15f),
+    radius = 32f,
+    center = Offset(sunMoonX, sunMoonY)
+)
+
+drawCircle(
+    color = Color(0xFFF8FAFC),
+    radius = 22f,
+    center = Offset(sunMoonX, sunMoonY)
+)
+                        // Lunar Craters (subtle dark gray organic details for realism)
+                   val craterColor =
+    Color(0xFFCBD5E1).copy(alpha = 0.35f)
+
+drawCircle(
+    craterColor,
+    radius = 3f,
+    center = Offset(
+        sunMoonX - 7f,
+        sunMoonY - 5f
+    )
+)
+
+drawCircle(
+    craterColor,
+    radius = 4f,
+    center = Offset(
+        sunMoonX + 5f,
+        sunMoonY + 7f
+    )
+)
+
+drawCircle(
+    craterColor,
+    radius = 2.5f,
+    center = Offset(
+        sunMoonX - 3f,
+        sunMoonY + 10f
+    )
+)
+                        // Draw Twinkling Stars (scattered realistic stars)
+                       val stars = listOf(
+
+    Triple(0.10f, 0.10f, 1.2f),
+Triple(0.16f, 0.18f, 1.5f),
+Triple(0.22f, 0.08f, 1f),
+Triple(0.28f, 0.22f, 1.8f),
+Triple(0.34f, 0.14f, 1.1f),
+Triple(0.40f, 0.06f, 1.6f),
+Triple(0.48f, 0.18f, 1.2f),
+Triple(0.54f, 0.10f, 1f),
+Triple(0.60f, 0.24f, 1.5f),
+Triple(0.66f, 0.08f, 1.2f),
+Triple(0.72f, 0.16f, 1f),
+Triple(0.78f, 0.06f, 1.5f),
+Triple(0.84f, 0.20f, 1.1f),
+Triple(0.90f, 0.12f, 1.3f)
+)
+
+stars.forEachIndexed { index, star ->
+
+    val twinkle =
+
+        if (index % 7 == 0) {
+
+            val alpha =
+                0.3f +
+                0.7f * kotlin.math.abs(
+                    sin(
+                        (twinkleTime + index * 25f)
+                            * PI.toFloat() / 180f
+                    )
+                )
+
+            alpha.coerceIn(0.2f, 1f)
+
+        } else {
+
+            0.65f
+        }
+
+    drawCircle(
+
+        color = Color.White.copy(alpha = twinkle),
+
+       radius = star.third * 0.75f,
+
+        center = Offset(
+
+            width * star.first,
+
+            height * star.second
+        )
+    )
+}
+                    } else {
+                        // --- REALISTIC GLOWING SUN ---
+                        val sunColor = when {
+                            hour in 6..8 -> Color(0xFFF59E0B) // Sunrise Gold
+                            hour in 17..18 -> Color(0xFFE11D48) // Sunset Rose/Red
+                            else -> Color.White // Noon White
+                        }
+                        val coronaColor = when {
+                            hour in 6..8 -> Color(0xFFFF8C00).copy(alpha = 0.2f)
+                            hour in 17..18 -> Color(0xFFF43F5E).copy(alpha = 0.25f)
+                            else -> Color(0xFFFFD700).copy(alpha = 0.15f * pulse)
+                        }
+                        
+                        // Radiating Outer Corona Halo
+                        drawCircle(
+                            color = coronaColor,
+                            radius = 56f,
+                            center = Offset(sunMoonX, sunMoonY)
+                        )
+                        drawCircle(
+                            color = sunColor.copy(alpha = 0.3f),
+                            radius = 36f,
+                            center = Offset(sunMoonX, sunMoonY)
+                        )
+                        // Core Sun Body
+drawCircle(
+    color = Color.White.copy(alpha = 0.10f),
+    radius = 55f,
+    center = Offset(sunMoonX, sunMoonY)
+)
+
+drawCircle(
+    color = Color(0xFFFFD37A).copy(alpha = 0.18f),
+    radius = 38f,
+    center = Offset(sunMoonX, sunMoonY)
+)
+
+drawCircle(
+    color = Color(0xFFFFF4C2),
+    radius = 18f,
+    center = Offset(sunMoonX, sunMoonY)
+)
+
+                       
+                    }
+
+                   // CLOUD 1
+val cloud1X = -140f + (width + 280f) * cloudProgress1
+val cloud1Y = height * 0.10f
+
+val cloud1Color =
+    if (isNight)
+        Color.White.copy(alpha = 0.04f)
+    else
+        Color.White.copy(alpha = 0.10f)
+
+val cloud1 = Path().apply {
+
+    moveTo(cloud1X - 35f, cloud1Y + 10f)
+
+    quadraticBezierTo(
+        cloud1X - 20f,
+        cloud1Y - 15f,
+        cloud1X + 5f,
+        cloud1Y - 8f
+    )
+
+    quadraticBezierTo(
+        cloud1X + 30f,
+        cloud1Y - 28f,
+        cloud1X + 55f,
+        cloud1Y - 6f
+    )
+
+    quadraticBezierTo(
+        cloud1X + 85f,
+        cloud1Y - 18f,
+        cloud1X + 105f,
+        cloud1Y + 6f
+    )
+
+    lineTo(cloud1X + 140f, cloud1Y + 18f)
+
+    lineTo(cloud1X - 35f, cloud1Y + 18f)
+
+    close()
+}
+drawPath(
+    path = cloud1,
+    color = cloud1Color
+)
+// CLOUD 2
+val cloud2X =
+    (width + 140f) -
+        (width + 280f) * cloudProgress2
+
+val cloud2Y = height * 0.16f
+
+val cloud2Color =
+    if (isNight)
+        Color.White.copy(alpha = 0.05f)
+    else
+        Color.White.copy(alpha = 0.12f)
+
+val cloud2 = Path().apply {
+
+    moveTo(cloud2X - 50f, cloud2Y + 12f)
+
+    quadraticBezierTo(
+        cloud2X - 25f,
+        cloud2Y - 20f,
+        cloud2X + 10f,
+        cloud2Y - 10f
+    )
+
+    quadraticBezierTo(
+        cloud2X + 45f,
+        cloud2Y - 38f,
+        cloud2X + 80f,
+        cloud2Y - 10f
+    )
+
+    quadraticBezierTo(
+        cloud2X + 120f,
+        cloud2Y - 22f,
+        cloud2X + 145f,
+        cloud2Y + 8f
+    )
+
+    lineTo(cloud2X + 190f, cloud2Y + 22f)
+
+    lineTo(cloud2X - 50f, cloud2Y + 22f)
+
+    close()
+}
+
+drawPath(
+    path = cloud2,
+    color = cloud2Color
+)
+// CLOUD 3 (small distant cloud)
+
+val cloud3X =
+    -80f + (width + 160f) * cloudProgress2
+
+val cloud3Y =
+    height * 0.30f
+
+val cloud3Color =
+    if (isNight)
+        Color.White.copy(alpha = 0.025f)
+    else
+        Color.White.copy(alpha = 0.08f)
+
+val cloud3 = Path().apply {
+
+    moveTo(cloud3X - 20f, cloud3Y + 6f)
+
+    quadraticBezierTo(
+        cloud3X - 10f,
+        cloud3Y - 10f,
+        cloud3X + 5f,
+        cloud3Y - 4f
+    )
+
+    quadraticBezierTo(
+        cloud3X + 18f,
+        cloud3Y - 18f,
+        cloud3X + 35f,
+        cloud3Y - 4f
+    )
+
+    quadraticBezierTo(
+        cloud3X + 55f,
+        cloud3Y - 10f,
+        cloud3X + 70f,
+        cloud3Y + 4f
+    )
+
+    lineTo(cloud3X + 80f, cloud3Y + 10f)
+
+    lineTo(cloud3X - 20f, cloud3Y + 10f)
+
+    close()
+}
+
+drawPath(
+    path = cloud3,
+    color = cloud3Color
+)
+
                 }
             }
-
+          
             /*
              * AMBIENT ICONS (No-clash, gentle sway)
              */
-
-            Icon(
-
-                imageVector =
-                    prayerInfo.ambientIcon,
-
-                contentDescription = null,
-
-                tint =
-                    Color.White.copy(alpha = 0.07f),
-
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(
-                        top = 80.dp,
-                        end = 16.dp
-                    )
-                    .size(90.dp)
-                    .rotate(swayRotation1)
-                    .offset(
-                        y = floatingOffset1.dp
-                    )
-            )
 
             Icon(
 
@@ -571,7 +902,10 @@ val hukamnamaText = remember(hukamnama, uiState.larivaarMode) {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(18.dp)
+                      .padding(
+    horizontal = 20.dp,
+    vertical = 22.dp
+)
                     
                 ) {
 
@@ -717,42 +1051,7 @@ val hukamnamaText = remember(hukamnama, uiState.larivaarMode) {
                         
                     }
 
-                    Row(
 
-                        verticalAlignment =
-                            Alignment.CenterVertically
-                    ) {
-
-                        Icon(
-
-                            imageVector =
-                                Icons.Default.LocalFireDepartment,
-
-                            contentDescription = null,
-
-                            tint = Gold,
-
-                            modifier =
-                                Modifier.size(25.dp)
-                        )
-
-                        Spacer(
-                            Modifier.height(8.dp)
-                        )
-
-                        Text(
-
-                            text =
-                                streak.toString(),
-
-                            color = primaryText,
-
-                            fontWeight =
-                                FontWeight.Bold,
-
-                            fontSize = 15.sp
-                        )
-                    }
                 }
 
                 Spacer(
@@ -1081,7 +1380,7 @@ Box(
         .fillMaxWidth()
         .heightIn(
             min = 60.dp,
-            max = 140.dp
+           max = 110.dp
         )
         .verticalScroll(
             rememberScrollState()
@@ -1196,7 +1495,7 @@ Box(
             )
         )
         .background(
-                    Color.White.copy(alpha = 0.10f)
+                    Color.White.copy(alpha = 0.22f)
                 )
         ) {
 
@@ -1222,10 +1521,10 @@ Box(
             )
             )
         }
-                }
-            }
-                }
-    if (hukamnama != null && showDetailsSheet) {
+    }
+}
+
+if (hukamnama != null && showDetailsSheet) {
 
     val current = hukamnama
 
@@ -1265,6 +1564,46 @@ Box(
     val secondarySheetText =
         primarySheetText.copy(alpha = 0.72f)
 
+    val hukamnamaAccent: Color = Gold
+
+    val colors = MaterialTheme.colorScheme
+
+    val gurmukhiColor = resolveTextColor(
+
+        mode = uiState.gurmukhiColorMode,
+
+        colors = colors,
+
+        default = hukamnamaAccent
+    )
+
+    val romanColor = resolveTextColor(
+
+        mode = uiState.romanTransliterationColorMode,
+
+        colors = colors,
+
+        default = secondarySheetText.copy(alpha = 0.82f)
+    )
+
+    val translationColor = resolveTextColor(
+
+        mode = uiState.translationColorMode,
+
+        colors = colors,
+
+        default = secondarySheetText.copy(alpha = 0.90f)
+    )
+
+    val punjabiColor = resolveTextColor(
+
+        mode = uiState.translationColorMode,
+
+        colors = colors,
+
+        default = secondarySheetText
+    )
+
     ModalBottomSheet(
 
         onDismissRequest = {
@@ -1295,7 +1634,12 @@ Box(
             )
         }
     ) {
+val clipboardManager =
+    LocalClipboardManager.current
 
+var selectedMeaningLine by remember {
+    mutableStateOf<HukamnamaLine?>(null)
+}
         Column(
 
             modifier = Modifier
@@ -1303,15 +1647,14 @@ Box(
                 .verticalScroll(
                     rememberScrollState()
                 )
-        .padding(
-            horizontal = 16.dp,
-            vertical = 2.dp
-        )
-        
-                ) {
+                .padding(
+                    horizontal = 16.dp,
+                    vertical = 4.dp
+                )
+        ) {
 
-                    /*
-                    * HEADER
+            /*
+             * HEADER
              */
 
             Row(
@@ -1350,7 +1693,7 @@ Box(
                 }
 
                 Spacer(
-                    Modifier.width(6.dp)
+                    Modifier.width(10.dp)
                 )
 
                 Column(
@@ -1359,9 +1702,12 @@ Box(
 
                     Text(
 
-                        text = "Daily Hukamnama".translate(displayLanguage),
+                        text =
+                            "Daily Hukamnama"
+                                .translate(displayLanguage),
 
-                        color = primarySheetText,
+                        color =
+                            primarySheetText,
 
                         fontSize = 22.sp,
 
@@ -1370,20 +1716,36 @@ Box(
                     )
 
                     Spacer(
-                        Modifier.height(3.dp)
+                        Modifier.height(2.dp)
                     )
 
                     Text(
 
-                        text = remember(current.date, displayLanguage) {
-                            current.date.split(", ").map { part ->
-                                part.split(" ").map { sub ->
-                                    sub.translate(displayLanguage)
-                                }.joinToString(" ")
-                            }.joinToString(", ").translateDigits(displayLanguage)
+                        text = remember(
+                            current.date,
+                            displayLanguage
+                        ) {
+
+                            current.date
+                                .split(", ")
+                                .map { part ->
+
+                                    part.split(" ")
+                                        .map { sub ->
+                                            sub.translate(
+                                                displayLanguage
+                                            )
+                                        }
+                                        .joinToString(" ")
+                                }
+                                .joinToString(", ")
+                                .translateDigits(
+                                    displayLanguage
+                                )
                         },
 
-                        color = secondarySheetText,
+                        color =
+                            secondarySheetText,
 
                         fontSize = 12.sp
                     )
@@ -1391,178 +1753,699 @@ Box(
             }
 
             Spacer(
-                Modifier.height(6.dp)
+                Modifier.height(14.dp)
             )
 
             /*
-             * META CARD
+             * META CHIPS
              */
 
+            FlowRow(
 
-                Column(
+                horizontalArrangement =
+                    Arrangement.spacedBy(8.dp),
 
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(18.dp)
-                ) {
+                verticalArrangement =
+                    Arrangement.spacedBy(8.dp)
+            ) {
 
-                    FlowRow(
+                MetaChip(
 
-    horizontalArrangement =
-        Arrangement.spacedBy(6.dp),
+                    label =
 
-    verticalArrangement =
-        Arrangement.spacedBy(2.dp)
-) {
+                        if (current.isFromApi) {
 
-    MetaChip(
-        label = if (current.isFromApi) {
-            "${"Ang".translate(displayLanguage)} ${current.ang}".translateDigits(displayLanguage)
-        } else {
-            current.ang.translateAng(displayLanguage)
-        }
-    )
+                            "${"Ang".translate(displayLanguage)} ${current.ang}"
+                                .translateDigits(displayLanguage)
 
-    MetaChip(
-        label = translateRaag(current.raag, displayLanguage)
-    )
+                        } else {
 
-    MetaChip(
-        label = translateWriter(current.writer, displayLanguage)
-    )
-}
-                }
-            
+                            current.ang
+                                .translateAng(displayLanguage)
+                        }
+                )
+
+                MetaChip(
+
+                    label =
+                        translateRaag(
+                            current.raag,
+                            displayLanguage
+                        )
+                )
+
+                MetaChip(
+
+                    label =
+                        translateWriter(
+                            current.writer,
+                            displayLanguage
+                        )
+                )
+            }
 
             Spacer(
-                Modifier.height(6.dp)
+                Modifier.height(16.dp)
             )
 
-/*
- * FULL HUKAMNAMA
- */
+            /*
+             * TOGGLES
+             */
 
-val colors = MaterialTheme.colorScheme
-val gurmukhiColor = resolveTextColor(
-    mode = uiState.gurmukhiColorMode,
-    colors = colors,
-    default = hukamnamaAccent
-)
-val romanColor = resolveTextColor(
-    mode = uiState.romanTransliterationColorMode,
-    colors = colors,
-    default = secondarySheetText.copy(alpha = 0.8f)
-)
-val translationColor = resolveTextColor(
-    mode = uiState.translationColorMode,
-    colors = colors,
-    default = secondarySheetText.copy(alpha = 0.88f)
-)
-val punjabiColor = resolveTextColor(
-    mode = uiState.translationColorMode,
-    colors = colors,
-    default = secondarySheetText
-)
+            Row(
 
-current.lines.forEachIndexed { index, line ->
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(
+                        rememberScrollState()
+                    ),
 
-    Surface(
+                horizontalArrangement =
+                    Arrangement.spacedBy(10.dp)
+            ) {
 
-        shape = RoundedCornerShape(if (uiState.compactMode) 18.dp else 24.dp),
+               
 
-        color = cardBackground,
+                PremiumToggleChip(
 
-        border = BorderStroke(
-            1.dp,
-            Color.White.copy(alpha = 0.04f)
+    icon = Icons.Default.Translate,
+
+    label =
+        "English"
+            .translate(displayLanguage),
+
+    selected =
+        uiState.showEnglishTranslation,
+
+    onClick = {
+
+        viewModel.setShowEnglishTranslation(
+            !uiState.showEnglishTranslation
         )
+    }
+)
+
+PremiumToggleChip(
+
+    icon = Icons.Default.MenuBook,
+
+    label =
+        "Punjabi"
+            .translate(displayLanguage),
+
+    selected =
+        uiState.showPunjabiTranslation,
+
+    onClick = {
+
+        viewModel.setShowPunjabiTranslation(
+            !uiState.showPunjabiTranslation
+        )
+    }
+)
+
+PremiumToggleChip(
+
+    icon = Icons.Default.Language,
+
+    label =
+        "Roman"
+            .translate(displayLanguage),
+
+    selected =
+        uiState.showRomanTransliteration,
+
+    onClick = {
+
+        viewModel.setShowRomanTransliteration(
+            !uiState.showRomanTransliteration
+        )
+    }
+)
+
+PremiumToggleChip(
+
+    icon = Icons.Default.AutoStories,
+
+    label =
+        "Hindi"
+            .translate(displayLanguage),
+
+    selected =
+        uiState.showDevanagariTransliteration,
+
+    onClick = {
+
+        viewModel.setShowDevanagariTransliteration(
+            !uiState.showDevanagariTransliteration
+        )
+    }
+)
+
+PremiumToggleChip(
+
+    icon = Icons.Default.FormatAlignCenter,
+
+    label =
+        "Center"
+            .translate(displayLanguage),
+
+    selected =
+        uiState.centerGurmukhi,
+
+    onClick = {
+
+        viewModel.setCenterGurmukhi(
+            !uiState.centerGurmukhi
+        )
+    }
+)
+
+PremiumToggleChip(
+
+    icon = Icons.Default.TextFields,
+
+    label =
+        "Larivaar"
+            .translate(displayLanguage),
+
+    selected =
+        uiState.larivaarMode,
+
+    onClick = {
+
+        viewModel.setLarivaarMode(
+            !uiState.larivaarMode
+        )
+    }
+)
+
+PremiumToggleChip(
+    icon = Icons.Default.Language,
+    label = "Meanings".translate(displayLanguage),
+    selected = uiState.showWordMeaning,
+    onClick = {
+        viewModel.setShowWordMeaning(!uiState.showWordMeaning)
+    }
+)
+            }
+
+            Spacer(
+                Modifier.height(18.dp)
+            )
+
+            /*
+             * FULL HUKAMNAMA
+             */
+
+            current.lines.forEachIndexed { index, line ->
+ val gurmukhiText =
+
+                if (
+                    uiState.larivaarMode &&
+                    line.larivaar.isNotBlank()
+                ) {
+
+                    line.larivaar
+
+                } else {
+
+                    line.gurmukhi
+                }
+
+                Surface(
+
+                    shape = RoundedCornerShape(
+                        if (uiState.compactMode)
+                            18.dp
+                        else
+                            24.dp
+                    ),
+
+                    color = cardBackground,
+
+                    border = BorderStroke(
+
+                        1.dp,
+
+                        hukamnamaAccent.copy(
+                            alpha = 0.08f
+                        )
+                    )
+                ) {
+
+                    Column(
+
+    modifier = Modifier
+        .fillMaxWidth()
+        .padding(
+
+            horizontal =
+
+                if (uiState.compactMode)
+                    12.dp
+                else
+                    16.dp,
+
+            vertical =
+
+                if (uiState.compactMode)
+                    12.dp
+                else
+                    16.dp
+        )
+) {
+
+    Row(
+
+        modifier = Modifier.fillMaxWidth(),
+
+        verticalAlignment =
+            Alignment.Top
     ) {
+
+        /*
+         * MAIN CONTENT
+         */
 
         Column(
 
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(if (uiState.compactMode) 6.dp else 12.dp),
-            verticalArrangement = Arrangement.spacedBy(if (uiState.compactMode) 4.dp else 8.dp)
+            modifier = Modifier.weight(1f),
+
+            verticalArrangement =
+                Arrangement.spacedBy(
+
+                    if (uiState.compactMode)
+                        8.dp
+                    else
+                        12.dp
+                )
         ) {
 
-            val gurmukhiText = if (uiState.larivaarMode) line.larivaar else line.gurmukhi
+           
+            /*
+             * GURMUKHI
+             */
+
             if (gurmukhiText.isNotBlank()) {
+
                 Text(
+
                     text = gurmukhiText,
-                    modifier = Modifier.fillMaxWidth(),
+
+                    modifier =
+                        Modifier.fillMaxWidth(),
+
                     color = gurmukhiColor,
-                    textAlign = if (uiState.centerGurmukhi) TextAlign.Center else TextAlign.Start,
-                    fontSize = uiState.gurmukhiFontSize.sp,
-                    fontWeight = if (uiState.boldGurmukhi) FontWeight.Bold else FontWeight.Medium,
-                    lineHeight = uiState.lineSpacing.sp,
+
+                    textAlign =
+
+                        if (uiState.centerGurmukhi)
+                            TextAlign.Center
+                        else
+                            TextAlign.Start,
+
+                    fontSize =
+                        uiState.gurmukhiFontSize.sp,
+
+                    fontWeight =
+
+                        if (uiState.boldGurmukhi)
+                            FontWeight.Bold
+                        else
+                            FontWeight.SemiBold,
+
+                    lineHeight =
+                        uiState.lineSpacing.sp,
+
                     style = TextStyle(
+
                         shadow = Shadow(
-                            color = gurmukhiColor.copy(alpha = 0.30f),
-                            blurRadius = 10f
+
+                            color =
+                                gurmukhiColor.copy(
+                                    alpha = 0.16f
+                                ),
+
+                            blurRadius = 8f
                         )
                     )
                 )
             }
 
-            if (uiState.showDevanagariTransliteration && line.transliterationHi.isNotBlank()) {
+            /*
+             * HINDI
+             */
+
+            if (
+                uiState.showDevanagariTransliteration &&
+                line.transliterationHi.isNotBlank()
+            ) {
+
                 Text(
-                    text = line.transliterationHi,
-                    modifier = Modifier.fillMaxWidth(),
-                    color = romanColor,
-                    textAlign = if (uiState.centerGurmukhi) TextAlign.Center else TextAlign.Start,
-                    fontSize = uiState.romanTransliterationFontSize.sp,
-                    lineHeight = (uiState.romanTransliterationFontSize * 1.3f).sp
+
+                    text =
+                        line.transliterationHi,
+
+                    modifier =
+                        Modifier.fillMaxWidth(),
+
+                    color =
+                        romanColor.copy(alpha = 0.90f),
+
+                    textAlign =
+
+                        if (uiState.centerGurmukhi)
+                            TextAlign.Center
+                        else
+                            TextAlign.Start,
+
+                    fontSize =
+                        uiState.romanTransliterationFontSize.sp,
+
+                    lineHeight =
+                        (uiState.romanTransliterationFontSize * 1.45f).sp,
+
+                    fontWeight =
+                        FontWeight.Medium
                 )
             }
 
-            if (uiState.showRomanTransliteration && line.transliteration.isNotBlank()) {
+            /*
+             * ROMAN
+             */
+
+            if (
+                uiState.showRomanTransliteration &&
+                line.transliteration.isNotBlank()
+            ) {
+
                 Text(
-                    text = line.transliteration,
-                    modifier = Modifier.fillMaxWidth(),
-                    color = romanColor,
-                    textAlign = if (uiState.centerGurmukhi) TextAlign.Center else TextAlign.Start,
-                    fontSize = uiState.romanTransliterationFontSize.sp,
-                    fontStyle = if (uiState.italicRomanTransliteration) FontStyle.Italic else FontStyle.Normal,
-                    lineHeight = (uiState.romanTransliterationFontSize * 1.3f).sp
+
+                    text =
+                        line.transliteration,
+
+                    modifier =
+                        Modifier.fillMaxWidth(),
+
+                    color =
+                        romanColor.copy(alpha = 0.82f),
+
+                    textAlign =
+
+                        if (uiState.centerGurmukhi)
+                            TextAlign.Center
+                        else
+                            TextAlign.Start,
+
+                    fontSize =
+                        uiState.romanTransliterationFontSize.sp,
+
+                    fontStyle =
+
+                        if (uiState.italicRomanTransliteration)
+                            FontStyle.Italic
+                        else
+                            FontStyle.Normal,
+
+                    lineHeight =
+                        (uiState.romanTransliterationFontSize * 1.42f).sp
                 )
             }
 
-            if (uiState.showEnglishTranslation && line.translationEn.isNotBlank()) {
-                Text(
-                    text = line.translationEn,
-                    modifier = Modifier.fillMaxWidth(),
-                    color = translationColor,
-                    textAlign = if (uiState.centerGurmukhi) TextAlign.Center else TextAlign.Start,
-                    fontSize = uiState.translationFontSize.sp,
-                    lineHeight = (uiState.translationFontSize * 1.3f).sp
-                )
+            /*
+             * ENGLISH
+             */
+
+            if (
+                uiState.showEnglishTranslation &&
+                line.translationEn.isNotBlank()
+            ) {
+
+                Surface(
+
+                    shape =
+                        RoundedCornerShape(18.dp),
+
+                    color =
+                        hukamnamaAccent.copy(
+                            alpha = 0.05f
+                        )
+                ) {
+
+                    Text(
+
+                        text =
+                            line.translationEn,
+
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(
+                                    horizontal = 14.dp,
+                                    vertical = 12.dp
+                                ),
+
+                        color =
+                            translationColor,
+
+                        textAlign =
+
+                            if (uiState.centerGurmukhi)
+                                TextAlign.Center
+                            else
+                                TextAlign.Start,
+
+                        fontSize =
+                            uiState.translationFontSize.sp,
+
+                        lineHeight =
+                            (uiState.translationFontSize * 1.5f).sp
+                    )
+                }
             }
 
-            if (uiState.showPunjabiTranslation && line.translationPa.isNotBlank()) {
-                Text(
-                    text = line.translationPa,
-                    modifier = Modifier.fillMaxWidth(),
-                    color = punjabiColor,
-                    textAlign = if (uiState.centerGurmukhi) TextAlign.Center else TextAlign.Start,
-                    fontSize = uiState.translationFontSize.sp,
-                    lineHeight = (uiState.translationFontSize * 1.5f).sp
-                )
+            /*
+             * PUNJABI
+             */
+
+            if (
+                uiState.showPunjabiTranslation &&
+                line.translationPa.isNotBlank()
+            ) {
+
+                Surface(
+
+                    shape =
+                        RoundedCornerShape(18.dp),
+
+                    color =
+                        hukamnamaAccent.copy(
+                            alpha = 0.04f
+                        )
+                ) {
+
+                    Text(
+
+                        text =
+                            line.translationPa,
+
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(
+                                    horizontal = 14.dp,
+                                    vertical = 12.dp
+                                ),
+
+                        color =
+                            punjabiColor,
+
+                        textAlign =
+
+                            if (uiState.centerGurmukhi)
+                                TextAlign.Center
+                            else
+                                TextAlign.Start,
+
+                        fontSize =
+                            uiState.translationFontSize.sp,
+
+                        lineHeight =
+                            (uiState.translationFontSize * 1.5f).sp
+                    )
+                }
             }
         }
-    }
 
-    if (index != current.lines.lastIndex) {
+        // Spacer(
+        //     Modifier.width(12.dp)
+        // )
 
-        Spacer(
-            Modifier.height(if (uiState.compactMode) 6.dp else 10.dp)
-        )
+        // /*
+        //  * ACTION RAIL
+        //  */
+
+        // Column(
+
+        //     verticalArrangement =
+        //         Arrangement.spacedBy(10.dp),
+
+        //     horizontalAlignment =
+        //         Alignment.CenterHorizontally
+        // ) {
+
+        //     val actionContainer =
+
+        //         Modifier
+        //             .size(38.dp)
+        //             .clip(CircleShape)
+        //             .background(
+        //                 hukamnamaAccent.copy(
+        //                     alpha = 0.08f
+        //                 )
+        //             )
+
+        //     /*
+        //      * BOOKMARK
+        //      */
+
+        //     Box(
+
+        //         modifier =
+        //             actionContainer
+        //                 .clickable {
+
+        //                     viewModel.toggleBookmark(
+        //                        "hukamnama-$index"
+        //                     )
+        //                 },
+
+        //         contentAlignment =
+        //             Alignment.Center
+        //     ) {
+
+        //         Icon(
+
+        //             imageVector =
+
+        //                 if (
+        //                     uiState.bookmarkedLineIds.contains(
+        //                        "hukamnama-$index"
+        //                     )
+        //                 ) {
+        //                     Icons.Default.Bookmark
+        //                 } else {
+        //                     Icons.Default.BookmarkBorder
+        //                 },
+
+        //             contentDescription = null,
+
+        //             tint =
+        //                 hukamnamaAccent,
+
+        //             modifier =
+        //                 Modifier.size(18.dp)
+        //         )
+        //     }
+
+        //     /*
+        //      * MEANING
+        //      */
+
+        //     Box(
+
+        //         modifier =
+        //             actionContainer
+        //                 .clickable {
+
+        //                     selectedMeaningLine =
+        //                         line
+        //                 },
+
+        //         contentAlignment =
+        //             Alignment.Center
+        //     ) {
+
+        //         Icon(
+
+        //             imageVector =
+        //                 Icons.Default.Lightbulb,
+
+        //             contentDescription = null,
+
+        //             tint =
+        //                 hukamnamaAccent,
+
+        //             modifier =
+        //                 Modifier.size(18.dp)
+        //         )
+        //     }
+
+        //     /*
+        //      * COPY
+        //      */
+
+        //     Box(
+
+        //         modifier =
+        //             actionContainer
+        //                 .clickable {
+
+        //                     clipboardManager.setText(
+
+        //                         AnnotatedString(
+        //                             gurmukhiText
+        //                         )
+        //                     )
+        //                 },
+
+        //         contentAlignment =
+        //             Alignment.Center
+        //     ) {
+
+        //         Icon(
+
+        //             imageVector =
+        //                 Icons.Default.ContentCopy,
+
+        //             contentDescription = null,
+
+        //             tint =
+        //                 hukamnamaAccent,
+
+        //             modifier =
+        //                 Modifier.size(17.dp)
+        //         )
+        //     }
+        // }
     }
 }
                 }
+
+                if (index != current.lines.lastIndex) {
+
+                    Spacer(
+                        Modifier.height(
+                            if (uiState.compactMode)
+                                8.dp
+                            else
+                                12.dp
+                        )
+                    )
+                }
+            }
+
+            Spacer(
+                Modifier.height(28.dp)
+            )
         }
     }
 }
+
+    }
+}
+        
 @Composable
 private fun PremiumInfoCard(
 
@@ -1836,45 +2719,6 @@ private fun DetailRow(
             fontSize = 12.sp
         )
     }
-    }
-    @Composable
-private fun MetaChip(
-
-    label: String,
-
-    textColor: Color = Gold
-) {
-
-    Surface(
-
-        shape =
-            RoundedCornerShape(14.dp),
-
-        color =
-            Gold.copy(alpha = 0.10f),
-
-        border = BorderStroke(
-            1.dp,
-            Gold.copy(alpha = 0.14f)
-        )
-    ) {
-
-        Text(
-
-            text = label,
-
-            color = textColor,
-
-            fontSize = 11.sp,
-
-            fontWeight = FontWeight.SemiBold,
-
-            modifier = Modifier.padding(
-                horizontal = 6.dp,
-                vertical = 2.dp
-            )
-        )
-    }
 }
 
 @Composable
@@ -1962,5 +2806,40 @@ private fun resolveTextColor(
         "green" -> Color(0xFF63D8B6)
         "orange" -> Color(0xFFFFB36A)
         else -> default
+    }
+}
+
+@Composable
+private fun MetaChip(
+    label: String
+) {
+
+    Surface(
+
+        shape = RoundedCornerShape(14.dp),
+
+        color = Gold.copy(alpha = 0.10f),
+
+        border = BorderStroke(
+            1.dp,
+            Gold.copy(alpha = 0.14f)
+        )
+    ) {
+
+        Text(
+
+            text = label,
+
+            color = Gold,
+
+            fontSize = 10.sp,
+
+            fontWeight = FontWeight.SemiBold,
+
+            modifier = Modifier.padding(
+                horizontal = 10.dp,
+                vertical = 5.dp
+            )
+        )
     }
 }
