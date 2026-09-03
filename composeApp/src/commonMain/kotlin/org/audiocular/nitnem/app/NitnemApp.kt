@@ -19,7 +19,7 @@ fun NitnemApp(
     val uiState by viewModel.uiState.collectAsState()
     
     val themeMode = when {
-        uiState.darkMode && uiState.amoledMode -> ThemeMode.Amoled
+        uiState.blackAndWhiteAodMode || (uiState.darkMode && uiState.amoledMode) || uiState.amoledMode -> ThemeMode.Amoled
         uiState.darkMode -> ThemeMode.Dark
         else -> ThemeMode.Light
     }

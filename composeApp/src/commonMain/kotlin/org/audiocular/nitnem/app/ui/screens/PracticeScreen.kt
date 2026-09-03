@@ -4,6 +4,7 @@ package org.audiocular.nitnem.app.ui.screens
 import org.audiocular.nitnem.app.ui.practice.SimranAbhyasTab
 import org.audiocular.nitnem.app.ui.practice.AiGurbaniQuizTab
 import org.audiocular.nitnem.app.ui.practice.BaniAiAssistantTab
+import org.audiocular.nitnem.app.ui.practice.FamilyLeaderboardTab
 import org.audiocular.nitnem.app.ui.practice.practiceColors
 import org.audiocular.nitnem.app.ui.practice.PracticeColors
 import androidx.compose.animation.AnimatedContent
@@ -40,6 +41,8 @@ import org.audiocular.nitnem.models.NitnemUiState
 import org.audiocular.nitnem.viewmodel.NitnemViewModel
 import org.audiocular.nitnem.app.models.DisplayLanguage
 import org.audiocular.nitnem.utils.translate
+import androidx.compose.ui.input.pointer.pointerInput
+import kotlinx.coroutines.delay
 
 
 enum class PracticeTab(
@@ -47,7 +50,6 @@ enum class PracticeTab(
     val icon: ImageVector
 ) {
     Quiz("AI Quiz", Icons.Default.AutoStories),
-    AiAssist("Bani AI", Icons.Default.SmartToy),
     Meditate("Meditate", Icons.Default.SelfImprovement)
 }
 
@@ -82,6 +84,19 @@ fun PracticeScreen(
         mutableStateOf(false)
     }
 
+    // Auto-hide top header in Meditate tab when fullScreenReadingMode is enabled
+    var showLocalChrome by remember { mutableStateOf(true) }
+    var localInteractionTick by remember { mutableStateOf(0) }
+    LaunchedEffect(uiState.fullScreenReadingMode, tab, localInteractionTick) {
+        if (uiState.fullScreenReadingMode && tab == PracticeTab.Meditate) {
+            showLocalChrome = true
+            delay(4_000L)
+            showLocalChrome = false
+        } else {
+            showLocalChrome = true
+        }
+    }
+
     /*
      * DYNAMIC HEADER CONTENT
      */
@@ -89,10 +104,6 @@ fun PracticeScreen(
     val headerTitle = when (tab) {
 
         PracticeTab.Quiz -> {
-            tab.title
-        }
-
-        PracticeTab.AiAssist -> {
             tab.title
         }
 
@@ -105,10 +116,6 @@ fun PracticeScreen(
 
         PracticeTab.Quiz -> {
             "Practice Gurbani Through Interactive Questions"
-        }
-
-        PracticeTab.AiAssist -> {
-            "Ask Bani anything about Gurbani"
         }
 
         PracticeTab.Meditate -> {
@@ -132,6 +139,12 @@ fun PracticeScreen(
              * PREMIUM HEADER
              * ─────────────────────────────────────────────
              */
+
+            AnimatedVisibility(
+                visible = showLocalChrome,
+                enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.slideInVertically { -it },
+                exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.slideOutVertically { -it }
+            ) {
 
             Surface(
 
@@ -193,7 +206,7 @@ fun PracticeScreen(
                                     color = TextSecondary,
                                     fontSize = 12.sp,
                                     lineHeight = 18.sp,
-                                    modifier = Modifier.padding(top = 2.dp)
+                                    modifier = Modifier.padding(top = 2.dp, end = 6.dp)
                                 )
                             }
                         }
@@ -290,6 +303,7 @@ fun PracticeScreen(
                     }
                 }
             }
+            } // end AnimatedVisibility (top header)
 
            Spacer(
     Modifier.height(8.dp)
@@ -307,7 +321,17 @@ fun PracticeScreen(
 
                 modifier = Modifier
                     .weight(1f)
-                    .fillMaxWidth(),
+                    .fillMaxWidth()
+                    .pointerInput(uiState.fullScreenReadingMode, tab) {
+                        if (uiState.fullScreenReadingMode && tab == PracticeTab.Meditate) {
+                            awaitPointerEventScope {
+                                while (true) {
+                                    awaitPointerEvent()
+                                    localInteractionTick++
+                                }
+                            }
+                        }
+                    },
 transitionSpec = {
 
     fadeIn(
@@ -345,16 +369,6 @@ transitionSpec = {
                                 displayLanguage = displayLanguage,
                                 uiState = uiState,
                                 viewModel = viewModel
-                            )
-                        }
-
-                        PracticeTab.AiAssist -> {
-
-                            BaniAiAssistantTab(
-                                bani = bani,
-                                colors = colors,
-                                displayLanguage = displayLanguage,
-                                uiState = uiState
                             )
                         }
 

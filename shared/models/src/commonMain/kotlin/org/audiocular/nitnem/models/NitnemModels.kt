@@ -154,7 +154,19 @@ data class PlaybackSnapshot(
         false,
 
     val isLoading: Boolean =
-        false
+        false,
+
+    val isMuted: Boolean =
+        false,
+
+    val pitch: Float =
+        1f,
+
+    val sleepTimerRemainingMs: Long? =
+        null,
+
+    val repeatMode: String =
+        "OFF"
 )
 
 @Serializable

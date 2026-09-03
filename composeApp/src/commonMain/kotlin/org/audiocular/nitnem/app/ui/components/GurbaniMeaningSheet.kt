@@ -36,6 +36,7 @@ import org.audiocular.nitnem.app.ui.theme.TextSecondary
 import org.audiocular.nitnem.models.BaniLine
 import org.audiocular.nitnem.utils.translate
 import org.audiocular.nitnem.utils.translateHindiTransliteration
+import org.audiocular.nitnem.utils.toHindiTranslation
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,6 +47,7 @@ fun GurbaniMeaningSheet(
     lineSpacing: Float,
     boldGurmukhi: Boolean,
     centerGurmukhi: Boolean,
+    showGurmukhi: Boolean = true,
     showEnglishTranslation: Boolean,
     showPunjabiTranslation: Boolean,
     showDevanagariTransliteration: Boolean,
@@ -56,6 +58,7 @@ fun GurbaniMeaningSheet(
     translationColorMode: String,
     wordMeaningColorMode: String,
     displayLanguage: DisplayLanguage = DisplayLanguage.English,
+    onToggleGurmukhi: (Boolean) -> Unit = {},
     onToggleEnglish: (Boolean) -> Unit = {},
     onTogglePunjabi: (Boolean) -> Unit = {},
     onToggleHindi: (Boolean) -> Unit = {},
@@ -190,6 +193,8 @@ fun GurbaniMeaningSheet(
              */
 
             PremiumMeaningSwitcher(
+                showGurmukhi =
+                    showGurmukhi,
 
                 showHindi =
                     showDevanagariTransliteration,
@@ -229,6 +234,12 @@ fun GurbaniMeaningSheet(
 
                 displayLanguage =
                     displayLanguage,
+
+                onToggleGurmukhi = {
+                    onToggleGurmukhi(
+                        !showGurmukhi
+                    )
+                },
 
                 onToggleHindi = {
 
@@ -280,56 +291,49 @@ fun GurbaniMeaningSheet(
                 }
             )
 
-            Spacer(
-                modifier = Modifier.height(20.dp)
-            )
-
             /*
              * GURMUKHI
              */
 
-            val gurmukhiText =
+            if (showGurmukhi) {
+                Spacer(
+                    modifier = Modifier.height(20.dp)
+                )
 
-                if (larivaarMode) {
+                val gurmukhiText =
+                    if (larivaarMode) {
+                        line.gurmukhi
+                            .replace("\\s+".toRegex(), "")
+                    } else {
+                        line.gurmukhi
+                    }
 
-                    line.gurmukhi
-                        .replace("\\s+".toRegex(), "")
-
-                } else {
-
-                    line.gurmukhi
-                }
-
-            Text(
-
-                text = gurmukhiText,
-
-                fontSize =
-                    gurmukhiFontSize.sp,
-
-                lineHeight =
-                    lineSpacing.sp,
-
-                color =
-                    gurmukhiColor,
-
-                fontWeight =
-
-                    if (boldGurmukhi)
-                        FontWeight.Bold
-                    else
-                        FontWeight.Medium,
-
-                textAlign =
-
-                    if (centerGurmukhi)
-                        TextAlign.Center
-                    else
-                        TextAlign.Start,
-
-                modifier =
-                    Modifier.fillMaxWidth()
-            )
+                Text(
+                    text = gurmukhiText,
+                    fontSize =
+                        gurmukhiFontSize.sp,
+                    lineHeight =
+                        lineSpacing.sp,
+                    color =
+                        gurmukhiColor,
+                    fontWeight =
+                        if (boldGurmukhi)
+                            FontWeight.Bold
+                        else
+                            FontWeight.Medium,
+                    textAlign =
+                        if (centerGurmukhi)
+                            TextAlign.Center
+                        else
+                            TextAlign.Start,
+                    modifier =
+                        Modifier.fillMaxWidth()
+                )
+            } else {
+                Spacer(
+                    modifier = Modifier.height(10.dp)
+                )
+            }
 
             /*
              * EMPTY STATE
@@ -394,7 +398,7 @@ fun GurbaniMeaningSheet(
             }
 
             /*
-             * HINDI
+             * HINDI (TRANSLITERATION & TRANSLATION)
              */
 
             if (
@@ -408,7 +412,7 @@ fun GurbaniMeaningSheet(
                     icon = Icons.Default.AutoStories,
 
                     label =
-                        "Hindi Translation"
+                        "Hindi Transliteration"
                             .translate(displayLanguage)
                 )
 
@@ -421,7 +425,7 @@ fun GurbaniMeaningSheet(
                     icon = Icons.Default.AutoStories,
 
                     text =
-                        if (hasHindi) line.hindi.translateHindiTransliteration() else "Hindi translation not available".translate(displayLanguage),
+                        if (hasHindi) line.hindi.translateHindiTransliteration() else "Hindi transliteration not available".translate(displayLanguage),
 
                     color =
                         translationColor,
@@ -434,6 +438,33 @@ fun GurbaniMeaningSheet(
 
                     showIcon = false
                 )
+
+                // Hindi Translation (Steek / Teeka)
+                val hindiMeaning = remember(line.punjabi, line.translation) {
+                    if (line.punjabi.isNotBlank()) line.punjabi.toHindiTranslation()
+                    else if (line.translation.isNotBlank()) line.translation
+                    else ""
+                }
+                if (hindiMeaning.isNotBlank()) {
+                    Spacer(
+                        modifier = Modifier.height(10.dp)
+                    )
+                    SectionLabel(
+                        icon = Icons.Default.Translate,
+                        label = "Hindi Translation".translate(displayLanguage)
+                    )
+                    Spacer(
+                        modifier = Modifier.height(6.dp)
+                    )
+                    MeaningRow(
+                        icon = Icons.Default.Translate,
+                        text = hindiMeaning,
+                        color = translationColor,
+                        fontSize = gurmukhiFontSize * 0.70f,
+                        lineSpacing = lineSpacing,
+                        showIcon = false
+                    )
+                }
             }
 
             /*
@@ -736,6 +767,7 @@ private fun resolveTextColor(
 
 @Composable
 private fun PremiumMeaningSwitcher(
+    showGurmukhi: Boolean,
 
     showHindi: Boolean,
 
@@ -763,6 +795,8 @@ private fun PremiumMeaningSwitcher(
 
     displayLanguage: DisplayLanguage,
 
+    onToggleGurmukhi: () -> Unit,
+
     onToggleHindi: () -> Unit,
 
     onToggleEnglish: () -> Unit,
@@ -789,6 +823,18 @@ private fun PremiumMeaningSwitcher(
         horizontalArrangement =
             Arrangement.spacedBy(10.dp)
     ) {
+
+        PremiumToggleChip(
+            icon =
+                Icons.Default.TextFields,
+            label =
+                "Gurmukhi"
+                    .translate(displayLanguage),
+            selected =
+                showGurmukhi,
+            onClick =
+                onToggleGurmukhi
+        )
 
         if (hasEnglish) {
 

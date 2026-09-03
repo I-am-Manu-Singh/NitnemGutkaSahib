@@ -110,28 +110,20 @@ class OfflineFirstNitnemRepository :
                         )
                     },
 
-                streak = StreakSummary(
-
-                    currentDays =
-
-                        if (completed.isEmpty()) {
-                            4
-                        } else {
-                            5 + completed.size
-                        },
-
-                    weeklyCompletedDays =
-                        (4 + completed.size)
-                            .coerceAtMost(7),
-
-                    monthlyCompletedDays =
-                        18 + completed.size,
-
-                    freezesAvailable = 2,
-
-                    compassionateMessage =
-                        "Your journey continues today."
-                ),
+                streak = run {
+                    val policy = org.audiocular.nitnem.streak.StreakPolicy()
+                    var currentStreak = StreakSummary(
+                        freezesAvailable = 2,
+                        currentDays = 0,
+                        weeklyCompletedDays = 0,
+                        monthlyCompletedDays = 0,
+                        compassionateMessage = "Begin gently again. Nothing sacred is lost."
+                    )
+                    for (i in 0 until completed.size) {
+                        currentStreak = policy.completeDay(currentStreak)
+                    }
+                    currentStreak
+                },
 
                 continueTitle =
 

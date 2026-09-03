@@ -231,8 +231,7 @@ private fun MainRoot() {
      * ROUTING
      */
 
-    var currentRoute by remember {
-
+    var currentRoute by androidx.compose.runtime.saveable.rememberSaveable {
         mutableStateOf(
             AppRoute.Splash
         )

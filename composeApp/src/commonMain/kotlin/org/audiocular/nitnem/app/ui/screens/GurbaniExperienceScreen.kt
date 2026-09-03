@@ -76,6 +76,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.foundation.lazy.LazyListState
 import org.audiocular.nitnem.data.CuratedAudioCatalog
+import androidx.compose.ui.input.pointer.pointerInput
 
     @Composable
     fun GurbaniExperienceScreen(
@@ -133,9 +134,9 @@ import org.audiocular.nitnem.data.CuratedAudioCatalog
             LocalContext.current
 
         val density = LocalDensity.current
-        // Use a small positive offset (20dp) so the active synchronized card lands just below
-        // the header, fully visible rather than half-hidden above the viewport top.
-        val scrollOffsetPx = with(density) { 20.dp.roundToPx() }
+        // Use a larger positive offset (80dp) so the active synchronized card lands just below
+        // the top app bar, fully visible rather than hidden.
+        val scrollOffsetPx = with(density) { 0.dp.roundToPx() }
 
         var pauseReadAutoScroll by remember {
             mutableStateOf(false)
@@ -527,6 +528,9 @@ import org.audiocular.nitnem.data.CuratedAudioCatalog
 
             GurbaniLineUiConfig(
 
+                showGurmukhi =
+                    uiState.showGurmukhi,
+
                 gurmukhiFontSize =
                     uiState.gurmukhiFontSize,
 
@@ -566,6 +570,12 @@ import org.audiocular.nitnem.data.CuratedAudioCatalog
                 romantransliterationColorMode =
                     uiState.romanTransliterationColorMode,
 
+                devanagariTransliterationColorMode =
+                    uiState.devanagariTransliterationColorMode,
+
+                punjabiTranslationColorMode =
+                    uiState.punjabiTranslationColorMode,
+
                 translationColorMode =
                     uiState.translationColorMode,
 
@@ -588,10 +598,16 @@ import org.audiocular.nitnem.data.CuratedAudioCatalog
                     uiState.showLineProgress,
 
                 compactMode =
-                    uiState.compactMode,
+                    uiState.fullScreenReadingMode,
 
                 larivaarMode =
-                    uiState.larivaarMode
+                    uiState.larivaarMode,
+
+                blackAndWhiteAodMode =
+                    uiState.blackAndWhiteAodMode,
+
+                displayLanguage =
+                    uiState.displayLanguage
             )
         }
 
@@ -855,6 +871,21 @@ import org.audiocular.nitnem.data.CuratedAudioCatalog
             println("UI TRACK -> ${uiState.activeTrackId}")
 
         }
+        // --- Auto-hide top header and controls when fullScreenReadingMode or blackAndWhiteAodMode is enabled ---
+        var showLocalChrome by remember { mutableStateOf(true) }
+        var localInteractionTick by remember { mutableStateOf(0) }
+        val isImmersiveMode = uiState.fullScreenReadingMode || uiState.blackAndWhiteAodMode
+
+        LaunchedEffect(isImmersiveMode, localInteractionTick) {
+            if (isImmersiveMode) {
+                showLocalChrome = true
+                delay(4_000L)
+                showLocalChrome = false
+            } else {
+                showLocalChrome = true
+            }
+        }
+
         Scaffold(
 
         containerColor = Color.Transparent,
@@ -881,6 +912,12 @@ import org.audiocular.nitnem.data.CuratedAudioCatalog
             /*
              * TOP HEADER
              */
+
+            AnimatedVisibility(
+                visible = showLocalChrome,
+                enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.slideInVertically { -it },
+                exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.slideOutVertically { -it }
+            ) {
 
             Surface(
 
@@ -1071,6 +1108,8 @@ import org.audiocular.nitnem.data.CuratedAudioCatalog
                         }
                     }
                 }
+            } // end AnimatedVisibility (top header)
+
             /*
              * CONTENT AREA
              */
@@ -1078,10 +1117,19 @@ import org.audiocular.nitnem.data.CuratedAudioCatalog
                         Modifier.height(6.dp)
                     )
             Box(
-
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
+                    .pointerInput(isImmersiveMode) {
+                        if (isImmersiveMode) {
+                            awaitPointerEventScope {
+                                while (true) {
+                                    awaitPointerEvent()
+                                    localInteractionTick++
+                                }
+                            }
+                        }
+                    }
             ) {
 
                 when (activeTab) {
@@ -1107,8 +1155,7 @@ import org.audiocular.nitnem.data.CuratedAudioCatalog
 
                             verticalArrangement =
                                 Arrangement.spacedBy(
-
-                                    if (uiState.compactMode)
+                                    if (uiState.fullScreenReadingMode)
                                         10.dp
                                     else
                                         16.dp
@@ -1246,7 +1293,7 @@ import org.audiocular.nitnem.data.CuratedAudioCatalog
                                 verticalArrangement =
                                     Arrangement.spacedBy(
 
-                                        if (uiState.compactMode)
+                                        if (uiState.fullScreenReadingMode)
                                             10.dp
                                         else
                                             16.dp
@@ -1313,124 +1360,130 @@ import org.audiocular.nitnem.data.CuratedAudioCatalog
 
         val showAutoscrollSlider = (activeTab == ExperienceTab.Read) || (activeTab == ExperienceTab.Listen && !hasTimings)
 
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(
-                    bottom = fabBottomPadding,
-                    end = 8.dp
-                ),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+        AnimatedVisibility(
+            visible = showLocalChrome || !isImmersiveMode,
+            enter = androidx.compose.animation.fadeIn(),
+            exit = androidx.compose.animation.fadeOut(),
+            modifier = Modifier.align(Alignment.BottomEnd)
         ) {
-            if (showAutoscrollSlider) {
+            Column(
+                modifier = Modifier
+                    .padding(
+                        bottom = fabBottomPadding,
+                        end = 8.dp
+                    ),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                if (showAutoscrollSlider) {
+                    FloatingJumpButton(
+                        icon = Icons.Default.Speed,
+                        onClick = {
+                            showSpeedSlider = !showSpeedSlider
+                        },
+                        onDoubleTap = {}
+                    )
+                }
+
                 FloatingJumpButton(
-                    icon = Icons.Default.Speed,
+                    icon = Icons.Default.KeyboardDoubleArrowUp,
                     onClick = {
-                        showSpeedSlider = !showSpeedSlider
+                        pauseReadAutoScroll = true
+                        scope.launch {
+                            val firstVisible = lazyListState.firstVisibleItemIndex
+                            val currentSegmentIdx = segments.indexOfFirst { firstVisible in it.startIndex..it.endIndex }
+                            val targetSegmentIdx = (if (currentSegmentIdx != -1) currentSegmentIdx - 1 else 0).coerceAtLeast(0)
+                            val targetIndex = if (segments.isNotEmpty()) segments[targetSegmentIdx].startIndex else 0
+
+                            syncedLines
+                                .getOrNull(targetIndex)
+                                ?.let { line ->
+                                   if (
+                                            hasTimings &&
+                                            line.endsAtMs > line.startsAtMs
+                                        ){
+                                        onSeekToLine(line)
+                                    }
+                                }
+
+                            lazyListState
+                                .animateScrollToItem(
+                                    targetIndex,
+                                    scrollOffset = scrollOffsetPx
+                                )
+
+                            segmentListState
+                                .animateScrollToItem(
+                                    targetSegmentIdx
+                                )
+                                        pauseReadAutoScroll = true
+
+                                        scope.launch {
+
+                                            delay(1500)
+
+                                            pauseReadAutoScroll = false
+                                        }
+                        }
                     },
-                    onDoubleTap = {}
+                    onDoubleTap = {
+                        scope.launch {
+                            lazyListState
+                                .animateScrollToItem(0)
+                        }
+                    }
+                )
+
+                FloatingJumpButton(
+                    icon = Icons.Default.KeyboardDoubleArrowDown,
+                    onClick = {
+                        pauseReadAutoScroll = true
+                        scope.launch {
+                            val firstVisible = lazyListState.firstVisibleItemIndex
+                            val currentSegmentIdx = segments.indexOfFirst { firstVisible in it.startIndex..it.endIndex }
+                            val targetSegmentIdx = (if (currentSegmentIdx != -1) currentSegmentIdx + 1 else 0).coerceAtMost(segments.lastIndex)
+                            val targetIndex = if (segments.isNotEmpty()) segments[targetSegmentIdx].startIndex else 0
+
+                            syncedLines
+                                .getOrNull(targetIndex)
+                                ?.let { line ->
+                                   if (
+                                    hasTimings &&
+                                    line.endsAtMs > line.startsAtMs
+                                ){
+                                        onSeekToLine(line)
+                                    }
+                                }
+
+                            lazyListState
+                                .animateScrollToItem(
+                                    targetIndex,
+                                    scrollOffset = scrollOffsetPx
+                                )
+
+                            segmentListState
+                                .animateScrollToItem(
+                                    targetSegmentIdx
+                                )
+                                        pauseReadAutoScroll = true
+
+                                        scope.launch {
+
+                                            delay(1500)
+
+                                            pauseReadAutoScroll = false
+                                        }
+                        }
+                    },
+                    onDoubleTap = {
+                        scope.launch {
+                            lazyListState
+                                .animateScrollToItem(
+                                    syncedLines.lastIndex
+                                )
+                        }
+                    }
                 )
             }
-
-            FloatingJumpButton(
-                icon = Icons.Default.KeyboardDoubleArrowUp,
-                onClick = {
-                    pauseReadAutoScroll = true
-                    scope.launch {
-                        val firstVisible = lazyListState.firstVisibleItemIndex
-                        val currentSegmentIdx = segments.indexOfFirst { firstVisible in it.startIndex..it.endIndex }
-                        val targetSegmentIdx = (if (currentSegmentIdx != -1) currentSegmentIdx - 1 else 0).coerceAtLeast(0)
-                        val targetIndex = if (segments.isNotEmpty()) segments[targetSegmentIdx].startIndex else 0
-
-                        syncedLines
-                            .getOrNull(targetIndex)
-                            ?.let { line ->
-                               if (
-                                        hasTimings &&
-                                        line.endsAtMs > line.startsAtMs
-                                    ){
-                                    onSeekToLine(line)
-                                }
-                            }
-
-                        lazyListState
-                            .animateScrollToItem(
-                                targetIndex,
-                                scrollOffset = 20
-                            )
-
-                        segmentListState
-                            .animateScrollToItem(
-                                targetSegmentIdx
-                            )
-pauseReadAutoScroll = true
-
-scope.launch {
-
-    delay(1500)
-
-    pauseReadAutoScroll = false
-}
-                    }
-                },
-                onDoubleTap = {
-                    scope.launch {
-                        lazyListState
-                            .animateScrollToItem(0)
-                    }
-                }
-            )
-
-            FloatingJumpButton(
-                icon = Icons.Default.KeyboardDoubleArrowDown,
-                onClick = {
-                    pauseReadAutoScroll = true
-                    scope.launch {
-                        val firstVisible = lazyListState.firstVisibleItemIndex
-                        val currentSegmentIdx = segments.indexOfFirst { firstVisible in it.startIndex..it.endIndex }
-                        val targetSegmentIdx = (if (currentSegmentIdx != -1) currentSegmentIdx + 1 else 0).coerceAtMost(segments.lastIndex)
-                        val targetIndex = if (segments.isNotEmpty()) segments[targetSegmentIdx].startIndex else 0
-
-                        syncedLines
-                            .getOrNull(targetIndex)
-                            ?.let { line ->
-                               if (
-                                hasTimings &&
-                                line.endsAtMs > line.startsAtMs
-                            ){
-                                    onSeekToLine(line)
-                                }
-                            }
-
-                        lazyListState
-                            .animateScrollToItem(
-                                targetIndex,
-                                scrollOffset = 20
-                            )
-
-                        segmentListState
-                            .animateScrollToItem(
-                                targetSegmentIdx
-                            )
-                                    pauseReadAutoScroll = true
-
-                                    scope.launch {
-
-                                        delay(1500)
-
-                                        pauseReadAutoScroll = false
-                                    }
-                    }
-                },
-                onDoubleTap = {
-                    scope.launch {
-                        lazyListState
-                            .animateScrollToItem(
-                                syncedLines.lastIndex
-                            )
-                    }
-                }
-            )
         }
 
         /*
@@ -1452,22 +1505,29 @@ scope.launch {
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(
-                        onClick = { viewModel.setAutoScroll(!uiState.autoScroll) }
-                    ) {
-                        Icon(
-                            imageVector = if (uiState.autoScroll) Icons.Default.Pause else Icons.Default.PlayArrow,
-                            contentDescription = "Toggle Autoscroll",
-                            tint = Accent
-                        )
-                    }
-                    Text(
-                        text = "Auto Scroll".translate(uiState.displayLanguage),
-                        color = TextPrimary,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.width(75.dp)
-                    )
+                       Surface(
+                            onClick = { viewModel.setAutoScroll(!uiState.autoScroll) },
+                            shape = CircleShape,
+                            color = Accent.copy(alpha = 0.10f)
+                       ) {
+                            Box(
+                                modifier = Modifier.size(42.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = if (uiState.autoScroll) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                    contentDescription = "Toggle Autoscroll",
+                                    tint = Accent
+                                )
+                            }
+                       }
+                       Text(
+                           text = "Auto Scroll".translate(uiState.displayLanguage),
+                           color = TextPrimary,
+                           fontSize = 10.sp,
+                           fontWeight = FontWeight.Bold,
+                           modifier = Modifier.width(75.dp)
+                       )
                     Spacer(Modifier.width(4.dp))
                   androidx.compose.material3.Slider(
                             value = uiState.autoScrollSpeed,
@@ -1517,6 +1577,8 @@ scope.launch {
                 uiState.boldGurmukhi,
             centerGurmukhi =
                 uiState.centerGurmukhi,
+            showGurmukhi =
+                uiState.showGurmukhi,
             showEnglishTranslation =
                 uiState.showEnglishTranslation,
             showPunjabiTranslation =
@@ -1537,6 +1599,9 @@ scope.launch {
                 uiState.wordMeaningColorMode,
             displayLanguage =
                 uiState.displayLanguage,
+            onToggleGurmukhi = {
+                viewModel.setShowGurmukhi(it)
+            },
             onToggleEnglish = {
                 viewModel.setShowEnglishTranslation(it)
             },
@@ -1561,537 +1626,4 @@ scope.launch {
         )
     }
 }
-}
-@Composable
-private fun EmptyBookmarks(displayLanguage: DisplayLanguage) {
-
-    Box(
-
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(32.dp),
-
-        contentAlignment =
-            Alignment.Center
-    ) {
-
-        Column(
-
-            horizontalAlignment =
-                Alignment.CenterHorizontally
-        ) {
-
-            Icon(
-
-                imageVector =
-                    Icons.Filled.Bookmarks,
-
-                contentDescription = null,
-
-                tint =
-                    TextPrimary.copy(alpha = 0.25f),
-
-                modifier =
-                    Modifier.size(56.dp)
-            )
-
-            Spacer(
-                Modifier.height(16.dp)
-            )
-
-          Text(
-
-    text =
-        "No bookmarks yet".translate(displayLanguage),
-
-    color =
-        TextPrimary.copy(alpha = 0.4f),
-
-    fontSize = 17.sp
-)
-        }
-    }
-}
-
-@Composable
-private fun PremiumTabSwitcher(
-    modifier: Modifier = Modifier,
-    selectedTab: ExperienceTab,
-    playbackActive: Boolean,
-    displayLanguage: DisplayLanguage,
-    onTabSelected: (ExperienceTab) -> Unit
-) {
-
-    val tabs =
-        ExperienceTab.entries
-
-    val selectedIndex =
-        tabs.indexOf(selectedTab)
-
-    val containerColor = when (AppTheme.themeMode) {
-
-        ThemeMode.Light -> {
-            Primary.copy(alpha = 0.06f)
-        }
-
-        ThemeMode.Dark -> {
-            Color.White.copy(alpha = 0.08f)
-        }
-
-        ThemeMode.Amoled -> {
-            Color.White.copy(alpha = 0.05f)
-        }
-    }
-
-    Surface(
-
-        modifier = modifier,
-
-        shape = RoundedCornerShape(100.dp),
-
-        color = containerColor
-    ) {
-
-        BoxWithConstraints(
-
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp)
-                .padding(4.dp)
-        ) {
-
-            val tabWidth =
-                maxWidth / tabs.size
-
-            val animatedOffset by animateDpAsState(
-
-                targetValue =
-                    tabWidth * selectedIndex,
-
-                label = ""
-            )
-
-            /*
-             * SLIDING ACTIVE PILL
-             */
-            Box(
-
-                modifier = Modifier
-                    .offset(x = animatedOffset)
-                    .width(tabWidth)
-                    .fillMaxHeight()
-                    .padding(horizontal = 2.dp)
-                    .clip(RoundedCornerShape(100.dp))
-                    .background(
-
-                        Brush.horizontalGradient(
-
-                            listOf(
-
-                                Gold.copy(alpha = 0.22f),
-
-                                Gold.copy(alpha = 0.14f)
-                            )
-                        )
-                    )
-            )
-
-            /*
-             * TAB ROW
-             */
-            Row(
-                modifier = Modifier.fillMaxSize()
-            ) {
-
-                tabs.forEach { tab ->
-
-                    val selected =
-                        selectedTab == tab
-
-                    val contentColor by animateColorAsState(
-
-                        targetValue =
-
-                            if (selected)
-                                Gold
-                            else
-                                TextPrimary.copy(alpha = 0.60f),
-
-                        label = ""
-                    )
-
-                    val icon = when (tab) {
-
-                        ExperienceTab.Read ->
-                            Icons.Default.MenuBook
-
-                        ExperienceTab.Listen ->
-
-                            if (playbackActive)
-                                Icons.Default.GraphicEq
-                            else
-                                Icons.Default.PlayCircleFilled
-
-                        ExperienceTab.Bookmarks ->
-                            Icons.Default.Bookmark
-                    }
-
-                    Box(
-
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .clip(RoundedCornerShape(100.dp))
-                            .clickable {
-                                onTabSelected(tab)
-                            },
-
-                        contentAlignment =
-                            Alignment.Center
-                    ) {
-
-                        Row(
-
-                            horizontalArrangement =
-                                Arrangement.Center,
-
-                            verticalAlignment =
-                                Alignment.CenterVertically
-                        ) {
-
-                            Icon(
-
-                                imageVector = icon,
-
-                                contentDescription = null,
-
-                                tint = contentColor,
-
-                                modifier = Modifier.size(16.dp)
-                            )
-
-                            Spacer(
-                                Modifier.width(6.dp)
-                            )
-
-                            Text(
-
-                                text = tab.label.translate(displayLanguage),
-
-                                color = contentColor,
-
-                                fontSize = 12.sp,
-
-                                fontWeight =
-
-                                    if (selected)
-                                        FontWeight.SemiBold
-                                    else
-                                        FontWeight.Medium
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun SegmentJumpBar(
-
-    segments: List<BaniSegment>,
-
-    currentSegmentIndex: Int,
-
-    listState: LazyListState,
-
-    displayLanguage: DisplayLanguage,
-
-    onJumpToIndex: (Int) -> Unit
-) {
-
-    val activeContainer = when (AppTheme.themeMode) {
-
-        ThemeMode.Light -> {
-            Accent.copy(alpha = 0.14f)
-        }
-
-        ThemeMode.Dark -> {
-            Gold.copy(alpha = 0.14f)
-        }
-
-        ThemeMode.Amoled -> {
-            Gold.copy(alpha = 0.12f)
-        }
-    }
-
-    val inactiveContainer = when (AppTheme.themeMode) {
-
-        ThemeMode.Light -> {
-            Color.Black.copy(alpha = 0.04f)
-        }
-
-        ThemeMode.Dark -> {
-            Color.White.copy(alpha = 0.05f)
-        }
-
-        ThemeMode.Amoled -> {
-            Color.White.copy(alpha = 0.03f)
-        }
-    }
-
-    val activeTextColor = when (AppTheme.themeMode) {
-
-        ThemeMode.Light -> {
-            Accent
-        }
-
-        else -> {
-            Gold
-        }
-    }
-
-    val inactiveTextColor = when (AppTheme.themeMode) {
-
-        ThemeMode.Light -> {
-            Color(0xFF666666)
-        }
-
-        ThemeMode.Dark -> {
-            Color.White.copy(alpha = 0.52f)
-        }
-
-        ThemeMode.Amoled -> {
-            Color.White.copy(alpha = 0.44f)
-        }
-    }
-
-    LazyRow(
-
-        state = listState,
-
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(
-                horizontal = 8.dp,
-                vertical = 2.dp
-            ),
-
-        horizontalArrangement =
-            Arrangement.spacedBy(10.dp),
-
-        contentPadding =
-            PaddingValues(horizontal = 6.dp)
-    ) {
-
-        itemsIndexed(segments) { groupIdx, segment ->
-
-            val isActive =
-                currentSegmentIndex == groupIdx
-
-            val animatedContainer by animateColorAsState(
-
-                targetValue =
-
-                    if (isActive)
-                        activeContainer
-                    else
-                        inactiveContainer,
-
-                label = ""
-            )
-
-            val animatedTextColor by animateColorAsState(
-
-                targetValue =
-
-                    if (isActive)
-                        activeTextColor
-                    else
-                        inactiveTextColor,
-
-                label = ""
-            )
-
-            val animatedScale by animateFloatAsState(
-
-                targetValue =
-
-                    if (isActive)
-                        1f
-                    else
-                        0.94f,
-
-                label = ""
-            )
-
-            Surface(
-
-                modifier = Modifier
-                    .graphicsLayer {
-
-                        scaleX = animatedScale
-                        scaleY = animatedScale
-                    }
-                    .combinedClickable(
-
-                        onClick = {
-
-                            onJumpToIndex(
-                                segment.startIndex
-                            )
-                        },
-
-                        onDoubleClick = {
-
-                            onJumpToIndex(0)
-                        }
-                    ),
-
-                shape = RoundedCornerShape(18.dp),
-
-                color = animatedContainer,
-
-                border = BorderStroke(
-
-                    1.dp,
-
-                    if (isActive) {
-
-                        activeTextColor.copy(
-                            alpha = 0.16f
-                        )
-
-                    } else {
-
-                        Color.Transparent
-                    }
-                ),
-
-                tonalElevation =
-
-                    if (isActive)
-                        2.dp
-                    else
-                        0.dp
-            ) {
-
-                Row(
-
-                    modifier = Modifier
-                        .padding(
-                            horizontal =
-
-                                if (isActive)
-                                    16.dp
-                                else
-                                    13.dp,
-
-                            vertical = 5.dp
-                        ),
-
-                    verticalAlignment =
-                        Alignment.CenterVertically,
-
-                    horizontalArrangement =
-                        Arrangement.spacedBy(8.dp)
-                ) {
-
-                    /*
-                     * ACTIVE DOT
-                     */
-                    AnimatedVisibility(
-                        visible = isActive
-                    ) {
-
-                        Box(
-
-                            modifier = Modifier
-                                .size(7.dp)
-                                .clip(CircleShape)
-                                .background(activeTextColor)
-                        )
-                    }
-
-                    Text(
-
-                        text = remember(segment.label, displayLanguage) {
-                            val parts = segment.label.split(" ")
-                            if (parts.size == 2) {
-                                val prefix = parts[0].translate(displayLanguage)
-                                "$prefix ${parts[1]}".translateDigits(displayLanguage)
-                            } else {
-                                segment.label.translate(displayLanguage).translateDigits(displayLanguage)
-                            }
-                        },
-
-                        fontSize = 12.sp,
-
-                        fontWeight =
-
-                            if (isActive)
-                                FontWeight.SemiBold
-                            else
-                                FontWeight.Medium,
-
-                        color = animatedTextColor
-                    )
-                }
-            }
-        }
-    }
-}
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun FloatingJumpButton(
-
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-
-    onClick: () -> Unit,
-
-    onDoubleTap: () -> Unit
-) {
-
-    Surface(
-
-        modifier = Modifier
-            .size(42.dp)
-            .combinedClickable(
-
-                onClick = onClick,
-
-                onDoubleClick = onDoubleTap
-            ),
-
-        shape = CircleShape,
-
-        color = SurfaceColor,
-
-        tonalElevation = 8.dp,
-
-        shadowElevation = 8.dp,
-
-        border = BorderStroke(
-            1.dp,
-            Gold.copy(alpha = 0.14f)
-        )
-    ) {
-
-        Box(
-            contentAlignment =
-                Alignment.Center
-        ) {
-
-            Icon(
-
-                imageVector = icon,
-
-                contentDescription = null,
-
-                tint = Gold
-            )
-        }
-    }
 }

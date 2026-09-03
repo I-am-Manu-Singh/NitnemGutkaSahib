@@ -34,9 +34,23 @@ fun OnboardingRoute(
     val state by
         viewModel.state.collectAsState()
 
+    val authLauncher = org.audiocular.nitnem.utils.rememberAuthLauncher(
+        onSignInSuccess = { user ->
+            android.widget.Toast.makeText(context, "Signed in as ${user.displayName}", android.widget.Toast.LENGTH_SHORT).show()
+            viewModel.updateState { it.copy(page = 3) }
+        },
+        onSignInError = { error ->
+            android.widget.Toast.makeText(context, "Sign in failed: $error", android.widget.Toast.LENGTH_LONG).show()
+        }
+    )
+
     OnboardingPagerScreen(
 
         state = state,
+
+        onGoogleSignIn = {
+            authLauncher.signInWithGoogle()
+        },
 
         onStateChange = { newState ->
 
@@ -184,10 +198,17 @@ fun OnboardingRoute(
                         rehrasTime = state.rehrasTime,
                         sohilaTime = state.sohilaTime,
                         autoScroll = true,
-                        repeatMode = false,
+                        repeatMode = "OFF",
                         ambientMode = false,
                         widgetTheme = state.widgetTheme,
-                        widgetContent = state.widgetContent
+                        widgetContent = state.widgetContent,
+                        showGurmukhi = state.showGurmukhi,
+                        showDevanagari = state.showDevanagariTransliteration,
+                        showRoman = state.showRomanTransliteration,
+                        showEnglish = state.showEnglishTranslation,
+                        showPunjabi = state.showPunjabiTranslation,
+                        showWordMeaning = state.showWordMeaning,
+                        larivaarMode = state.larivaarMode
                     )
 
                     /*

@@ -24,6 +24,8 @@ import org.audiocular.nitnem.models.QuizSession
 import org.audiocular.nitnem.models.QuizQuestion
 import org.audiocular.nitnem.models.PlaybackSnapshot
 import org.audiocular.nitnem.data.Hukamnama
+import org.audiocular.nitnem.models.CompanionState
+import org.audiocular.nitnem.gamification.CompanionProgression
 class NitnemViewModel(
 
     private val settingsRepository:
@@ -52,6 +54,9 @@ class NitnemViewModel(
         _uiState.asStateFlow()
 
     init {
+        viewModelScope.launch {
+            analyticsRepository.recordDailyAppOpen()
+        }
 
         observeSettings()
 
@@ -351,17 +356,41 @@ sohilaTime =
                             romanTransliterationColorMode =
                                 settings.romanTransliterationColorMode,
 
+                            devanagariTransliterationColorMode =
+                                settings.devanagariTransliterationColorMode,
+
+                            punjabiTranslationColorMode =
+                                settings.punjabiTranslationColorMode,
+
                             translationColorMode =
                                 settings.translationColorMode,
 
-                             wordMeaningColorMode =
-                                 settings.wordMeaningColorMode,
+                            wordMeaningColorMode =
+                                settings.wordMeaningColorMode,
 
                              widgetTheme =
                                  settings.widgetTheme,
 
                              widgetContent =
-                                 settings.widgetContent
+                                 settings.widgetContent,
+
+                             showGurmukhi =
+                                 settings.showGurmukhi,
+
+                             showLineProgress =
+                                 settings.showLineProgress,
+
+                             focusMode =
+                                 settings.focusMode,
+
+                             fullScreenReadingMode =
+                                 settings.fullScreenReadingMode,
+
+                             blackAndWhiteAodMode =
+                                 settings.blackAndWhiteAodMode,
+
+                             autoScrollSpeed =
+                                 settings.autoScrollSpeed
                         )
                     }
                 }
@@ -387,10 +416,12 @@ sohilaTime =
                                 it.date == today
                             }
 
-                    _uiState.update {
+                    _uiState.update { state ->
+                        val completedTodayCount = todayCompleted?.completedBanis?.size ?: 0
+                        val updatedCompanion = org.audiocular.nitnem.gamification.CompanionProgression()
+                            .nurture(state.companionState, completedTodayCount)
 
-                        it.copy(
-
+                        state.copy(
                             completedBanis =
                                 todayCompleted
                                     ?.completedBanis
@@ -402,15 +433,24 @@ sohilaTime =
                                         analytics.history
                                     ),
 
+                            weeklyCompleted =
+                                analyticsRepository
+                                    .weeklyCompletedDays(
+                                        analytics.history
+                                    ),
+
                             monthlyConsistencyDays =
                                 analyticsRepository
                                     .monthlyConsistency(
                                         analytics.history
                                     ),
-                                    totalListeningMinutes =
-                            analytics.history.sumOf {
-                                it.listeningMinutes
-                            }
+
+                            totalListeningMinutes =
+                                analytics.history.sumOf {
+                                    it.listeningMinutes
+                                },
+
+                            companionState = updatedCompanion
                         )
                     }
                 }
@@ -758,14 +798,23 @@ sohilaTime =
     }
 
     fun setRepeatMode(
-        enabled: Boolean
+        mode: String
     ) {
-
         _uiState.update {
-
             it.copy(
-                repeatMode = enabled
+                repeatMode = mode
             )
+        }
+    }
+
+    fun toggleRepeatMode() {
+        _uiState.update {
+            val next = when (it.repeatMode) {
+                "OFF" -> "ONE"
+                "ONE" -> "ALL"
+                else -> "OFF"
+            }
+            it.copy(repeatMode = next)
         }
     }
 
@@ -934,6 +983,24 @@ sohilaTime =
         }
     }
 
+    fun setDevanagariTransliterationColorMode(mode: String) {
+        _uiState.update {
+            it.copy(devanagariTransliterationColorMode = mode)
+        }
+        viewModelScope.launch {
+            settingsRepository.setDevanagariColorMode(mode)
+        }
+    }
+
+    fun setPunjabiTranslationColorMode(mode: String) {
+        _uiState.update {
+            it.copy(punjabiTranslationColorMode = mode)
+        }
+        viewModelScope.launch {
+            settingsRepository.setPunjabiColorMode(mode)
+        }
+    }
+
     fun setTranslationColorMode(mode: String) {
         _uiState.update {
             it.copy(translationColorMode = mode)
@@ -1037,6 +1104,19 @@ sohilaTime =
                 .setShowTranslation(
                     enabled
                 )
+        }
+    }
+
+    fun setShowGurmukhi(
+        enabled: Boolean
+    ) {
+        _uiState.update {
+            it.copy(
+                showGurmukhi = enabled
+            )
+        }
+        viewModelScope.launch {
+            settingsRepository.setShowGurmukhi(enabled)
         }
     }
 
@@ -1354,6 +1434,48 @@ fun setSohilaTime(time: String) {
 
             settingsRepository
                 .setFocusMode(
+                    enabled
+                )
+        }
+    }
+
+    fun setFullScreenReadingMode(
+        enabled: Boolean
+    ) {
+
+        _uiState.update {
+
+            it.copy(
+                fullScreenReadingMode =
+                    enabled
+            )
+        }
+
+        viewModelScope.launch {
+
+            settingsRepository
+                .setFullScreenReadingMode(
+                    enabled
+                )
+        }
+    }
+
+    fun setBlackAndWhiteAodMode(
+        enabled: Boolean
+    ) {
+
+        _uiState.update {
+
+            it.copy(
+                blackAndWhiteAodMode =
+                    enabled
+            )
+        }
+
+        viewModelScope.launch {
+
+            settingsRepository
+                .setBlackAndWhiteAodMode(
                     enabled
                 )
         }
@@ -1714,4 +1836,15 @@ fun setSohilaTime(time: String) {
         }
     }
 
+    fun checkAndCelebrateDailyStreak(streakDays: Int, onCelebrate: (Int) -> Unit) {
+        if (streakDays <= 0) return
+        val today = LocalDate.now().toString()
+        viewModelScope.launch {
+            val lastCelebrated = settingsRepository.getLastStreakCelebratedDate()
+            if (lastCelebrated != today) {
+                settingsRepository.setLastStreakCelebratedDate(today)
+                onCelebrate(streakDays)
+            }
+        }
+    }
 }

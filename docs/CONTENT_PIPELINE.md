@@ -27,8 +27,8 @@ Store each line with:
 
 - `gurmukhi`: original Gurmukhi.
 - `transliteration`: Roman transliteration.
-- `english`: English translation or interpretation.
-- `hindi`: Hindi translation or interpretation.
+- `english`: English transliteration or interpretation.
+- `hindi`: Hindi Transliteration or interpretation.
 - `punjabi`: Punjabi translation or teeka.
 - `wordMeaning`: reviewed word-by-word meaning.
 

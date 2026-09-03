@@ -2,9 +2,19 @@ package org.audiocular.nitnem.utils
 
 import android.content.Context
 import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import java.util.Locale
+
+enum class TextLanguage {
+    PUNJABI, HINDI, ENGLISH
+}
+
+data class SpeechSegment(
+    val text: String,
+    val language: TextLanguage
+)
 
 class AndroidTextToSpeechHelper(
     private val context: Context
@@ -18,8 +28,10 @@ class AndroidTextToSpeechHelper(
     private var targetPitch: Float = 1.0f
     private var targetSpeechRate: Float = 1.0f
 
+    private val speechQueue = mutableListOf<SpeechSegment>()
+    private var currentQueueIndex = 0
+
     init {
-        // Initialize the service asynchronously
         tts = TextToSpeech(context.applicationContext, this)
     }
 
@@ -27,7 +39,16 @@ class AndroidTextToSpeechHelper(
         if (status == TextToSpeech.SUCCESS) {
             isInitialized = true
             
-            // FIX: Safely apply any configurations that were queued up before initialization finished
+            tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+                override fun onStart(utteranceId: String?) {}
+                override fun onDone(utteranceId: String?) {
+                    playNextSegment()
+                }
+                override fun onError(utteranceId: String?) {
+                    playNextSegment()
+                }
+            })
+
             setLanguageAndVerify(targetLocale)
             tts?.setPitch(targetPitch)
             tts?.setSpeechRate(targetSpeechRate)
@@ -41,11 +62,94 @@ class AndroidTextToSpeechHelper(
         }
     }
 
+    private fun splitIntoSegments(text: String): List<SpeechSegment> {
+        if (text.isBlank()) return emptyList()
+        
+        val list = mutableListOf<SpeechSegment>()
+        val currentSegment = StringBuilder()
+        var currentLang: TextLanguage? = null
+        
+        fun getLang(ch: Char): TextLanguage {
+            return when {
+                ch in '\u0A00'..'\u0A7F' -> TextLanguage.PUNJABI
+                ch in '\u0900'..'\u097F' -> TextLanguage.HINDI
+                else -> TextLanguage.ENGLISH
+            }
+        }
+        
+        for (ch in text) {
+            val lang = getLang(ch)
+            val resolvedLang = if (ch.isWhitespace() || ch.isLetterOrDigit().not()) {
+                currentLang ?: lang
+            } else {
+                lang
+            }
+            
+            if (currentLang == null) {
+                currentLang = resolvedLang
+                currentSegment.append(ch)
+            } else if (resolvedLang == currentLang) {
+                currentSegment.append(ch)
+            } else {
+                val segmentText = currentSegment.toString().trim()
+                if (segmentText.isNotEmpty()) {
+                    list.add(SpeechSegment(segmentText, currentLang))
+                }
+                currentSegment.setLength(0)
+                currentLang = resolvedLang
+                currentSegment.append(ch)
+            }
+        }
+        
+        val segmentText = currentSegment.toString().trim()
+        if (segmentText.isNotEmpty() && currentLang != null) {
+            list.add(SpeechSegment(segmentText, currentLang))
+        }
+        
+        return list
+    }
+
+    private fun playNextSegment() {
+        val nextSegment: SpeechSegment?
+        val index: Int
+        
+        synchronized(speechQueue) {
+            if (currentQueueIndex < speechQueue.size) {
+                nextSegment = speechQueue[currentQueueIndex]
+                currentQueueIndex++
+                index = currentQueueIndex
+            } else {
+                nextSegment = null
+                index = -1
+            }
+        }
+
+        if (nextSegment != null) {
+            val locale = when (nextSegment.language) {
+                TextLanguage.PUNJABI -> Locale("pa", "IN")
+                TextLanguage.HINDI -> Locale("hi", "IN")
+                TextLanguage.ENGLISH -> Locale.US
+            }
+            
+            tts?.setLanguage(locale)
+            tts?.setPitch(targetPitch)
+            tts?.setSpeechRate(targetSpeechRate)
+            tts?.speak(nextSegment.text, TextToSpeech.QUEUE_FLUSH, null, "Segment_$index")
+        }
+    }
+
     override fun speak(text: String) {
         if (text.isBlank()) return
         
         if (isInitialized) {
-            tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "BaniAssistantUtterance")
+            val segments = splitIntoSegments(text)
+            if (segments.isEmpty()) return
+            synchronized(speechQueue) {
+                speechQueue.clear()
+                speechQueue.addAll(segments)
+                currentQueueIndex = 0
+            }
+            playNextSegment()
         } else {
             pendingText = text
         }
@@ -77,7 +181,6 @@ class AndroidTextToSpeechHelper(
         }
     }
 
-    // FIX: Extracted safety block to handle missing native language data packs gracefully
     private fun setLanguageAndVerify(locale: Locale) {
         val result = tts?.setLanguage(locale)
         if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
@@ -90,12 +193,20 @@ class AndroidTextToSpeechHelper(
 
     override fun stop() {
         if (isInitialized) {
+            synchronized(speechQueue) {
+                speechQueue.clear()
+                currentQueueIndex = 0
+            }
             tts?.stop()
         }
     }
 
     override fun release() {
         try {
+            synchronized(speechQueue) {
+                speechQueue.clear()
+                currentQueueIndex = 0
+            }
             tts?.stop()
             tts?.shutdown()
         } catch (e: Exception) {

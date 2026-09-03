@@ -23,7 +23,8 @@ private val Gold = Color(0xFFFFC107)
 private val FaceColor = Color(0xFF2D2D2D)
 
 enum class MascotState {
-    Idle, Happy, Thinking, Meditating, Reading, Listening, Sleeping, Oops, Celebrating
+    Idle, Happy, Thinking, Meditating, Reading, Listening, Sleeping, Oops, Celebrating,
+    Reflecting, AmritVela, Simran, Namaste, Walking, Flying, FlyingPanning
 }
 
 @Composable
@@ -31,46 +32,54 @@ fun MascotBani(
     state: MascotState,
     modifier: Modifier = Modifier
 ) {
-    val infiniteTransition = rememberInfiniteTransition()
+    val infiniteTransition = rememberInfiniteTransition(label = "mascotTransition")
     
     val mouthOpen by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(250),
+            animation = tween(220),
             repeatMode = RepeatMode.Reverse
         ),
         label = "mouth"
     )
     
     val readingBob by infiniteTransition.animateFloat(
-        initialValue = -4f,
-        targetValue = 4f,
+        initialValue = -10f,
+        targetValue = 10f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1800, easing = EaseInOutSine),
+            animation = tween(1400, easing = EaseInOutSine),
             repeatMode = RepeatMode.Reverse
         ),
         label = "readingBob"
     )
     
     val thinkingTilt by infiniteTransition.animateFloat(
-        initialValue = -4f,
-        targetValue = 4f,
+        initialValue = -10f,
+        targetValue = 10f,
         animationSpec = infiniteRepeatable(
-            animation = tween(2200, easing = EaseInOutSine),
+            animation = tween(1800, easing = EaseInOutSine),
             repeatMode = RepeatMode.Reverse
         ),
         label = "thinkingTilt"
     )
-    
-    val floatAnim by infiniteTransition.animateFloat(
-        initialValue = -4f,
-        targetValue = 4f,
+val floatAnim by infiniteTransition.animateFloat(
+    initialValue = -3f, // changed from -15f
+    targetValue = 3f,   // changed from 15f
+    animationSpec = infiniteRepeatable(
+        animation = tween(2200, easing = EaseInOutSine),
+        repeatMode = RepeatMode.Reverse
+    ),
+    label = "float"
+)
+    val driftX by infiniteTransition.animateFloat(
+        initialValue = -10f,
+        targetValue = 10f,
         animationSpec = infiniteRepeatable(
-            animation = tween(2200, easing = EaseInOutSine),
+            animation = tween(3500, easing = EaseInOutSine),
             repeatMode = RepeatMode.Reverse
         ),
-        label = ""
+        label = "driftX"
     )
     
     val readingPupil by infiniteTransition.animateFloat(
@@ -97,25 +106,25 @@ fun MascotBani(
         initialValue = 0.95f,
         targetValue = 1.08f,
         animationSpec = infiniteRepeatable(
-            animation = tween(3000, easing = EaseInOutSine),
+            animation = tween(2500, easing = EaseInOutSine),
             repeatMode = RepeatMode.Reverse
         ),
         label = "aura"
     )
     
     val hairSway by infiniteTransition.animateFloat(
-        initialValue = -8f,
-        targetValue = 8f,
+        initialValue = -18f,
+        targetValue = 18f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1800, easing = EaseInOutSine),
+            animation = tween(1400, easing = EaseInOutSine),
             repeatMode = RepeatMode.Reverse
         ),
         label = "hair"
     )
 
     val footWiggle by infiniteTransition.animateFloat(
-        initialValue = -8f,
-        targetValue = 8f,
+        initialValue = -13f,
+        targetValue = 13f,
         animationSpec = infiniteRepeatable(
             animation = tween(1200, easing = EaseInOutSine),
             repeatMode = RepeatMode.Reverse
@@ -154,8 +163,8 @@ fun MascotBani(
     )
 
     val tiltAngle by infiniteTransition.animateFloat(
-        initialValue = -2.5f,
-        targetValue = 2.5f,
+        initialValue = -8f,
+        targetValue = 8f,
         animationSpec = infiniteRepeatable(
             animation = tween(2000, easing = EaseInOutSine),
             repeatMode = RepeatMode.Reverse
@@ -181,8 +190,8 @@ fun MascotBani(
     )
     
     val wingFlap by infiniteTransition.animateFloat(
-        initialValue = -12f,
-        targetValue = 12f,
+        initialValue = -25f,
+        targetValue = 25f,
         animationSpec = infiniteRepeatable(
             animation = tween(850, easing = EaseInOutSine),
             repeatMode = RepeatMode.Reverse
@@ -200,10 +209,24 @@ fun MascotBani(
         label = "pupil"
     )
 
+    val walkCycle by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(500, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "walkCycle"
+    )
     Canvas(
         modifier = modifier.graphicsLayer {
-            translationY = if (state == MascotState.Reading) floatAnim + readingBob else floatAnim
-            
+            translationY = when (state) {
+                MascotState.Reading -> floatAnim + readingBob
+                MascotState.Walking -> -(sin(walkCycle * 2 * Math.PI).toFloat().coerceIn(-1f, 1f) * 4f).coerceAtLeast(-4f) // Gentle forward/backward body bob up-down
+                MascotState.Flying -> 0f  // Parent Box handles vertical movement
+                else -> floatAnim
+            }
+
             when (state) {
                 MascotState.Sleeping -> {
                     scaleX = breathingScale
@@ -212,10 +235,9 @@ fun MascotBani(
                 MascotState.Celebrating -> {
                     scaleX = 1f + (breathingScale - 1f) * 1.5f
                     scaleY = 1f + (breathingScale - 1f) * 1.5f
-                    rotationZ = tiltAngle * 2.5f
                 }
-                MascotState.Thinking -> {
-                    rotationZ = thinkingTilt
+                MascotState.Thinking, MascotState.Oops -> {
+                    rotationZ = thinkingTilt // Applies that gentle caring head tilt
                 }
                 else -> {
                     scaleX = 1f + (breathingScale - 1f) * 0.4f
@@ -223,47 +245,203 @@ fun MascotBani(
                 }
             }
         }
-    ) { 
+    ){
+        val currentMouthOpen = mouthOpen
+        val currentWingFlap = wingFlap
+        val currentHairSway = hairSway
+        val currentFootWiggle = footWiggle
+        val currentBlink = blinkProgress
+        val currentPupil = pupilOffset
+        val currentReadingPupil = readingPupil
+        val currentBookOpen = bookOpen
+        val currentAuraScale = auraScale
+        val currentZzz = zzzAnim
+        val currentEyebrow = eyebrowOffset
+        val currentWalkCycle = walkCycle
+
         val cx = size.width / 2f
         val cy = size.height / 2f
 
         val bodyRadius = size.minDimension * 0.35f
-        val mouthWidth = bodyRadius * 0.9f
-        val mouthHeight = bodyRadius * 0.5f
         val eyeRadius = bodyRadius * 0.12f
         val eyeOffsetX = bodyRadius * 0.42f
         val eyeOffsetY = bodyRadius * 0.28f
 
         val wingOffset = when (state) {
             MascotState.Reading -> -25f
-            MascotState.Happy, MascotState.Celebrating -> wingFlap
-            MascotState.Listening -> wingFlap * 0.4f
-            else -> 0f
+            MascotState.Happy, MascotState.Celebrating -> currentWingFlap // Active flapping for celebration & happiness
+            MascotState.Flying -> currentWingFlap * 1.4f                  // Vigorous flapping while airborne
+            MascotState.FlyingPanning -> currentWingFlap * 2.4f           // Rapid energetic flapping during active 3D navigation
+            MascotState.Listening -> currentWingFlap * 0.4f
+            MascotState.Reflecting -> -15f // Tucked wings for deep thought
+            MascotState.Walking -> currentWingFlap * 0.6f
+            else -> currentWingFlap * 0.35f // Subtle idle flapping to prevent "still" look
         }
         
-        drawMascotBody(
-            cx = cx,
-            cy = cy, 
-            bodyRadius = bodyRadius,
-            wingFlap = wingOffset,
-            hairSway = hairSway,
-            footWiggle = footWiggle,
-            beakOpenAmount = when (state) {
-                MascotState.Listening, MascotState.Thinking -> 0.4f
-                MascotState.Happy -> 0.25f
-                MascotState.Celebrating -> 0.45f
-                MascotState.Reading -> 0.15f
-                MascotState.Idle -> mouthOpen * 1.1f
-                else -> 0f
-            },
-            showBeak = state != MascotState.Sleeping,
-            isReadingState = state == MascotState.Reading,
-            drawWingsOnly = false
-        )
+        if (state == MascotState.FlyingPanning) {
+            // ── EXACT REPLICA AUTHENTIC 3D FLIGHT POSE (MATCHING FRONT PROFILE 100%) ──
+            val sideWingFlap = currentWingFlap * 1.8f
+
+            // 1. Back Wing (Behind Body)
+            val leftWingX = cx - bodyRadius * 0.50f
+            val leftWingY = cy + bodyRadius * 0.22f
+            withTransform({
+                rotate(degrees = -12f + sideWingFlap, pivot = Offset(leftWingX, leftWingY))
+            }) {
+                val backWingPath = createWingPath(leftWingX, leftWingY, bodyRadius * 1.15f, true, false)
+                drawPath(path = backWingPath, brush = Brush.linearGradient(listOf(Color(0xFFFFF9C4), Color(0xFFFFD54F), Color(0xFFFFA000))))
+                drawPath(path = backWingPath, color = Color(0xFFF5B041), style = Stroke(2f))
+            }
+
+            // 2. Trailing Cute Feet at exact base — elegant natural flight dangle
+            val footSwing = sin(currentWingFlap * 0.12f) * 12f
+            drawCuteFoot(cx - bodyRadius * 0.22f, cy + bodyRadius * 1.35f, bodyRadius * 0.95f, true, -24f + footSwing)
+            drawCuteFoot(cx + bodyRadius * 0.08f, cy + bodyRadius * 1.35f, bodyRadius * 0.95f, false, -16f + footSwing)
+
+            // 3. Exact 1:1 Body Path (Identical to Front Body Geometry)
+            val bodyGradient = Brush.linearGradient(
+                colors = listOf(Color(0xFFFFEE58), Color(0xFFFFB300), Color(0xFFFF6F00)),
+                start = Offset(cx - bodyRadius, cy - bodyRadius),
+                end = Offset(cx + bodyRadius, cy + bodyRadius)
+            )
+            val bodyPath = Path().apply {
+                moveTo(cx, cy - bodyRadius * 1.18f)
+                // Forward/chest side — fuller, more rounded puff
+                cubicTo(cx + bodyRadius * 0.60f, cy - bodyRadius * 1.16f, cx + bodyRadius * 0.90f, cy - bodyRadius * 0.50f, cx + bodyRadius * 0.82f, cy + bodyRadius * 0.05f)
+                // Bottom forward curve
+                cubicTo(cx + bodyRadius * 0.98f, cy + bodyRadius * 0.50f, cx + bodyRadius * 0.88f, cy + bodyRadius * 0.98f, cx + bodyRadius * 0.40f, cy + bodyRadius * 1.18f)
+                // Tail base — slightly narrower than front
+                cubicTo(cx + bodyRadius * 0.15f, cy + bodyRadius * 1.26f, cx - bodyRadius * 0.25f, cy + bodyRadius * 1.20f, cx - bodyRadius * 0.50f, cy + bodyRadius * 1.08f)
+                // Back/tail side — tapered and sleeker
+                cubicTo(cx - bodyRadius * 0.88f, cy + bodyRadius * 0.80f, cx - bodyRadius * 0.85f, cy + bodyRadius * 0.28f, cx - bodyRadius * 0.70f, cy - bodyRadius * 0.12f)
+                cubicTo(cx - bodyRadius * 0.76f, cy - bodyRadius * 0.60f, cx - bodyRadius * 0.48f, cy - bodyRadius * 1.16f, cx, cy - bodyRadius * 1.18f)
+                close()
+            }
+
+            withTransform({ scale(1.15f, 1.15f, pivot = Offset(cx, cy)) }) {
+                drawPath(path = bodyPath, color = Color(0xFFFFD54F).copy(alpha = 0.15f))
+            }
+            drawPath(path = bodyPath, brush = bodyGradient)
+            drawPath(path = bodyPath, color = Color(0xFFE65100).copy(alpha = 0.8f), style = Stroke(width = 2.5f))
+
+            // Signature chest feathers — shifted to the forward/right side of profile
+            val featherColor = Color(0xFFE65100).copy(alpha = 0.25f)
+            val featherStrokeWidth = bodyRadius * 0.04f
+            repeat(4) { i ->
+                drawArc(color = featherColor, startAngle = 25f, sweepAngle = 130f, useCenter = false, topLeft = Offset(cx + bodyRadius * 0.05f + i * bodyRadius * 0.18f, cy + bodyRadius * 0.10f), size = Size(bodyRadius * 0.20f, bodyRadius * 0.13f), style = Stroke(width = featherStrokeWidth, cap = StrokeCap.Round))
+            }
+
+            // White Highlights — on the forward-facing right side of profile
+            drawOval(color = Color.White.copy(alpha = 0.45f), topLeft = Offset(cx + bodyRadius * 0.18f, cy - bodyRadius * 0.75f), size = Size(bodyRadius * 0.22f, bodyRadius * 0.55f))
+            drawOval(color = Color.White.copy(alpha = 0.10f), topLeft = Offset(cx - bodyRadius * 0.20f, cy - bodyRadius * 0.9f), size = Size(bodyRadius * 1.2f, bodyRadius * 1.6f))
+
+            // Pre-compute eye center for shared use by cheek and beak — higher and closer to body outline
+            val eyeCenter = Offset(cx + bodyRadius * 0.52f, cy - bodyRadius * 0.38f)
+
+            // Blushing Cheek — single cheek on the forward-facing side, just below and behind the eye
+            val cheekCenter = Offset(cx + bodyRadius * 0.38f, eyeCenter.y + eyeRadius * 1.6f)
+            drawCircle(brush = Brush.radialGradient(colors = listOf(Color(0xFFFF8A80).copy(alpha = 0.85f), Color(0xFFFF8A80).copy(alpha = 0f)), center = cheekCenter, radius = bodyRadius * 0.18f), radius = bodyRadius * 0.18f, center = cheekCenter)
+
+            // 4. Hair Tuft — shifted to the crown of the side-profile head (top-right)
+            val tuftBaseX = cx + bodyRadius * 0.10f
+            val tuftBaseY = cy - bodyRadius * 1.15f
+            withTransform({
+                rotate(degrees = -8f + currentHairSway * 0.30f, pivot = Offset(tuftBaseX, tuftBaseY))
+            }) {
+                val tuft = Path().apply {
+                    moveTo(tuftBaseX, tuftBaseY)
+                    quadraticTo(tuftBaseX - bodyRadius * 0.15f, tuftBaseY - bodyRadius * 0.40f, tuftBaseX - bodyRadius * 0.04f, tuftBaseY - bodyRadius * 0.28f)
+                    quadraticTo(tuftBaseX + bodyRadius * 0.04f, tuftBaseY - bodyRadius * 0.50f, tuftBaseX + bodyRadius * 0.14f, tuftBaseY - bodyRadius * 0.28f)
+                    quadraticTo(tuftBaseX + bodyRadius * 0.22f, tuftBaseY - bodyRadius * 0.38f, tuftBaseX, tuftBaseY)
+                    close()
+                }
+                drawPath(path = tuft, color = Color(0xFFE65100))
+                drawPath(path = tuft, color = Color(0xFFBF360C), style = Stroke(width = bodyRadius * 0.02f))
+            }
+
+            // 5. Single eye on the forward-facing side of the profile — perfectly level
+            val eyeHeight = eyeRadius * 2f * currentBlink
+            drawOval(color = Color.White, topLeft = Offset(eyeCenter.x - eyeRadius, eyeCenter.y - eyeHeight / 2f), size = Size(eyeRadius * 2f, eyeHeight.coerceAtLeast(2f)))
+            if (currentBlink > 0.25f) {
+                drawCircle(color = FaceColor, radius = eyeRadius * 0.50f, center = Offset(eyeCenter.x + eyeRadius * 0.20f, eyeCenter.y))
+                drawCircle(color = Color.White, radius = eyeRadius * 0.20f, center = Offset(eyeCenter.x + eyeRadius * 0.30f, eyeCenter.y - eyeRadius * 0.15f))
+            } else {
+                drawLine(color = FaceColor, start = Offset(eyeCenter.x - eyeRadius, eyeCenter.y), end = Offset(eyeCenter.x + eyeRadius, eyeCenter.y), strokeWidth = eyeRadius * 0.18f, cap = StrokeCap.Round)
+            }
+
+            // 6. Side beak — base at body edge, tip clearly outside, positioned just a little lower
+            val beakBaseX = cx + bodyRadius * 0.68f  // at right body wall
+            val beakTipX  = cx + bodyRadius * 1.08f  // protruding well beyond body
+            val beakMidY  = eyeCenter.y + eyeRadius * 1.85f  // positioned just a little lower below the eye
+            val beakGap   = bodyRadius * 0.055f
+            val upperBeak = Path().apply {
+                moveTo(beakBaseX, beakMidY - bodyRadius * 0.08f)
+                lineTo(beakTipX,  beakMidY)
+                lineTo(beakBaseX, beakMidY + bodyRadius * 0.08f)
+                close()
+            }
+            val lowerBeak = Path().apply {
+                moveTo(beakBaseX, beakMidY + bodyRadius * 0.08f + beakGap)
+                lineTo(beakTipX - bodyRadius * 0.14f, beakMidY + bodyRadius * 0.13f + beakGap)
+                lineTo(beakBaseX, beakMidY + bodyRadius * 0.17f + beakGap)
+                close()
+            }
+            drawPath(path = upperBeak, brush = Brush.verticalGradient(colors = listOf(Color(0xFFFFD54F), Color(0xFFFFA000)), startY = beakMidY - bodyRadius * 0.08f, endY = beakMidY + bodyRadius * 0.08f))
+            drawPath(path = lowerBeak, brush = Brush.verticalGradient(colors = listOf(Color(0xFFFFB74D), Color(0xFFF57C00)), startY = beakMidY + bodyRadius * 0.08f, endY = beakMidY + bodyRadius * 0.20f))
+            drawPath(path = upperBeak, color = Color(0xFFE65100), style = Stroke(width = 2.2f))
+            drawPath(path = lowerBeak, color = Color(0xFFE65100), style = Stroke(width = 2.2f))
+
+            // 7. Fore Wing (In Front of Body flapping with energy)
+            val rightWingX = cx + bodyRadius * 0.42f
+            val rightWingY = cy + bodyRadius * 0.22f
+            withTransform({
+                rotate(degrees = 12f - sideWingFlap, pivot = Offset(rightWingX, rightWingY))
+            }) {
+                val foreWingPath = createWingPath(rightWingX, rightWingY, bodyRadius * 1.25f, false, false)
+                drawPath(path = foreWingPath, brush = Brush.linearGradient(listOf(Color(0xFFFFF9C4), Color(0xFFFFD54F), Color(0xFFFFB300))))
+                repeat(3) { i ->
+                    drawLine(
+                        color = Color(0xFFF5B041).copy(alpha = 0.45f),
+                        start = Offset(rightWingX + bodyRadius * 0.10f, rightWingY + bodyRadius * 0.08f),
+                        end = Offset(rightWingX + bodyRadius * (0.30f + i * 0.10f), rightWingY + bodyRadius * (0.15f + i * 0.05f)),
+                        strokeWidth = bodyRadius * 0.015f,
+                        cap = StrokeCap.Round
+                    )
+                }
+                drawPath(path = foreWingPath, color = Color(0xFFF5B041), style = Stroke(2.2f))
+            }
+        } else {
+            drawMascotBody(
+                cx = cx,
+                cy = cy, 
+                bodyRadius = bodyRadius,
+                wingFlap = wingOffset,
+                hairSway = currentHairSway,
+                footWiggle = if (state == MascotState.Walking) 0f else currentFootWiggle,
+                walkCycle = if (state == MascotState.Walking) currentWalkCycle else null,
+                beakOpenAmount = when (state) {
+                    MascotState.Listening, MascotState.Thinking -> 0.4f
+                    MascotState.Happy -> 0.25f
+                    MascotState.Celebrating -> 0.45f
+                    MascotState.Reading -> 0.15f
+                    MascotState.Idle -> currentMouthOpen * 1.1f
+                    MascotState.Walking -> 0.1f
+                    else -> 0f
+                },
+                showBeak = state != MascotState.Sleeping,
+                isReadingState = state == MascotState.Reading,
+                drawWingsOnly = false,
+                isReflectingState = state == MascotState.Reflecting,
+                hasHeadCovering = state == MascotState.AmritVela || state == MascotState.Namaste
+            )
+        }
 
         when (state) {
-            MascotState.Idle -> {
-                drawOpenEyes(cx, cy, eyeOffsetX, pupilOffset, eyeOffsetY, eyeRadius, blinkProgress)
+            MascotState.FlyingPanning -> {
+                // Handled with full authentic body parts in side profile branch above
+            }
+            MascotState.Idle, MascotState.Walking, MascotState.Flying -> {
+                drawOpenEyes(cx, cy, eyeOffsetX, if (state == MascotState.Walking || state == MascotState.Flying) 0.6f else currentPupil, eyeOffsetY, eyeRadius, currentBlink)
             }
             MascotState.Happy -> {
                 drawHappyEyes(cx, cy, eyeOffsetX, eyeOffsetY, eyeRadius, bodyRadius * 0.10f)
@@ -278,9 +456,9 @@ fun MascotBani(
                     style = Stroke(width = bodyRadius * 0.02f, cap = StrokeCap.Round)
                 )
 
-                val z1Progress = (zzzAnim + 0.0f) % 1f
-                val z2Progress = (zzzAnim + 0.33f) % 1f
-                val z3Progress = (zzzAnim + 0.66f) % 1f
+                val z1Progress = (currentZzz + 0.0f) % 1f
+                val z2Progress = (currentZzz + 0.33f) % 1f
+                val z3Progress = (currentZzz + 0.66f) % 1f
                 val startX = cx + bodyRadius * 0.55f
                 val startY = cy - bodyRadius * 0.45f
                 val travel = bodyRadius * 0.8f
@@ -290,15 +468,14 @@ fun MascotBani(
                 drawZ(startX + sin(z2Progress * PI.toFloat() * 2f) * sway, startY - z2Progress * travel, bodyRadius * 0.38f, (1f - z2Progress) * 0.9f, bodyRadius * 0.08f)
                 drawZ(startX + sin(z3Progress * PI.toFloat() * 2f) * sway, startY - z3Progress * travel, bodyRadius * 0.46f, (1f - z3Progress) * 0.9f, bodyRadius * 0.10f)
             }
-                   MascotState.Reading -> {
-                // Passed 1f at the end to lower the pupils directly onto the page sightline
-                drawOpenEyes(cx, cy, eyeOffsetX, readingPupil, eyeOffsetY, eyeRadius, blinkProgress, 1f)
-                drawThinkingEyebrows(cx, cy, eyeOffsetX, eyeOffsetY, bodyRadius, eyebrowOffset * 0.5f)
-                drawBook(cx, cy, bodyRadius, bookOpen)
+            MascotState.Reading -> {
+                drawOpenEyes(cx, cy, eyeOffsetX, currentReadingPupil, eyeOffsetY, eyeRadius, currentBlink, 1f)
+                drawThinkingEyebrows(cx, cy, eyeOffsetX, eyeOffsetY, bodyRadius, currentEyebrow * 0.5f)
+                drawBook(cx, cy, bodyRadius, currentBookOpen)
                 
                 drawMascotBody(
                     cx = cx, cy = cy, bodyRadius = bodyRadius, wingFlap = wingOffset,
-                    hairSway = hairSway, footWiggle = footWiggle, beakOpenAmount = 0.15f,
+                    hairSway = currentHairSway, footWiggle = currentFootWiggle, beakOpenAmount = 0.15f,
                     showBeak = true, isReadingState = true, drawWingsOnly = true
                 )
             }
@@ -307,13 +484,13 @@ fun MascotBani(
                 drawClosedEyes(cx, cy, eyeOffsetX, eyeOffsetY, eyeRadius, bodyRadius * 0.10f)
             }
             MascotState.Thinking -> {
-                drawOpenEyes(cx, cy, eyeOffsetX, pupilOffset, eyeOffsetY, eyeRadius, blinkProgress)
-                drawThinkingEyebrows(cx, cy, eyeOffsetX, eyeOffsetY, bodyRadius, eyebrowOffset)
+                drawOpenEyes(cx, cy, eyeOffsetX, currentPupil, eyeOffsetY, eyeRadius, currentBlink)
+                drawThinkingEyebrows(cx, cy, eyeOffsetX, eyeOffsetY, bodyRadius, currentEyebrow)
                 drawThinkingMouth(cx, cy, bodyRadius)
             }
             MascotState.Meditating -> {
                 drawClosedEyes(cx, cy, eyeOffsetX, eyeOffsetY, eyeRadius, bodyRadius * 0.08f)
-                drawAura(cx, cy, bodyRadius, auraScale)
+                drawAura(cx, cy, bodyRadius, currentAuraScale)
                 drawArc(
                     color = FaceColor, startAngle = 20f, sweepAngle = 140f, useCenter = false,
                     topLeft = Offset(cx - bodyRadius * 0.08f, cy + bodyRadius * 0.28f),
@@ -322,23 +499,207 @@ fun MascotBani(
                 )
             }
             MascotState.Oops -> {
-                drawXEyes(cx, cy, eyeOffsetX, eyeOffsetY, eyeRadius, bodyRadius * 0.08f)
+                // 1. Soft, caring, understanding curved eyes (sympathetic half-closed arches)
+                drawCaringEyes(cx, cy, eyeOffsetX, eyeOffsetY, eyeRadius, bodyRadius * 0.08f)
+
+                // 2. Gentle comforting eyebrow tilt showing empathy
+                drawThinkingEyebrows(cx, cy, eyeOffsetX, eyeOffsetY, bodyRadius, currentEyebrow * 0.4f)
+
+                // 3. Warm, reassuring, slight comforting smile
                 drawArc(
-                    color = FaceColor, startAngle = 200f, sweepAngle = 140f, useCenter = false,
-                    topLeft = Offset(cx - bodyRadius * 0.10f, cy + bodyRadius * 0.26f),
-                    size = Size(bodyRadius * 0.20f, bodyRadius * 0.08f),
-                    style = Stroke(width = bodyRadius * 0.028f, cap = StrokeCap.Round)
+                    color = FaceColor,
+                    startAngle = 20f,
+                    sweepAngle = 140f,
+                    useCenter = false,
+                    topLeft = Offset(cx - bodyRadius * 0.08f, cy + bodyRadius * 0.26f),
+                    size = Size(bodyRadius * 0.16f, bodyRadius * 0.06f),
+                    style = Stroke(width = bodyRadius * 0.025f, cap = StrokeCap.Round)
                 )
             }
-            MascotState.Celebrating -> {
+          MascotState.Celebrating -> {
                 drawHappyEyes(cx, cy, eyeOffsetX, eyeOffsetY, eyeRadius, bodyRadius * 0.10f)
-                drawSparkles(cx, cy, bodyRadius)
+                
+                // 1. Natural, subtle 8-point fireworks positioned gracefully ABOVE the mascot's head
+                val fireworkProgress = (currentAuraScale - 0.95f) / 0.13f 
+                val fireworkCenters = listOf(
+                    Offset(cx - bodyRadius * 0.4f, cy - bodyRadius * 1.4f),
+                    Offset(cx + bodyRadius * 0.4f, cy - bodyRadius * 1.5f),
+                    Offset(cx, cy - bodyRadius * 1.7f)
+                )
+
+                fireworkCenters.forEachIndexed { fIndex, center ->
+                    val burstRadius = bodyRadius * (0.12f + fireworkProgress * 0.28f)
+                    // Softer visibility (multiplied by 0.45f for a more natural, subtle glow)
+                    val alpha = ((1f - fireworkProgress) * 0.45f).coerceIn(0f, 1f)
+                    
+                    repeat(8) { i ->
+                        val angle = i * (2.0 * PI / 8.0) + (fIndex * 0.4)
+                        val cos = kotlin.math.cos(angle).toFloat()
+                        val sin = kotlin.math.sin(angle).toFloat()
+                        
+                        val startDist = burstRadius * 0.2f
+                        val endDist = burstRadius
+                        
+                        drawLine(
+                            color = when ((i + fIndex) % 5) {
+                                0 -> Gold
+                                1 -> Color(0xFFFF3366)
+                                2 -> Color(0xFF00E5FF)
+                                3 -> Color(0xFF76FF03)
+                                else -> Color(0xFFFF9100)
+                            }.copy(alpha = alpha),
+                            start = Offset(center.x + startDist * cos, center.y + startDist * sin),
+                            end = Offset(center.x + endDist * cos, center.y + endDist * sin),
+                            strokeWidth = bodyRadius * 0.025f,
+                            cap = StrokeCap.Round
+                        )
+                    }
+                    drawCircle(
+                        color = Color.White.copy(alpha = alpha * 0.6f),
+                        radius = bodyRadius * 0.04f * (1f - fireworkProgress * 0.5f),
+                        center = center
+                    )
+                }
+
+                // 2. Continuous Falling Confetti (Driven by currentZzz / Restarting loop so it never retracts upwards)
+                val confettiColors = listOf(
+                    Color(0xFFFF1744).copy(alpha = 0.8f), 
+                    Color(0xFF00E5FF).copy(alpha = 0.8f), 
+                    Color(0xFFFFEA00).copy(alpha = 0.8f), 
+                    Color(0xFF76FF03).copy(alpha = 0.8f), 
+                    Color(0xFFD500F9).copy(alpha = 0.8f), 
+                    Color(0xFFFF9100).copy(alpha = 0.8f)
+                )
+                
+                // Using currentZzz (Restart animation spec 0->1) to ensure continuous one-way downward flow
+                repeat(12) { i ->
+                    val progress = ((currentZzz + (i * 0.08f)) % 1.0f)
+                    val xSpread = (i * 38f) % (size.width * 0.7f) - (size.width * 0.35f)
+                    val yPos = (progress * size.height * 0.85f) - (size.height * 0.1f)
+                    val rotationAngle = progress * 720f * (if (i % 2 == 0) 1f else -1.2f)
+                    
+                    val confettiColor = confettiColors[i % confettiColors.size]
+                    
+                    withTransform({
+                        rotate(rotationAngle, pivot = Offset(cx + xSpread, cy + yPos))
+                    }) {
+                        if (i % 3 == 0) {
+                            drawRoundRect(
+                                color = confettiColor,
+                                topLeft = Offset(cx + xSpread, cy + yPos),
+                                size = Size(bodyRadius * 0.05f, bodyRadius * 0.12f),
+                                cornerRadius = CornerRadius(bodyRadius * 0.02f)
+                            )
+                        } else {
+                            drawRect(
+                                color = confettiColor,
+                                topLeft = Offset(cx + xSpread, cy + yPos),
+                                size = Size(bodyRadius * 0.07f, bodyRadius * 0.07f)
+                            )
+                        }
+                    }
+                }
+                
+                // Joyful open-mouth expression
                 drawArc(
-                    color = FaceColor, startAngle = 15f, sweepAngle = 150f, useCenter = false,
-                    topLeft = Offset(cx - bodyRadius * 0.14f, cy + bodyRadius * 0.24f),
-                    size = Size(bodyRadius * 0.28f, bodyRadius * 0.10f),
+                    color = FaceColor, 
+                    startAngle = 10f, 
+                    sweepAngle = 160f, 
+                    useCenter = true, 
+                    topLeft = Offset(cx - bodyRadius * 0.14f, cy + bodyRadius * 0.22f),
+                    size = Size(bodyRadius * 0.28f, bodyRadius * 0.14f),
                     style = Stroke(width = bodyRadius * 0.035f, cap = StrokeCap.Round)
                 )
+            }
+            MascotState.Reflecting -> {
+                // Deep contemplation state with soft downward gaze & gentle expression
+                drawOpenEyes(cx, cy, eyeOffsetX, -0.2f, eyeOffsetY + eyeRadius * 0.1f, eyeRadius, currentBlink, -0.5f)
+                drawThinkingEyebrows(cx, cy, eyeOffsetX, eyeOffsetY, bodyRadius, currentEyebrow * 0.3f)
+                drawThinkingMouth(cx, cy, bodyRadius)
+            }
+            MascotState.AmritVela, MascotState.Namaste -> {
+                // 1. Multi-layered mystical sunrise dawn aura with warm golden-orange gradients
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            Color(0xFFFFD54F).copy(alpha = 0.5f),
+                            Color(0xFFFF8F00).copy(alpha = 0.25f),
+                            Color.Transparent
+                        ),
+                        center = Offset(cx, cy),
+                        radius = bodyRadius * 1.8f * currentAuraScale
+                    ),
+                    radius = bodyRadius * 1.8f * currentAuraScale,
+                    center = Offset(cx, cy)
+                )
+
+                // 2. Radiating morning rays (divine dawn glow lines)
+                repeat(8) { i ->
+                    val angle = i * (2.0 * PI / 8.0) + (currentAuraScale * 0.2f)
+                    val cos = kotlin.math.cos(angle).toFloat()
+                    val sin = kotlin.math.sin(angle).toFloat()
+                    val rayInner = bodyRadius * 1.15f
+                    val rayOuter = bodyRadius * (1.5f + (i % 2) * 0.2f)
+
+                    drawLine(
+                        color = Color(0xFFFFF9C4).copy(alpha = 0.45f),
+                        start = Offset(cx + rayInner * cos, cy + rayInner * sin),
+                        end = Offset(cx + rayOuter * cos, cy + rayOuter * sin),
+                        strokeWidth = bodyRadius * 0.035f,
+                        cap = StrokeCap.Round
+                    )
+                }
+
+                // 3. Floating divine morning dew/sparkle particles moving gently upwards
+                repeat(6) { i ->
+                    val progress = ((currentAuraScale * (i + 1) * 1.8f) % 1.0f)
+                    val angle = i * (2.0 * PI / 6.0) + progress
+                    val distance = bodyRadius * (1.1f + progress * 0.5f)
+                    val alpha = (1f - progress).coerceIn(0f, 1f)
+
+                    drawCircle(
+                        color = Color(0xFFFFF59D).copy(alpha = alpha * 0.9f),
+                        radius = bodyRadius * 0.05f * (1.2f - progress * 0.4f),
+                        center = Offset(
+                            cx + kotlin.math.cos(angle).toFloat() * distance,
+                            cy - bodyRadius * 0.2f + kotlin.math.sin(angle).toFloat() * distance
+                        )
+                    )
+                }
+
+                // 4. Peaceful meditative closed prayer eyes / happy eyes
+                if (state == MascotState.Namaste) {
+                    drawHappyEyes(cx, cy, eyeOffsetX, eyeOffsetY, eyeRadius, bodyRadius * 0.08f)
+                    drawSmile(cx, cy, bodyRadius * 0.26f, bodyRadius * 0.10f, bodyRadius * 0.025f)
+                } else {
+                    drawClosedEyes(cx, cy, eyeOffsetX, eyeOffsetY, eyeRadius, bodyRadius * 0.08f)
+                }
+
+                // 5. Authentic Sikh Patka (Properly fitted on head with crown dome, joora top-knot, front V-wrap band)
+                drawPatkaHeadwear(cx, cy, bodyRadius)
+
+                // 6. Joined Prayer Wings (Namaste / Anjali Mudra pose in front of chest)
+                drawNamasteHands(cx, cy, bodyRadius)
+            }
+            MascotState.Simran -> {
+                // Rotating sacred geometric mandala rings for deep meditative focus
+                val currentBreathing = breathingScale
+                val mandalaRotation = (currentBreathing - 0.97f) * 120f
+                withTransform({ rotate(mandalaRotation, Offset(cx, cy)) }) {
+                    repeat(8) { i ->
+                        val angle = i * (2 * PI / 8)
+                        drawCircle(
+                            color = Gold.copy(alpha = 0.15f),
+                            radius = bodyRadius * 1.4f * currentBreathing,
+                            center = Offset(
+                                cx + kotlin.math.cos(angle).toFloat() * bodyRadius * 0.12f, 
+                                cy + kotlin.math.sin(angle).toFloat() * bodyRadius * 0.12f
+                            ),
+                            style = Stroke(width = 3.5f)
+                        )
+                    }
+                }
+                drawClosedEyes(cx, cy, eyeOffsetX, eyeOffsetY, eyeRadius, bodyRadius * 0.08f)
             }   
         }
     }
@@ -352,36 +713,31 @@ private fun DrawScope.drawOpenEyes(
     eyeOffsetY: Float,
     eyeRadius: Float,
     blinkProgress: Float,
-    pupilOffsetY: Float = 0f // New parameter for looking down
+    pupilOffsetY: Float = 0f
 ) {
     val leftEye = Offset(cx - eyeOffsetX, cy - eyeOffsetY)
     val rightEye = Offset(cx + eyeOffsetX, cy - eyeOffsetY)
     val eyeHeight = eyeRadius * 2f * blinkProgress
 
-    // Eyeballs
     drawOval(color = Color.White, topLeft = Offset(leftEye.x - eyeRadius, leftEye.y - eyeHeight / 2f), size = Size(eyeRadius * 2f, eyeHeight.coerceAtLeast(2f)))
     drawOval(color = Color.White, topLeft = Offset(rightEye.x - eyeRadius, rightEye.y - eyeHeight / 2f), size = Size(eyeRadius * 2f, eyeHeight.coerceAtLeast(2f)))
 
     if (blinkProgress > 0.25f) {
         val actualPupilOffsetX = pupilOffset * eyeRadius * 0.25f
-        // Smoothly map vertical gaze constraint within eyeball limits
         val actualPupilOffsetY = pupilOffsetY * eyeRadius * 0.40f 
 
-        // Left pupil
         drawCircle(
             color = FaceColor,
             radius = eyeRadius * 0.45f,
             center = Offset(leftEye.x + actualPupilOffsetX, leftEye.y + actualPupilOffsetY)
         )
 
-        // Right pupil
         drawCircle(
             color = FaceColor,
             radius = eyeRadius * 0.45f,
             center = Offset(rightEye.x + actualPupilOffsetX, rightEye.y + actualPupilOffsetY)
         )
 
-        // Highlights (Shifted with the pupils for consistency)
         drawCircle(
             color = Color.White,
             radius = eyeRadius * 0.18f,
@@ -449,29 +805,84 @@ private fun DrawScope.drawHeadphones(cx: Float, cy: Float, bodyRadius: Float, ey
 }
 
 private fun DrawScope.drawAura(cx: Float, cy: Float, bodyRadius: Float, auraScale: Float) {
-    drawCircle(color = Gold.copy(alpha = 0.45f), radius = (bodyRadius + 8f) * auraScale, center = Offset(cx, cy), style = Stroke(width = 3f))
-    drawCircle(color = Gold.copy(alpha = 0.25f), radius = (bodyRadius + 18f) * auraScale, center = Offset(cx, cy), style = Stroke(width = 2f))
-    drawCircle(color = Gold.copy(alpha = 0.65f), radius = bodyRadius * 0.05f, center = Offset(cx, cy - bodyRadius * 1.4f))
+    drawCircle(
+        brush = Brush.radialGradient(
+            colors = listOf(Gold.copy(alpha = 0.35f), Gold.copy(alpha = 0.12f), Color.Transparent),
+            center = Offset(cx, cy),
+            radius = (bodyRadius * 2.2f) * auraScale
+        ),
+        radius = (bodyRadius * 2.2f) * auraScale,
+        center = Offset(cx, cy)
+    )
+    
+    for (i in 0 until 8) {
+        val angle = (i * 2 * PI / 8).toFloat()
+        val cos = kotlin.math.cos(angle)
+        val sin = kotlin.math.sin(angle)
+        val startRad = (bodyRadius * 1.15f) * auraScale
+        val endRad = (bodyRadius * 1.45f) * auraScale
+        drawLine(
+            color = Gold.copy(alpha = 0.55f),
+            start = Offset(cx + startRad * cos, cy + startRad * sin),
+            end = Offset(cx + endRad * cos, cy + endRad * sin),
+            strokeWidth = 4f,
+            cap = StrokeCap.Round
+        )
+    }
+
+    drawCircle(color = Gold.copy(alpha = 0.75f), radius = bodyRadius * 0.06f, center = Offset(cx, cy - bodyRadius * 1.45f))
 }
 
 private fun DrawScope.drawThinkingMouth(cx: Float, cy: Float, bodyRadius: Float) {
     drawLine(color = FaceColor, start = Offset(cx - bodyRadius * 0.12f, cy + bodyRadius * 0.22f), end = Offset(cx + bodyRadius * 0.12f, cy + bodyRadius * 0.22f), strokeWidth = bodyRadius * 0.05f)
 }
 
-private fun DrawScope.drawCuteFoot(footCx: Float, footCy: Float, bodyRadius: Float, isLeft: Boolean, wiggle: Float) {
-    val angle = if (isLeft) wiggle * 1.2f else -wiggle * 1.2f
-    withTransform({ rotate(degrees = angle, pivot = Offset(footCx, footCy)) }) {
-        val legLength = bodyRadius * 0.42f
-        val toeLength = bodyRadius * 0.18f
-        val stroke = bodyRadius * 0.045f
+private fun DrawScope.drawCuteFoot(footCx: Float, footCy: Float, bodyRadius: Float, isLeft: Boolean, wiggle: Float, isWalking: Boolean = false, walkPhase: Float = 0f) {
+    // Natural biomimetic foot motion: combine smooth forward/backward swing with vertical step lift
+    val angle = if (isWalking) {
+        // Natural leg swing arc (±18 degrees max)
+        wiggle * 0.72f
+    } else {
+        if (isLeft) wiggle * 1.2f else -wiggle * 1.2f
+    }
 
-        drawLine(color = Color(0xFFFF9800), start = Offset(footCx, footCy - legLength), end = Offset(footCx, footCy), strokeWidth = stroke, cap = StrokeCap.Round)
-        drawLine(color = Color(0xFFFF9800), start = Offset(footCx, footCy), end = Offset(footCx - toeLength, footCy + toeLength * 0.45f), strokeWidth = stroke, cap = StrokeCap.Round)
-        drawLine(color = Color(0xFFFF9800), start = Offset(footCx, footCy), end = Offset(footCx, footCy + toeLength * 0.75f), strokeWidth = stroke, cap = StrokeCap.Round)
-        drawLine(color = Color(0xFFFF9800), start = Offset(footCx, footCy), end = Offset(footCx + toeLength, footCy + toeLength * 0.45f), strokeWidth = stroke, cap = StrokeCap.Round)
-        drawCircle(color = Color(0xFFF57C00), radius = stroke * 0.35f, center = Offset(footCx - toeLength, footCy + toeLength * 0.45f))
-        drawCircle(color = Color(0xFFF57C00), radius = stroke * 0.35f, center = Offset(footCx, footCy + toeLength * 0.75f))
-        drawCircle(color = Color(0xFFF57C00), radius = stroke * 0.35f, center = Offset(footCx + toeLength, footCy + toeLength * 0.45f))
+    // Step lift: when walking forward (positive swing), lift the foot up slightly
+    val stepLift = if (isWalking) {
+        val liftFactor = sin(walkPhase * 2 * PI).toFloat()
+        if (isLeft) {
+            if (liftFactor > 0f) -liftFactor * bodyRadius * 0.12f else 0f
+        } else {
+            val rightLift = sin(walkPhase * 2 * PI + PI).toFloat()
+            if (rightLift > 0f) -rightLift * bodyRadius * 0.12f else 0f
+        }
+    } else 0f
+
+    val effectiveFootCy = footCy + stepLift
+
+    withTransform({ rotate(degrees = angle, pivot = Offset(footCx, effectiveFootCy - bodyRadius * 0.35f)) }) {
+        val legLength = bodyRadius * 0.38f 
+        val toeLength = bodyRadius * 0.16f
+        val stroke = bodyRadius * 0.065f
+
+        // Leg shaft with smooth rounded joints
+        drawLine(
+            color = Color(0xFFFF9800),
+            start = Offset(footCx, effectiveFootCy - legLength),
+            end = Offset(footCx, effectiveFootCy),
+            strokeWidth = stroke,
+            cap = StrokeCap.Round
+        )
+
+        // 3 organic curved toes spreading gently forward
+        val toeBend = if (isWalking && stepLift < 0f) 0.8f else 0.4f
+        drawLine(color = Color(0xFFFF9800), start = Offset(footCx, effectiveFootCy), end = Offset(footCx - toeLength, effectiveFootCy + toeLength * toeBend), strokeWidth = stroke, cap = StrokeCap.Round)
+        drawLine(color = Color(0xFFFF9800), start = Offset(footCx, effectiveFootCy), end = Offset(footCx, effectiveFootCy + toeLength * (toeBend + 0.25f)), strokeWidth = stroke, cap = StrokeCap.Round)
+        drawLine(color = Color(0xFFFF9800), start = Offset(footCx, effectiveFootCy), end = Offset(footCx + toeLength, effectiveFootCy + toeLength * toeBend), strokeWidth = stroke, cap = StrokeCap.Round)
+        
+        // Cute toe joint accent dots
+        drawCircle(color = Color(0xFFF57C00), radius = stroke * 0.35f, center = Offset(footCx - toeLength, effectiveFootCy + toeLength * toeBend))
+        drawCircle(color = Color(0xFFF57C00), radius = stroke * 0.35f, center = Offset(footCx, effectiveFootCy + toeLength * (toeBend + 0.25f)))
+        drawCircle(color = Color(0xFFF57C00), radius = stroke * 0.35f, center = Offset(footCx + toeLength, effectiveFootCy + toeLength * toeBend))
     }
 }
 private fun DrawScope.drawMascotBody(
@@ -481,20 +892,119 @@ private fun DrawScope.drawMascotBody(
     wingFlap: Float,
     hairSway: Float,
     footWiggle: Float,
+    walkCycle: Float? = null,
     beakOpenAmount: Float = 0f,
     showBeak: Boolean = true,
     isReadingState: Boolean = false,
-    drawWingsOnly: Boolean = false
+    drawWingsOnly: Boolean = false,
+    isReflectingState: Boolean = false,
+    hasHeadCovering: Boolean = false
 ) {
-    val leftWingX = if (isReadingState) cx - bodyRadius * 0.58f else cx - bodyRadius * 0.56f
-    val rightWingX = if (isReadingState) cx + bodyRadius * 0.58f else cx + bodyRadius * 0.56f
+    val leftWingX = if (isReadingState) cx - bodyRadius * 0.52f else cx - bodyRadius * 0.50f
+    val rightWingX = if (isReadingState) cx + bodyRadius * 0.52f else cx + bodyRadius * 0.50f
     
-    val leftWingY = if (isReadingState) cy + bodyRadius * 0.48f else cy + bodyRadius * 0.38f
-    val rightWingY = if (isReadingState) cy + bodyRadius * 0.48f else cy + bodyRadius * 0.38f
+    val leftWingY = if (isReadingState) cy + bodyRadius * 0.45f else cy + bodyRadius * 0.22f
+    val rightWingY = if (isReadingState) cy + bodyRadius * 0.45f else cy + bodyRadius * 0.22f
 
-    val leftWingGradient = Brush.linearGradient(colors = listOf(Color(0xFFFFF9C4), Color(0xFFFFD54F)), start = Offset(cx - bodyRadius * 1.5f, cy - bodyRadius * 0.4f), end = Offset(cx - bodyRadius * 0.8f, cy + bodyRadius * 0.3f))
-    val rightWingGradient = Brush.linearGradient(colors = listOf(Color(0xFFFFF9C4), Color(0xFFFFD54F)), start = Offset(cx + bodyRadius * 0.8f, cy - bodyRadius * 0.4f), end = Offset(cx + bodyRadius * 1.5f, cy + bodyRadius * 0.3f))
+    val leftWingGradient = Brush.linearGradient(colors = listOf(Color(0xFFFFF9C4), Color(0xFFFFD54F)), start = Offset(cx - bodyRadius * 1.4f, cy - bodyRadius * 0.4f), end = Offset(cx - bodyRadius * 0.6f, cy + bodyRadius * 0.3f))
+    val rightWingGradient = Brush.linearGradient(colors = listOf(Color(0xFFFFF9C4), Color(0xFFFFD54F)), start = Offset(cx + bodyRadius * 0.6f, cy - bodyRadius * 0.4f), end = Offset(cx + bodyRadius * 1.4f, cy + bodyRadius * 0.3f))
 
+    // 1. DRAW WINGS FIRST
+    if (!isReadingState && !isReflectingState && !drawWingsOnly) {
+        withTransform({
+            rotate(
+                degrees = -6f + wingFlap,
+                pivot = Offset(leftWingX, leftWingY)
+            )
+        }) {
+            val path = createWingPath(leftWingX, leftWingY, bodyRadius, true, false)
+            drawPath(path = path, brush = leftWingGradient)
+            repeat(3) { i ->
+                drawLine(
+                    color = Color(0xFFF5B041).copy(alpha = 0.45f),
+                    start = Offset(leftWingX - bodyRadius * 0.10f, leftWingY + bodyRadius * 0.08f),
+                    end = Offset(leftWingX - bodyRadius * (0.30f + i * 0.10f), leftWingY + bodyRadius * (0.15f + i * 0.05f)),
+                    strokeWidth = bodyRadius * 0.015f, cap = StrokeCap.Round
+                )
+            }
+            drawPath(path = path, color = Color(0xFFF5B041), style = Stroke(2f))
+        }
+    }
+
+    if (!isReadingState || drawWingsOnly) {
+        withTransform({
+            if (isReflectingState) {
+                rotate(degrees = -30f, pivot = Offset(cx - bodyRadius * 0.38f, cy + bodyRadius * 0.2f))
+            } else {
+                rotate(degrees = -6f + wingFlap, pivot = Offset(leftWingX, leftWingY))
+            }
+        }) {
+            val path = if (isReflectingState) {
+                createWingPath(cx - bodyRadius * 0.38f, cy + bodyRadius * 0.2f, bodyRadius, true, false)
+            } else {
+                createWingPath(leftWingX, leftWingY, bodyRadius, true, isReadingState)
+            }
+            drawPath(path = path, brush = leftWingGradient)
+            
+            if (!isReflectingState) {
+                if (isReadingState) {
+                    repeat(2) { i ->
+                        drawLine(
+                            color = Color(0xFFF5B041).copy(alpha = 0.45f),
+                            start = Offset(leftWingX - bodyRadius * 0.04f + (i * 9f), leftWingY + bodyRadius * 0.12f),
+                            end = Offset(leftWingX - bodyRadius * 0.10f + (i * 9f), leftWingY + bodyRadius * 0.30f),
+                            strokeWidth = bodyRadius * 0.015f, cap = StrokeCap.Round
+                        )
+                    }
+                } else {
+                    repeat(3) { i ->
+                        drawLine(
+                            color = Color(0xFFF5B041).copy(alpha = 0.45f),
+                            start = Offset(leftWingX - bodyRadius * 0.10f, leftWingY + bodyRadius * 0.08f),
+                            end = Offset(leftWingX - bodyRadius * (0.30f + i * 0.10f), leftWingY + bodyRadius * (0.15f + i * 0.05f)),
+                            strokeWidth = bodyRadius * 0.015f, cap = StrokeCap.Round
+                        )
+                    }
+                }
+            }
+            drawPath(path = path, color = Color(0xFFF5B041), style = Stroke(2f))
+        }
+    }
+
+    if (!isReflectingState && (!isReadingState || drawWingsOnly)) {
+        withTransform({
+            rotate(
+                degrees = if (isReadingState) -15f else 6f - wingFlap,
+                pivot = Offset(rightWingX, rightWingY)
+            )
+        }) {
+            val path = createWingPath(rightWingX, rightWingY, bodyRadius, false, isReadingState)
+            drawPath(path = path, brush = rightWingGradient)
+            
+            if (isReadingState) {
+                repeat(2) { i ->
+                    drawLine(
+                        color = Color(0xFFF5B041).copy(alpha = 0.45f),
+                        start = Offset(rightWingX + bodyRadius * 0.04f - (i * 9f), rightWingY + bodyRadius * 0.12f),
+                        end = Offset(rightWingX + bodyRadius * 0.10f - (i * 9f), rightWingY + bodyRadius * 0.30f),
+                        strokeWidth = bodyRadius * 0.015f, cap = StrokeCap.Round
+                    )
+                }
+            } else {
+                repeat(3) { i ->
+                    drawLine(
+                        color = Color(0xFFF5B041).copy(alpha = 0.45f),
+                        start = Offset(rightWingX + bodyRadius * 0.10f, rightWingY + bodyRadius * 0.08f),
+                        end = Offset(rightWingX + bodyRadius * (0.30f + i * 0.10f), rightWingY + bodyRadius * (0.15f + i * 0.05f)),
+                        strokeWidth = bodyRadius * 0.015f, cap = StrokeCap.Round
+                    )
+                }
+            }
+            drawPath(path = path, color = Color(0xFFF5B041), style = Stroke(2f))
+        }
+    }
+
+    // 2. DRAW MAIN BODY
     if (!drawWingsOnly) {
         val bodyGradient = Brush.linearGradient(colors = listOf(Color(0xFFFFEE58), Color(0xFFFFB300), Color(0xFFFF6F00)), start = Offset(cx - bodyRadius, cy - bodyRadius), end = Offset(cx + bodyRadius, cy + bodyRadius))
         drawOval(color = Color.Black.copy(alpha = 0.12f), topLeft = Offset(cx - bodyRadius * 0.8f, cy + bodyRadius * 0.95f), size = Size(bodyRadius * 1.6f, bodyRadius * 0.35f))
@@ -515,6 +1025,17 @@ private fun DrawScope.drawMascotBody(
         drawPath(path = bodyPath, brush = bodyGradient)
         drawPath(path = bodyPath, color = Color(0xFFE65100).copy(alpha = 0.8f), style = Stroke(width = 2.5f))
 
+        // 3. DRAW FEET AFTER BODY (Positioned correctly at the bottom base with natural biomechanic step lift)
+        if (walkCycle != null) {
+            // Reduced amplitude (10f) and gentler foot swing for natural forward-walk feel
+            val leftWalkWiggle = sin(walkCycle * 2 * PI).toFloat() * 10f
+            val rightWalkWiggle = sin(walkCycle * 2 * PI + PI).toFloat() * 10f
+            drawCuteFoot(cx - bodyRadius * 0.28f, cy + bodyRadius * 1.25f, bodyRadius, true, leftWalkWiggle, isWalking = true, walkPhase = walkCycle)
+            drawCuteFoot(cx + bodyRadius * 0.28f, cy + bodyRadius * 1.25f, bodyRadius, false, rightWalkWiggle, isWalking = true, walkPhase = walkCycle)
+        } else {
+            drawCuteFoot(cx - bodyRadius * 0.28f, cy + bodyRadius * 1.25f, bodyRadius, true, footWiggle, isWalking = false)
+            drawCuteFoot(cx + bodyRadius * 0.28f, cy + bodyRadius * 1.25f, bodyRadius, false, footWiggle, isWalking = false)
+        }
         val featherColor = Color(0xFFE65100).copy(alpha = 0.25f)
         val featherStrokeWidth = bodyRadius * 0.04f
         repeat(5) { i ->
@@ -524,21 +1045,21 @@ private fun DrawScope.drawMascotBody(
         drawOval(color = Color.White.copy(alpha = 0.45f), topLeft = Offset(cx - bodyRadius * 0.55f, cy - bodyRadius * 0.75f), size = Size(bodyRadius * 0.25f, bodyRadius * 0.60f))
         drawOval(color = Color.White.copy(alpha = 0.12f), topLeft = Offset(cx - bodyRadius * 0.75f, cy - bodyRadius * 0.9f), size = Size(bodyRadius * 1.5f, bodyRadius * 1.8f))
 
-        drawCuteFoot(cx - bodyRadius * 0.34f, cy + bodyRadius * 1.30f, bodyRadius, true, footWiggle)
-        drawCuteFoot(cx + bodyRadius * 0.34f, cy + bodyRadius * 1.30f, bodyRadius, false, footWiggle)
         drawCircle(brush = Brush.radialGradient(colors = listOf(Color(0xFFFF8A80).copy(alpha = 0.9f), Color(0xFFFF8A80).copy(alpha = 0f)), center = Offset(cx - bodyRadius * 0.55f, cy + bodyRadius * 0.08f), radius = bodyRadius * 0.18f), radius = bodyRadius * 0.18f, center = Offset(cx - bodyRadius * 0.55f, cy + bodyRadius * 0.08f))
         drawCircle(brush = Brush.radialGradient(colors = listOf(Color(0xFFFF8A80).copy(alpha = 0.9f), Color(0xFFFF8A80).copy(alpha = 0f)), center = Offset(cx + bodyRadius * 0.55f, cy + bodyRadius * 0.08f), radius = bodyRadius * 0.18f), radius = bodyRadius * 0.18f, center = Offset(cx + bodyRadius * 0.55f, cy + bodyRadius * 0.08f))
 
-        withTransform({ rotate(degrees = hairSway * 0.25f, pivot = Offset(cx, cy - bodyRadius * 1.05f)) }) {
-            val tuft = Path().apply {
-                moveTo(cx, cy - bodyRadius * 1.05f)
-                quadraticTo(cx - bodyRadius * 0.18f, cy - bodyRadius * 1.42f, cx - bodyRadius * 0.04f, cy - bodyRadius * 1.30f)
-                quadraticTo(cx, cy - bodyRadius * 1.52f, cx + bodyRadius * 0.04f, cy - bodyRadius * 1.30f)
-                quadraticTo(cx + bodyRadius * 0.18f, cy - bodyRadius * 1.42f, cx, cy - bodyRadius * 1.05f)
-                close()
+        if (!hasHeadCovering) {
+            withTransform({ rotate(degrees = hairSway * 0.25f, pivot = Offset(cx, cy - bodyRadius * 1.15f)) }) {
+                val tuft = Path().apply {
+                    moveTo(cx, cy - bodyRadius * 1.15f)
+                    quadraticTo(cx - bodyRadius * 0.18f, cy - bodyRadius * 1.52f, cx - bodyRadius * 0.04f, cy - bodyRadius * 1.40f)
+                    quadraticTo(cx, cy - bodyRadius * 1.62f, cx + bodyRadius * 0.04f, cy - bodyRadius * 1.40f)
+                    quadraticTo(cx + bodyRadius * 0.18f, cy - bodyRadius * 1.52f, cx, cy - bodyRadius * 1.15f)
+                    close()
+                }
+                drawPath(path = tuft, color = Color(0xFFE65100))
+                drawPath(path = tuft, color = Color(0xFFBF360C), style = Stroke(width = bodyRadius * 0.02f))
             }
-            drawPath(path = tuft, color = Color(0xFFE65100))
-            drawPath(path = tuft, color = Color(0xFFBF360C), style = Stroke(width = bodyRadius * 0.02f))
         }
 
         if (showBeak) {
@@ -566,102 +1087,7 @@ private fun DrawScope.drawMascotBody(
             drawPath(path = lowerBeak, color = Color(0xFFE65100), style = Stroke(width = 2f))
         }
     }
-
-    // FIX: Only draw background left wing if the mascot is NOT reading
-    if (!isReadingState && !drawWingsOnly) {
-        withTransform({
-            rotate(
-                degrees = -6f + wingFlap,
-                pivot = Offset(leftWingX, leftWingY)
-            )
-        }) {
-            val path = createWingPath(leftWingX, leftWingY, bodyRadius, true, false)
-            drawPath(path = path, brush = leftWingGradient)
-            repeat(3) { i ->
-                drawLine(
-                    color = Color(0xFFF5B041).copy(alpha = 0.45f),
-                    start = Offset(leftWingX - bodyRadius * 0.12f, leftWingY + bodyRadius * 0.08f),
-                    end = Offset(leftWingX - bodyRadius * (0.35f + i * 0.10f), leftWingY + bodyRadius * (0.18f + i * 0.05f)),
-                    strokeWidth = bodyRadius * 0.015f, cap = StrokeCap.Round
-                )
-            }
-            drawPath(path = path, color = Color(0xFFF5B041), style = Stroke(2f))
-        }
-    }
-
-        // Render left wing layout
-    if (!isReadingState || drawWingsOnly) {
-        withTransform({
-            rotate(
-                degrees = if (isReadingState) 15f else -6f + wingFlap,
-                pivot = Offset(leftWingX, leftWingY)
-            )
-        }) {
-            val path = createWingPath(leftWingX, leftWingY, bodyRadius, true, isReadingState)
-            drawPath(path = path, brush = leftWingGradient)
-            
-            if (isReadingState) {
-                // Vertical feather accents to match the downward sweeping reading hands
-                repeat(2) { i ->
-                    drawLine(
-                        color = Color(0xFFF5B041).copy(alpha = 0.45f),
-                        start = Offset(leftWingX - bodyRadius * 0.05f + (i * 10f), leftWingY + bodyRadius * 0.15f),
-                        end = Offset(leftWingX - bodyRadius * 0.12f + (i * 10f), leftWingY + bodyRadius * 0.35f),
-                        strokeWidth = bodyRadius * 0.015f, cap = StrokeCap.Round
-                    )
-                }
-            } else {
-                // Normal horizontal wing lines for non-reading modes
-                repeat(3) { i ->
-                    drawLine(
-                        color = Color(0xFFF5B041).copy(alpha = 0.45f),
-                        start = Offset(leftWingX - bodyRadius * 0.12f, leftWingY + bodyRadius * 0.08f),
-                        end = Offset(leftWingX - bodyRadius * (0.35f + i * 0.10f), leftWingY + bodyRadius * (0.18f + i * 0.05f)),
-                        strokeWidth = bodyRadius * 0.015f, cap = StrokeCap.Round
-                    )
-                }
-            }
-            drawPath(path = path, color = Color(0xFFF5B041), style = Stroke(2f))
-        }
-    }
-
-    // Render right wing layout
-    if (!isReadingState || drawWingsOnly) {
-        withTransform({
-            rotate(
-                degrees = if (isReadingState) -15f else 6f - wingFlap,
-                pivot = Offset(rightWingX, rightWingY)
-            )
-        }) {
-            val path = createWingPath(rightWingX, rightWingY, bodyRadius, false, isReadingState)
-            drawPath(path = path, brush = rightWingGradient)
-            
-            if (isReadingState) {
-                // Vertical feather accents to match the downward sweeping reading hands
-                repeat(2) { i ->
-                    drawLine(
-                        color = Color(0xFFF5B041).copy(alpha = 0.45f),
-                        start = Offset(rightWingX + bodyRadius * 0.05f - (i * 10f), rightWingY + bodyRadius * 0.15f),
-                        end = Offset(rightWingX + bodyRadius * 0.12f - (i * 10f), rightWingY + bodyRadius * 0.35f),
-                        strokeWidth = bodyRadius * 0.015f, cap = StrokeCap.Round
-                    )
-                }
-            } else {
-                // Normal horizontal wing lines for non-reading modes
-                repeat(3) { i ->
-                    drawLine(
-                        color = Color(0xFFF5B041).copy(alpha = 0.45f),
-                        start = Offset(rightWingX + bodyRadius * 0.12f, rightWingY + bodyRadius * 0.08f),
-                        end = Offset(rightWingX + bodyRadius * (0.35f + i * 0.10f), rightWingY + bodyRadius * (0.18f + i * 0.05f)),
-                        strokeWidth = bodyRadius * 0.015f, cap = StrokeCap.Round
-                    )
-                }
-            }
-            drawPath(path = path, color = Color(0xFFF5B041), style = Stroke(2f))
-        }
-    }
 }
-
 private fun DrawScope.drawZ(x: Float, y: Float, size: Float, alpha: Float, strokeW: Float) {
     drawLine(color = Color(0xFF90CAF9).copy(alpha = alpha), start = Offset(x - size / 2f, y - size / 2f), end = Offset(x + size / 2f, y - size / 2f), strokeWidth = strokeW, cap = StrokeCap.Round)
     drawLine(color = Color(0xFF90CAF9).copy(alpha = alpha), start = Offset(x + size / 2f, y - size / 2f), end = Offset(x - size / 2f, y + size / 2f), strokeWidth = strokeW, cap = StrokeCap.Round)
@@ -675,7 +1101,8 @@ private fun DrawScope.drawSleepingEyes(cx: Float, cy: Float, eyeOffsetX: Float, 
     drawEye(cx - eyeOffsetX)
     drawEye(cx + eyeOffsetX)
 }
- private fun createWingPath(
+
+private fun createWingPath(
     wingX: Float,
     wingY: Float,
     bodyRadius: Float,
@@ -687,7 +1114,6 @@ private fun DrawScope.drawSleepingEyes(cx: Float, cy: Float, eyeOffsetX: Float, 
         moveTo(wingX, wingY)
         
         if (isReadingState) {
-            // Extended control paths inward (`dir * bodyRadius * 0.48f`) to grasp far across onto the book face
             cubicTo(
                 wingX + dir * bodyRadius * 0.48f, wingY + bodyRadius * 0.08f,
                 wingX + dir * bodyRadius * 0.45f, wingY + bodyRadius * 0.38f,
@@ -726,7 +1152,7 @@ private fun DrawScope.drawBook(
     bodyRadius: Float,
     bookOpen: Float
 ) {
-    val width = bodyRadius * 1.15f 
+    val width = bodyRadius * 1.15f * bookOpen
     val height = bodyRadius * 0.46f 
     val top = cy + bodyRadius * 0.32f 
 
@@ -814,5 +1240,252 @@ private fun DrawScope.drawBook(
             startX = topLeftX,
             endX = cx
         )
+    )
+}
+private fun DrawScope.drawCaringEyes(
+    cx: Float,
+    cy: Float,
+    eyeOffsetX: Float,
+    eyeOffsetY: Float,
+    eyeRadius: Float,
+    strokeWidth: Float
+) {
+    // Soft downward-curving arcs conveying empathy and gentle reassurance
+    drawArc(
+        color = FaceColor,
+        startAngle = 180f,
+        sweepAngle = 180f,
+        useCenter = false,
+        topLeft = Offset(cx - eyeOffsetX - eyeRadius, cy - eyeOffsetY - eyeRadius * 0.5f),
+        size = Size(eyeRadius * 2f, eyeRadius * 1.2f),
+        style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+    )
+    drawArc(
+        color = FaceColor,
+        startAngle = 180f,
+        sweepAngle = 180f,
+        useCenter = false,
+        topLeft = Offset(cx + eyeOffsetX - eyeRadius, cy - eyeOffsetY - eyeRadius * 0.5f),
+        size = Size(eyeRadius * 2f, eyeRadius * 1.2f),
+        style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+    )
+}
+
+/**
+ * Authentic Sikh Patka with snug anatomical head fitting:
+ * - Crown dome wrapping naturally over the upper head/skull
+ * - Contoured front brow band with V-tuck fold lines
+ * - Traditional top Joora (knot) seated firmly on crown with wrap ties
+ * - Rich royal saffron/kesri gradient with cloth fold highlights
+ */
+private fun DrawScope.drawPatkaHeadwear(cx: Float, cy: Float, bodyRadius: Float) {
+    val patkaColorTop = Color(0xFFFFB300)    // Saffron Gold
+    val patkaColorMid = Color(0xFFFF8F00)    // Warm Kesri
+    val patkaColorDark = Color(0xFFE65100)   // Deep Ochre Fold Shadow
+    val patkaBorder = Color(0xFFBF360C)      // Trim
+    val patkaHighlight = Color(0xFFFFF59D)   // Top Light sheen
+
+    // 1. Top Joora (Hair bun knot on top crown with authentic cloth wrap)
+    val jooraCx = cx
+    val jooraCy = cy - bodyRadius * 1.34f
+    val jooraRadiusX = bodyRadius * 0.30f
+    val jooraRadiusY = bodyRadius * 0.24f
+
+    // Joora Knot Body (Full rounded top dome knot)
+    val jooraPath = Path().apply {
+        moveTo(jooraCx - jooraRadiusX, jooraCy + jooraRadiusY * 0.4f)
+        cubicTo(
+            jooraCx - jooraRadiusX * 1.25f, jooraCy - jooraRadiusY * 0.9f,
+            jooraCx - jooraRadiusX * 0.55f, jooraCy - jooraRadiusY * 1.3f,
+            jooraCx, jooraCy - jooraRadiusY * 1.35f
+        )
+        cubicTo(
+            jooraCx + jooraRadiusX * 0.55f, jooraCy - jooraRadiusY * 1.3f,
+            jooraCx + jooraRadiusX * 1.25f, jooraCy - jooraRadiusY * 0.9f,
+            jooraCx + jooraRadiusX, jooraCy + jooraRadiusY * 0.4f
+        )
+        quadraticTo(jooraCx, jooraCy + jooraRadiusY * 0.85f, jooraCx - jooraRadiusX, jooraCy + jooraRadiusY * 0.4f)
+        close()
+    }
+
+    drawPath(
+        path = jooraPath,
+        brush = Brush.radialGradient(
+            colors = listOf(Color(0xFFFFF176), patkaColorTop, patkaColorMid, patkaColorDark),
+            center = Offset(jooraCx - jooraRadiusX * 0.15f, jooraCy - jooraRadiusY * 0.5f),
+            radius = jooraRadiusX * 1.4f
+        )
+    )
+    drawPath(path = jooraPath, color = patkaBorder, style = Stroke(width = bodyRadius * 0.024f))
+
+    // Joora knot spherical highlight fold
+    drawArc(
+        color = patkaHighlight.copy(alpha = 0.75f),
+        startAngle = 190f,
+        sweepAngle = 160f,
+        useCenter = false,
+        topLeft = Offset(jooraCx - jooraRadiusX * 0.75f, jooraCy - jooraRadiusY * 1.15f),
+        size = Size(jooraRadiusX * 1.5f, jooraRadiusY * 1.2f),
+        style = Stroke(width = bodyRadius * 0.03f, cap = StrokeCap.Round)
+    )
+
+    // Joora Base Tie Band (Dori wrap securing joora to head)
+    val tiePath = Path().apply {
+        moveTo(jooraCx - jooraRadiusX * 1.05f, jooraCy + jooraRadiusY * 0.5f)
+        quadraticTo(jooraCx, jooraCy + jooraRadiusY * 0.95f, jooraCx + jooraRadiusX * 1.05f, jooraCy + jooraRadiusY * 0.5f)
+        quadraticTo(jooraCx, jooraCy + jooraRadiusY * 0.15f, jooraCx - jooraRadiusX * 1.05f, jooraCy + jooraRadiusY * 0.5f)
+        close()
+    }
+    drawPath(path = tiePath, brush = Brush.verticalGradient(listOf(patkaColorMid, patkaColorDark)))
+    drawPath(path = tiePath, color = patkaBorder, style = Stroke(width = bodyRadius * 0.02f))
+
+    // 2. Full Head Patka Cap (Envelops entire upper head down to brow line and temple curves)
+    val patkaPath = Path().apply {
+        // Starts on left cheek/temple side wrapping fully over head edge
+        moveTo(cx - bodyRadius * 0.82f, cy - bodyRadius * 0.15f)
+        // Wraps around the left skull contour all the way over crown
+        cubicTo(
+            cx - bodyRadius * 0.90f, cy - bodyRadius * 0.75f,
+            cx - bodyRadius * 0.65f, cy - bodyRadius * 1.30f,
+            cx, cy - bodyRadius * 1.30f
+        )
+        // Curves over crown down around the right skull contour
+        cubicTo(
+            cx + bodyRadius * 0.65f, cy - bodyRadius * 1.30f,
+            cx + bodyRadius * 0.90f, cy - bodyRadius * 0.75f,
+            cx + bodyRadius * 0.82f, cy - bodyRadius * 0.15f
+        )
+        // Front brow hairline contour (natural V-wrap dip between eyes and temples)
+        quadraticTo(
+            cx + bodyRadius * 0.40f, cy - bodyRadius * 0.28f,
+            cx, cy - bodyRadius * 0.22f
+        )
+        quadraticTo(
+            cx - bodyRadius * 0.40f, cy - bodyRadius * 0.28f,
+            cx - bodyRadius * 0.82f, cy - bodyRadius * 0.15f
+        )
+        close()
+    }
+
+    // 3D volumetric gradient over full head dome
+    drawPath(
+        path = patkaPath,
+        brush = Brush.radialGradient(
+            colors = listOf(Color(0xFFFFF59D), patkaColorTop, patkaColorMid, patkaColorDark),
+            center = Offset(cx - bodyRadius * 0.20f, cy - bodyRadius * 0.85f),
+            radius = bodyRadius * 1.35f
+        )
+    )
+
+    // Patka cloth tension folds across skull
+    val fold1 = Path().apply {
+        moveTo(cx - bodyRadius * 0.75f, cy - bodyRadius * 0.35f)
+        quadraticTo(cx, cy - bodyRadius * 0.52f, cx + bodyRadius * 0.75f, cy - bodyRadius * 0.35f)
+    }
+    val fold2 = Path().apply {
+        moveTo(cx - bodyRadius * 0.68f, cy - bodyRadius * 0.70f)
+        quadraticTo(cx, cy - bodyRadius * 0.90f, cx + bodyRadius * 0.68f, cy - bodyRadius * 0.70f)
+    }
+    val fold3 = Path().apply {
+        moveTo(cx - bodyRadius * 0.50f, cy - bodyRadius * 1.05f)
+        quadraticTo(cx, cy - bodyRadius * 1.18f, cx + bodyRadius * 0.50f, cy - bodyRadius * 1.05f)
+    }
+
+    drawPath(path = fold1, color = patkaHighlight.copy(alpha = 0.55f), style = Stroke(width = bodyRadius * 0.030f, cap = StrokeCap.Round))
+    drawPath(path = fold2, color = patkaHighlight.copy(alpha = 0.45f), style = Stroke(width = bodyRadius * 0.026f, cap = StrokeCap.Round))
+    drawPath(path = fold3, color = patkaColorDark.copy(alpha = 0.40f), style = Stroke(width = bodyRadius * 0.024f, cap = StrokeCap.Round))
+
+    // Front forehead wrap band (Patti band across brow)
+    val browBand = Path().apply {
+        moveTo(cx - bodyRadius * 0.82f, cy - bodyRadius * 0.15f)
+        quadraticTo(cx, cy - bodyRadius * 0.22f, cx + bodyRadius * 0.82f, cy - bodyRadius * 0.15f)
+        quadraticTo(cx + bodyRadius * 0.72f, cy - bodyRadius * 0.35f, cx, cy - bodyRadius * 0.38f)
+        quadraticTo(cx - bodyRadius * 0.72f, cy - bodyRadius * 0.35f, cx - bodyRadius * 0.82f, cy - bodyRadius * 0.15f)
+        close()
+    }
+    drawPath(path = browBand, color = patkaColorDark.copy(alpha = 0.30f))
+    drawPath(path = browBand, color = patkaBorder.copy(alpha = 0.60f), style = Stroke(width = bodyRadius * 0.018f))
+
+    // Crisp outer contour outline of patka headwear
+    drawPath(path = patkaPath, color = patkaBorder, style = Stroke(width = bodyRadius * 0.030f))
+
+    // Side Patka String Ties (Larh / strings draped gracefully behind ears)
+    val leftTie = Path().apply {
+        moveTo(cx - bodyRadius * 0.78f, cy - bodyRadius * 0.18f)
+        quadraticTo(cx - bodyRadius * 0.95f, cy + bodyRadius * 0.10f, cx - bodyRadius * 0.88f, cy + bodyRadius * 0.45f)
+    }
+    val rightTie = Path().apply {
+        moveTo(cx + bodyRadius * 0.78f, cy - bodyRadius * 0.18f)
+        quadraticTo(cx + bodyRadius * 0.95f, cy + bodyRadius * 0.10f, cx + bodyRadius * 0.88f, cy + bodyRadius * 0.45f)
+    }
+    drawPath(path = leftTie, color = patkaColorDark, style = Stroke(width = bodyRadius * 0.042f, cap = StrokeCap.Round))
+    drawPath(path = leftTie, color = patkaColorMid, style = Stroke(width = bodyRadius * 0.024f, cap = StrokeCap.Round))
+    drawPath(path = rightTie, color = patkaColorDark, style = Stroke(width = bodyRadius * 0.042f, cap = StrokeCap.Round))
+    drawPath(path = rightTie, color = patkaColorMid, style = Stroke(width = bodyRadius * 0.024f, cap = StrokeCap.Round))
+}
+
+/**
+ * Joined Namaste Prayer Wings / Hands in front of chest (Anjali Mudra)
+ */
+private fun DrawScope.drawNamasteHands(cx: Float, cy: Float, bodyRadius: Float) {
+    val handY = cy + bodyRadius * 0.32f
+    val handWidth = bodyRadius * 0.28f
+    val handHeight = bodyRadius * 0.42f
+
+    // Soft warm golden gradient for prayer hands
+    val prayerGradient = Brush.verticalGradient(
+        colors = listOf(Color(0xFFFFF9C4), Color(0xFFFFD54F), Color(0xFFFFB300)),
+        startY = handY - handHeight * 0.5f,
+        endY = handY + handHeight * 0.5f
+    )
+
+    // Left folded wing
+    val leftHand = Path().apply {
+        moveTo(cx, handY - handHeight * 0.5f)
+        cubicTo(
+            cx - handWidth * 0.8f, handY - handHeight * 0.2f,
+            cx - handWidth, handY + handHeight * 0.2f,
+            cx - handWidth * 0.3f, handY + handHeight * 0.5f
+        )
+        quadraticTo(cx, handY + handHeight * 0.4f, cx, handY - handHeight * 0.5f)
+        close()
+    }
+
+    // Right folded wing
+    val rightHand = Path().apply {
+        moveTo(cx, handY - handHeight * 0.5f)
+        cubicTo(
+            cx + handWidth * 0.8f, handY - handHeight * 0.2f,
+            cx + handWidth, handY + handHeight * 0.2f,
+            cx + handWidth * 0.3f, handY + handHeight * 0.5f
+        )
+        quadraticTo(cx, handY + handHeight * 0.4f, cx, handY - handHeight * 0.5f)
+        close()
+    }
+
+    // Center seam shadow
+    drawPath(path = leftHand, brush = prayerGradient)
+    drawPath(path = rightHand, brush = prayerGradient)
+    drawPath(path = leftHand, color = Color(0xFFF5B041), style = Stroke(width = 2.2f))
+    drawPath(path = rightHand, color = Color(0xFFF5B041), style = Stroke(width = 2.2f))
+
+    // Center prayer seam dividing the two folded hands
+    drawLine(
+        color = Color(0xFFE65100).copy(alpha = 0.7f),
+        start = Offset(cx, handY - handHeight * 0.48f),
+        end = Offset(cx, handY + handHeight * 0.45f),
+        strokeWidth = bodyRadius * 0.02f,
+        cap = StrokeCap.Round
+    )
+
+    // Divine prayer glow aura around hands
+    drawCircle(
+        brush = Brush.radialGradient(
+            colors = listOf(Gold.copy(alpha = 0.4f), Color.Transparent),
+            center = Offset(cx, handY),
+            radius = handWidth * 1.5f
+        ),
+        radius = handWidth * 1.5f,
+        center = Offset(cx, handY)
     )
 }

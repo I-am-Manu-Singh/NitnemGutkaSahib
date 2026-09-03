@@ -1,4 +1,5 @@
 package org.audiocular.nitnem.models
+import org.audiocular.nitnem.models.CompanionState
 import org.audiocular.nitnem.models.BaniLine
 import org.audiocular.nitnem.app.models.AppTab
 import org.audiocular.nitnem.app.models.DisplayLanguage
@@ -44,8 +45,8 @@ data class NitnemUiState(
     val miniPlayerVisible: Boolean =
         false,
 
-    val repeatMode: Boolean =
-        false,
+    val repeatMode: String =
+        "OFF",
 
     val ambientMode: Boolean =
         false,
@@ -96,6 +97,9 @@ val syncedLines: List<BaniLine> = emptyList(),
      * VISIBILITY
      */
 val totalListeningMinutes: Int = 0,
+    val showGurmukhi: Boolean =
+        true,
+
     val showTranslation: Boolean =
         true,
 
@@ -138,8 +142,12 @@ val totalListeningMinutes: Int = 0,
 
     val focusMode: Boolean =
         false,
-    val larivaarMode: Boolean =
+    val fullScreenReadingMode: Boolean =
         false,
+    val blackAndWhiteAodMode: Boolean =
+        false,
+    val larivaarMode: Boolean =
+        true,
     val amritTime: String = "04:30 AM",
     val rehrasTime: String = "06:30 PM",
     val sohilaTime: String = "10:00 PM",
@@ -163,6 +171,12 @@ val totalListeningMinutes: Int = 0,
         "default",
 
     val romanTransliterationColorMode: String =
+        "default",
+
+    val devanagariTransliterationColorMode: String =
+        "default",
+
+    val punjabiTranslationColorMode: String =
         "default",
 
     val translationColorMode: String =
@@ -282,5 +296,6 @@ val hukamnama: Hukamnama? = null,
     val meditationTimerRunning: Boolean = false,
     val meditationRemainingSeconds: Int = 0,
     val meditationDurationSeconds: Int = 0,
-    val meditationSelectedMode: String = "Mantra"
+    val meditationSelectedMode: String = "Mantra",
+    val companionState: CompanionState = CompanionState()
 )

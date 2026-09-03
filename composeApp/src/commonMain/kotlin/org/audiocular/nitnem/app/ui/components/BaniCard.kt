@@ -47,6 +47,10 @@ fun BaniCard(
 
     artistName: String? = null,
 
+    hasSyncedTiming: Boolean = false,
+
+    hasAudioFile: Boolean = false,
+
     displayLanguage: DisplayLanguage =
         DisplayLanguage.English,
 
@@ -619,25 +623,22 @@ val iconScale =
                                     )
                         )
 
-                        if (hasAudio) {
-
+                        if (hasAudioFile || hasAudio) {
                             MiniInfoChip(
+                                text = "Audio".translate(displayLanguage)
+                            )
+                        }
 
-                                text =
-                                    "Audio"
-                                        .translate(
-                                            displayLanguage
-                                        )
+                        if (hasSyncedTiming) {
+                            MiniInfoChip(
+                                text = "Synced".translate(displayLanguage),
+                                highlight = true
                             )
                         }
 
                         if (!artistName.isNullOrBlank()) {
-
                             MiniInfoChip(
-
-                                text = artistName,
-
-                                highlight = true
+                                text = artistName
                             )
                         }
                     }

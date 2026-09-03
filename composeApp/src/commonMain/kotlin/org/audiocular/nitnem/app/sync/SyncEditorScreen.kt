@@ -610,58 +610,53 @@ val timingMap = remember(timings.toList()) {
                             val file =
                                 File(audioDir, filename)
 
-                            if (
-                                file.exists() &&
-                                file.length() > 0
-                            ) {
-
-                                val authority =
-                                    "${context.packageName}.fileprovider"
-
-                                val uri =
-                                    androidx.core.content.FileProvider.getUriForFile(
-                                        context,
-                                        authority,
-                                        file
-                                    )
-
-                                val intent =
-                                    android.content.Intent(
-                                        android.content.Intent.ACTION_SEND
-                                    ).apply {
-
-                                        type =
-                                            "application/json"
-
-                                        putExtra(
-                                            android.content.Intent.EXTRA_STREAM,
-                                            uri
-                                        )
-
-                                        addFlags(
-                                            android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
-                                        )
+                            val fileToShare = if (file.exists() && file.length() > 0) {
+                                file
+                            } else {
+                                // Extract bundled asset timing to cacheDir for sharing
+                                val assetPath = "timing/$filename"
+                                val cacheFile = File(context.cacheDir, filename)
+                                try {
+                                    context.assets.open(assetPath).use { input ->
+                                        cacheFile.outputStream().use { output ->
+                                            input.copyTo(output)
+                                        }
                                     }
+                                    if (cacheFile.exists() && cacheFile.length() > 0) cacheFile else null
+                                } catch (_: Exception) {
+                                    null
+                                }
+                            }
 
-                                context.startActivity(
-
-                                    android.content.Intent.createChooser(
-                                        intent,
-                                        "Share Gurbani Timings"
-                                    )
+                            if (fileToShare != null) {
+                                val authority = "${context.packageName}.fileprovider"
+                                val uri = androidx.core.content.FileProvider.getUriForFile(
+                                    context,
+                                    authority,
+                                    fileToShare
                                 )
 
+                                val intent = android.content.Intent(
+                                    android.content.Intent.ACTION_SEND
+                                ).apply {
+                                    type = "application/json"
+                                    putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                                    putExtra(android.content.Intent.EXTRA_SUBJECT, "$filename - ${selectedBani.title}")
+                                    addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                }
+
+                                context.startActivity(
+                                    android.content.Intent.createChooser(
+                                        intent,
+                                        "Share Gurbani Timings".translate(displayLanguage)
+                                    )
+                                )
                             } else {
-
                                 Toast.makeText(
-
                                     context,
-
                                     "Please save the timing file first"
                                         .translate(displayLanguage),
-
                                     Toast.LENGTH_SHORT
-
                                 ).show()
                             }
 

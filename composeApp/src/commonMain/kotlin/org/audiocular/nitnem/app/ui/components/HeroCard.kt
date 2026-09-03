@@ -48,6 +48,7 @@ import org.audiocular.nitnem.utils.translateDigits
 import org.audiocular.nitnem.utils.translateAng
 import org.audiocular.nitnem.utils.translateRaag
 import org.audiocular.nitnem.utils.translateWriter
+import org.audiocular.nitnem.utils.toHindiTranslation
 import androidx.compose.animation.AnimatedVisibility
 import org.audiocular.nitnem.data.Hukamnama
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -116,6 +117,9 @@ fun HeroCard(
     }
         var showDetailsSheet by remember {
             mutableStateOf(false)
+        }
+        var selectedMeaningLine by remember {
+            mutableStateOf<HukamnamaLine?>(null)
         }
     LaunchedEffect(Unit) {
 
@@ -312,6 +316,20 @@ val prayerInfo = HeroPrayerUi(
 
         label = ""
     )
+
+    val constellationStars = remember(streak) {
+        val points = mutableListOf<Offset>()
+        if (streak > 0) {
+            val count = streak.coerceAtMost(10)
+            for (i in 0 until count) {
+                val factor = i.toFloat() / (if (count > 1) (count - 1) else 1)
+                val rX = 0.12f + 0.62f * factor
+                val rY = 0.18f + 0.12f * sin(factor * PI.toFloat() * 2f)
+                points.add(Offset(rX, rY))
+            }
+        }
+        points
+    }
 
     /*
      * COLORS
@@ -554,166 +572,171 @@ drawRect(
 
         ),
 
-        startY = height * 0.55f,
-
         endY = height
     ),
-
     size = size
 )
+
                     // Draw Sun or Moon based on time
-                  val sunMoonX = width * 0.9f;
+                    val sunMoonX = width * 0.9f
                     val sunMoonY = height * 0.14f
-                    val isNight = hour >= 19 || hour < 6
+                    val isNight = hour >= 18 || hour < 6
                     
                     if (isNight) {
-                        // --- REALISTIC GLOWING MOON ---
-                       drawCircle(
-    color = Color.White.copy(alpha = 0.08f),
-    radius = 42f,
-    center = Offset(sunMoonX, sunMoonY)
-)
-
-drawCircle(
-    color = Color.White.copy(alpha = 0.15f),
-    radius = 32f,
-    center = Offset(sunMoonX, sunMoonY)
-)
-
-drawCircle(
-    color = Color(0xFFF8FAFC),
-    radius = 22f,
-    center = Offset(sunMoonX, sunMoonY)
-)
-                        // Lunar Craters (subtle dark gray organic details for realism)
-                   val craterColor =
-    Color(0xFFCBD5E1).copy(alpha = 0.35f)
-
-drawCircle(
-    craterColor,
-    radius = 3f,
-    center = Offset(
-        sunMoonX - 7f,
-        sunMoonY - 5f
-    )
-)
-
-drawCircle(
-    craterColor,
-    radius = 4f,
-    center = Offset(
-        sunMoonX + 5f,
-        sunMoonY + 7f
-    )
-)
-
-drawCircle(
-    craterColor,
-    radius = 2.5f,
-    center = Offset(
-        sunMoonX - 3f,
-        sunMoonY + 10f
-    )
-)
-                        // Draw Twinkling Stars (scattered realistic stars)
-                       val stars = listOf(
-
-    Triple(0.10f, 0.10f, 1.2f),
-Triple(0.16f, 0.18f, 1.5f),
-Triple(0.22f, 0.08f, 1f),
-Triple(0.28f, 0.22f, 1.8f),
-Triple(0.34f, 0.14f, 1.1f),
-Triple(0.40f, 0.06f, 1.6f),
-Triple(0.48f, 0.18f, 1.2f),
-Triple(0.54f, 0.10f, 1f),
-Triple(0.60f, 0.24f, 1.5f),
-Triple(0.66f, 0.08f, 1.2f),
-Triple(0.72f, 0.16f, 1f),
-Triple(0.78f, 0.06f, 1.5f),
-Triple(0.84f, 0.20f, 1.1f),
-Triple(0.90f, 0.12f, 1.3f)
-)
-
-stars.forEachIndexed { index, star ->
-
-    val twinkle =
-
-        if (index % 7 == 0) {
-
-            val alpha =
-                0.3f +
-                0.7f * kotlin.math.abs(
-                    sin(
-                        (twinkleTime + index * 25f)
-                            * PI.toFloat() / 180f
-                    )
-                )
-
-            alpha.coerceIn(0.2f, 1f)
-
-        } else {
-
-            0.65f
-        }
-
-    drawCircle(
-
-        color = Color.White.copy(alpha = twinkle),
-
-       radius = star.third * 0.75f,
-
-        center = Offset(
-
-            width * star.first,
-
-            height * star.second
-        )
-    )
-}
-                    } else {
-                        // --- REALISTIC GLOWING SUN ---
-                        val sunColor = when {
-                            hour in 6..8 -> Color(0xFFF59E0B) // Sunrise Gold
-                            hour in 17..18 -> Color(0xFFE11D48) // Sunset Rose/Red
-                            else -> Color.White // Noon White
-                        }
-                        val coronaColor = when {
-                            hour in 6..8 -> Color(0xFFFF8C00).copy(alpha = 0.2f)
-                            hour in 17..18 -> Color(0xFFF43F5E).copy(alpha = 0.25f)
-                            else -> Color(0xFFFFD700).copy(alpha = 0.15f * pulse)
+                        // --- HIGHLY DETAILED GLOWING CRESCENT MOON ---
+                        drawCircle(
+                            color = Color.White.copy(alpha = 0.05f),
+                            radius = 38f,
+                            center = Offset(sunMoonX, sunMoonY)
+                        )
+                        drawCircle(
+                            color = Color(0xFFFFFDE7).copy(alpha = 0.12f),
+                            radius = 28f,
+                            center = Offset(sunMoonX, sunMoonY)
+                        )
+                        
+                        val moonPath = Path().apply {
+                            moveTo(sunMoonX, sunMoonY - 18f)
+                            cubicTo(
+                                sunMoonX + 16f, sunMoonY - 14f,
+                                sunMoonX + 16f, sunMoonY + 14f,
+                                sunMoonX, sunMoonY + 18f
+                            )
+                            cubicTo(
+                                sunMoonX + 6f, sunMoonY + 12f,
+                                sunMoonX + 6f, sunMoonY - 12f,
+                                sunMoonX, sunMoonY - 18f
+                            )
+                            close()
                         }
                         
-                        // Radiating Outer Corona Halo
+                        drawPath(
+                            path = moonPath,
+                            brush = Brush.verticalGradient(
+                                listOf(Color(0xFFFFFEE0), Color(0xFFF1F0E8))
+                            )
+                        )
+                        
+                        // Draw Twinkling Stars (scattered realistic stars)
+                        val stars = listOf(
+                            Triple(0.10f, 0.10f, 1.2f),
+                            Triple(0.16f, 0.18f, 1.5f),
+                            Triple(0.22f, 0.08f, 1f),
+                            Triple(0.28f, 0.22f, 1.8f),
+                            Triple(0.34f, 0.14f, 1.1f),
+                            Triple(0.40f, 0.06f, 1.6f),
+                            Triple(0.48f, 0.18f, 1.2f),
+                            Triple(0.54f, 0.10f, 1f),
+                            Triple(0.60f, 0.24f, 1.5f),
+                            Triple(0.66f, 0.08f, 1.2f),
+                            Triple(0.72f, 0.16f, 1f),
+                            Triple(0.78f, 0.06f, 1.5f),
+                            Triple(0.84f, 0.20f, 1.1f),
+                            Triple(0.90f, 0.12f, 1.3f)
+                        )
+                        
+                        stars.forEachIndexed { index, star ->
+                            val twinkle = if (index % 7 == 0) {
+                                val alpha = 0.3f + 0.7f * kotlin.math.abs(
+                                    sin((twinkleTime + index * 25f) * PI.toFloat() / 180f)
+                                )
+                                alpha.coerceIn(0.2f, 1f)
+                            } else {
+                                0.65f
+                            }
+                            
+                            drawCircle(
+                                color = Color.White.copy(alpha = twinkle),
+                                radius = star.third * 0.75f,
+                                center = Offset(width * star.first, height * star.second)
+                            )
+                        }
+                    } else {
+                        // --- HIGH-PREMIUM DYNAMIC RADIATING SUN ---
+                        val sunColor = when {
+                            hour in 6..8 -> Color(0xFFF59E0B) // Sunrise Gold
+                            hour in 17..18 -> Color(0xFFE11D48) // Sunset Red
+                            else -> Color(0xFFFFF9C4) // Daytime soft white-yellow
+                        }
+                        
+                        // Solar corona glow
                         drawCircle(
-                            color = coronaColor,
-                            radius = 56f,
+                            brush = Brush.radialGradient(
+                                listOf(sunColor.copy(alpha = 0.25f), Color.Transparent),
+                                center = Offset(sunMoonX, sunMoonY),
+                                radius = 48f * pulse
+                            ),
+                            radius = 48f * pulse,
                             center = Offset(sunMoonX, sunMoonY)
                         )
-                        drawCircle(
-                            color = sunColor.copy(alpha = 0.3f),
-                            radius = 36f,
-                            center = Offset(sunMoonX, sunMoonY)
-                        )
+                        
                         // Core Sun Body
-drawCircle(
-    color = Color.White.copy(alpha = 0.10f),
-    radius = 55f,
-    center = Offset(sunMoonX, sunMoonY)
-)
+                        drawCircle(
+                            color = sunColor,
+                            radius = 18f,
+                            center = Offset(sunMoonX, sunMoonY)
+                        )
+                        
+                        // 8 Animating Solar Flare Rays
+                        repeat(8) { i ->
+                            val angle = (i * 45f) * PI.toFloat() / 180f
+                            val startRadius = 22f
+                            val endRadius = 32f + 4f * sin((twinkleTime + i * 45f) * PI.toFloat() / 180f)
+                            val startOffset = Offset(sunMoonX + cos(angle) * startRadius, sunMoonY + sin(angle) * startRadius)
+                            val endOffset = Offset(sunMoonX + cos(angle) * endRadius, sunMoonY + sin(angle) * endRadius)
+                            drawLine(
+                                color = sunColor.copy(alpha = 0.65f),
+                                start = startOffset,
+                                end = endOffset,
+                                strokeWidth = 3f,
+                                cap = StrokeCap.Round
+                            )
+                        }
+                    }
 
-drawCircle(
-    color = Color(0xFFFFD37A).copy(alpha = 0.18f),
-    radius = 38f,
-    center = Offset(sunMoonX, sunMoonY)
-)
-
-drawCircle(
-    color = Color(0xFFFFF4C2),
-    radius = 18f,
-    center = Offset(sunMoonX, sunMoonY)
-)
-
-                       
+                    // --- SACRED CONSTELLATION STREAKS ---
+                    if (constellationStars.isNotEmpty()) {
+                        for (i in 0 until constellationStars.size - 1) {
+                            val start = Offset(width * constellationStars[i].x, height * constellationStars[i].y)
+                            val end = Offset(width * constellationStars[i + 1].x, height * constellationStars[i + 1].y)
+                            
+                            // Wide glowing guide lines
+                            drawLine(
+                                color = Gold.copy(alpha = 0.22f * pulse),
+                                start = start,
+                                end = end,
+                                strokeWidth = 5f,
+                                cap = StrokeCap.Round
+                            )
+                            // Bright white sharp core line
+                            drawLine(
+                                color = Color.White.copy(alpha = 0.6f),
+                                start = start,
+                                end = end,
+                                strokeWidth = 2f,
+                                cap = StrokeCap.Round
+                            )
+                        }
+                        
+                        // Draw individual star points
+                        constellationStars.forEachIndexed { index, starPoint ->
+                            val starX = width * starPoint.x
+                            val starY = height * starPoint.y
+                            val starPulse = 0.4f + 0.6f * kotlin.math.abs(sin((twinkleTime + index * 40f) * PI.toFloat() / 180f))
+                            
+                            // Twinkling Aura Glow
+                            drawCircle(
+                                color = Gold.copy(alpha = 0.4f * starPulse),
+                                radius = 12f,
+                                center = Offset(starX, starY)
+                            )
+                            // Star Core
+                            drawCircle(
+                                color = Color.White,
+                                radius = 4.5f,
+                                center = Offset(starX, starY)
+                            )
+                        }
                     }
 
                    // CLOUD 1
@@ -1637,9 +1660,6 @@ if (hukamnama != null && showDetailsSheet) {
 val clipboardManager =
     LocalClipboardManager.current
 
-var selectedMeaningLine by remember {
-    mutableStateOf<HukamnamaLine?>(null)
-}
         Column(
 
             modifier = Modifier
@@ -1958,481 +1978,236 @@ PremiumToggleChip(
              * FULL HUKAMNAMA
              */
 
-            current.lines.forEachIndexed { index, line ->
- val gurmukhiText =
-
-                if (
-                    uiState.larivaarMode &&
-                    line.larivaar.isNotBlank()
-                ) {
-
-                    line.larivaar
-
-                } else {
-
-                    line.gurmukhi
-                }
-
-                Surface(
-
-                    shape = RoundedCornerShape(
-                        if (uiState.compactMode)
-                            18.dp
-                        else
-                            24.dp
-                    ),
-
-                    color = cardBackground,
-
-                    border = BorderStroke(
-
-                        1.dp,
-
-                        hukamnamaAccent.copy(
-                            alpha = 0.08f
-                        )
-                    )
-                ) {
-
-                    Column(
-
-    modifier = Modifier
-        .fillMaxWidth()
-        .padding(
-
-            horizontal =
-
-                if (uiState.compactMode)
-                    12.dp
-                else
-                    16.dp,
-
-            vertical =
-
-                if (uiState.compactMode)
-                    12.dp
-                else
-                    16.dp
-        )
-) {
-
-    Row(
-
-        modifier = Modifier.fillMaxWidth(),
-
-        verticalAlignment =
-            Alignment.Top
-    ) {
-
-        /*
-         * MAIN CONTENT
-         */
-
-        Column(
-
-            modifier = Modifier.weight(1f),
-
-            verticalArrangement =
-                Arrangement.spacedBy(
-
-                    if (uiState.compactMode)
-                        8.dp
+            Surface(
+                shape = RoundedCornerShape(
+                    if (uiState.fullScreenReadingMode)
+                        20.dp
                     else
-                        12.dp
-                )
-        ) {
-
-           
-            /*
-             * GURMUKHI
-             */
-
-            if (gurmukhiText.isNotBlank()) {
-
-                Text(
-
-                    text = gurmukhiText,
-
-                    modifier =
-                        Modifier.fillMaxWidth(),
-
-                    color = gurmukhiColor,
-
-                    textAlign =
-
-                        if (uiState.centerGurmukhi)
-                            TextAlign.Center
-                        else
-                            TextAlign.Start,
-
-                    fontSize =
-                        uiState.gurmukhiFontSize.sp,
-
-                    fontWeight =
-
-                        if (uiState.boldGurmukhi)
-                            FontWeight.Bold
-                        else
-                            FontWeight.SemiBold,
-
-                    lineHeight =
-                        uiState.lineSpacing.sp,
-
-                    style = TextStyle(
-
-                        shadow = Shadow(
-
-                            color =
-                                gurmukhiColor.copy(
-                                    alpha = 0.16f
-                                ),
-
-                            blurRadius = 8f
-                        )
+                        26.dp
+                ),
+                color = cardBackground,
+                border = BorderStroke(
+                    1.dp,
+                    hukamnamaAccent.copy(
+                        alpha = 0.08f
                     )
-                )
-            }
-
-            /*
-             * HINDI
-             */
-
-            if (
-                uiState.showDevanagariTransliteration &&
-                line.transliterationHi.isNotBlank()
+                ),
+                modifier = Modifier.fillMaxWidth()
             ) {
-
-                Text(
-
-                    text =
-                        line.transliterationHi,
-
-                    modifier =
-                        Modifier.fillMaxWidth(),
-
-                    color =
-                        romanColor.copy(alpha = 0.90f),
-
-                    textAlign =
-
-                        if (uiState.centerGurmukhi)
-                            TextAlign.Center
-                        else
-                            TextAlign.Start,
-
-                    fontSize =
-                        uiState.romanTransliterationFontSize.sp,
-
-                    lineHeight =
-                        (uiState.romanTransliterationFontSize * 1.45f).sp,
-
-                    fontWeight =
-                        FontWeight.Medium
-                )
-            }
-
-            /*
-             * ROMAN
-             */
-
-            if (
-                uiState.showRomanTransliteration &&
-                line.transliteration.isNotBlank()
-            ) {
-
-                Text(
-
-                    text =
-                        line.transliteration,
-
-                    modifier =
-                        Modifier.fillMaxWidth(),
-
-                    color =
-                        romanColor.copy(alpha = 0.82f),
-
-                    textAlign =
-
-                        if (uiState.centerGurmukhi)
-                            TextAlign.Center
-                        else
-                            TextAlign.Start,
-
-                    fontSize =
-                        uiState.romanTransliterationFontSize.sp,
-
-                    fontStyle =
-
-                        if (uiState.italicRomanTransliteration)
-                            FontStyle.Italic
-                        else
-                            FontStyle.Normal,
-
-                    lineHeight =
-                        (uiState.romanTransliterationFontSize * 1.42f).sp
-                )
-            }
-
-            /*
-             * ENGLISH
-             */
-
-            if (
-                uiState.showEnglishTranslation &&
-                line.translationEn.isNotBlank()
-            ) {
-
-                Surface(
-
-                    shape =
-                        RoundedCornerShape(18.dp),
-
-                    color =
-                        hukamnamaAccent.copy(
-                            alpha = 0.05f
-                        )
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(
+                            horizontal = if (uiState.fullScreenReadingMode) 14.dp else 18.dp,
+                            vertical = if (uiState.fullScreenReadingMode) 14.dp else 18.dp
+                        ),
+                    verticalArrangement = Arrangement.spacedBy(
+                        if (uiState.fullScreenReadingMode) 14.dp else 18.dp
+                    )
                 ) {
+                    current.lines.forEachIndexed { index, line ->
+                        val gurmukhiText =
+                            if (
+                                uiState.larivaarMode &&
+                                line.larivaar.isNotBlank()
+                            ) {
+                                line.larivaar
+                            } else {
+                                line.gurmukhi
+                            }
 
-                    Text(
-
-                        text =
-                            line.translationEn,
-
-                        modifier =
-                            Modifier
+                        Column(
+                            modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(
-                                    horizontal = 14.dp,
-                                    vertical = 12.dp
-                                ),
+                                .clip(RoundedCornerShape(12.dp))
+                                .clickable {
+                                    selectedMeaningLine = line
+                                }
+                                .padding(vertical = 4.dp),
+                            verticalArrangement = Arrangement.spacedBy(
+                                if (uiState.fullScreenReadingMode)
+                                    6.dp
+                                else
+                                    10.dp
+                            )
+                        ) {
+                            /*
+                             * GURMUKHI
+                             */
+                            if (gurmukhiText.isNotBlank()) {
+                                Text(
+                                    text = gurmukhiText,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    color = gurmukhiColor,
+                                    textAlign =
+                                        if (uiState.centerGurmukhi)
+                                            TextAlign.Center
+                                        else
+                                            TextAlign.Start,
+                                    fontSize = uiState.gurmukhiFontSize.sp,
+                                    fontWeight =
+                                        if (uiState.boldGurmukhi)
+                                            FontWeight.Bold
+                                        else
+                                            FontWeight.SemiBold,
+                                    lineHeight = uiState.lineSpacing.sp,
+                                    style = TextStyle(
+                                        shadow = Shadow(
+                                            color = gurmukhiColor.copy(alpha = 0.16f),
+                                            blurRadius = 8f
+                                        )
+                                    )
+                                )
+                            }
 
-                        color =
-                            translationColor,
+                            /*
+                             * HINDI
+                             */
+                            if (
+                                uiState.showDevanagariTransliteration &&
+                                line.transliterationHi.isNotBlank()
+                            ) {
+                                Text(
+                                    text = line.transliterationHi,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    color = romanColor.copy(alpha = 0.90f),
+                                    textAlign =
+                                        if (uiState.centerGurmukhi)
+                                            TextAlign.Center
+                                        else
+                                            TextAlign.Start,
+                                    fontSize = uiState.romanTransliterationFontSize.sp,
+                                    lineHeight = (uiState.romanTransliterationFontSize * 1.45f).sp,
+                                    fontWeight = FontWeight.Medium
+                                )
 
-                        textAlign =
+                                val hindiMeaning = remember(line.translationPa, line.translationEn) {
+                                    if (line.translationPa.isNotBlank()) line.translationPa.toHindiTranslation()
+                                    else if (line.translationEn.isNotBlank()) line.translationEn
+                                    else ""
+                                }
+                                if (hindiMeaning.isNotBlank()) {
+                                    Surface(
+                                        shape = RoundedCornerShape(14.dp),
+                                        color = hukamnamaAccent.copy(alpha = 0.05f)
+                                    ) {
+                                        Text(
+                                            text = hindiMeaning,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(
+                                                    horizontal = 12.dp,
+                                                    vertical = 10.dp
+                                                ),
+                                            color = translationColor,
+                                            textAlign =
+                                                if (uiState.centerGurmukhi)
+                                                    TextAlign.Center
+                                                else
+                                                    TextAlign.Start,
+                                            fontSize = uiState.translationFontSize.sp,
+                                            lineHeight = (uiState.translationFontSize * 1.5f).sp
+                                        )
+                                    }
+                                }
+                            }
 
-                            if (uiState.centerGurmukhi)
-                                TextAlign.Center
-                            else
-                                TextAlign.Start,
+                            /*
+                             * ROMAN
+                             */
+                            if (
+                                uiState.showRomanTransliteration &&
+                                line.transliteration.isNotBlank()
+                            ) {
+                                Text(
+                                    text = line.transliteration,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    color = romanColor.copy(alpha = 0.82f),
+                                    textAlign =
+                                        if (uiState.centerGurmukhi)
+                                            TextAlign.Center
+                                        else
+                                            TextAlign.Start,
+                                    fontSize = uiState.romanTransliterationFontSize.sp,
+                                    fontStyle =
+                                        if (uiState.italicRomanTransliteration)
+                                            FontStyle.Italic
+                                        else
+                                            FontStyle.Normal,
+                                    lineHeight = (uiState.romanTransliterationFontSize * 1.42f).sp
+                                )
+                            }
 
-                        fontSize =
-                            uiState.translationFontSize.sp,
+                            /*
+                             * ENGLISH
+                             */
+                            if (
+                                uiState.showEnglishTranslation &&
+                                line.translationEn.isNotBlank()
+                            ) {
+                                Surface(
+                                    shape = RoundedCornerShape(14.dp),
+                                    color = hukamnamaAccent.copy(alpha = 0.05f)
+                                ) {
+                                    Text(
+                                        text = line.translationEn,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(
+                                                horizontal = 12.dp,
+                                                vertical = 10.dp
+                                            ),
+                                        color = translationColor,
+                                        textAlign =
+                                            if (uiState.centerGurmukhi)
+                                                TextAlign.Center
+                                            else
+                                                TextAlign.Start,
+                                        fontSize = uiState.translationFontSize.sp,
+                                        lineHeight = (uiState.translationFontSize * 1.5f).sp
+                                    )
+                                }
+                            }
 
-                        lineHeight =
-                            (uiState.translationFontSize * 1.5f).sp
-                    )
-                }
-            }
+                            /*
+                             * PUNJABI
+                             */
+                            if (
+                                uiState.showPunjabiTranslation &&
+                                line.translationPa.isNotBlank()
+                            ) {
+                                Surface(
+                                    shape = RoundedCornerShape(14.dp),
+                                    color = hukamnamaAccent.copy(alpha = 0.04f)
+                                ) {
+                                    Text(
+                                        text = line.translationPa,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(
+                                                horizontal = 12.dp,
+                                                vertical = 10.dp
+                                            ),
+                                        color = punjabiColor,
+                                        textAlign =
+                                            if (uiState.centerGurmukhi)
+                                                TextAlign.Center
+                                            else
+                                                TextAlign.Start,
+                                        fontSize = uiState.translationFontSize.sp,
+                                        lineHeight = (uiState.translationFontSize * 1.5f).sp
+                                    )
+                                }
+                            }
+                        }
 
-            /*
-             * PUNJABI
-             */
-
-            if (
-                uiState.showPunjabiTranslation &&
-                line.translationPa.isNotBlank()
-            ) {
-
-                Surface(
-
-                    shape =
-                        RoundedCornerShape(18.dp),
-
-                    color =
-                        hukamnamaAccent.copy(
-                            alpha = 0.04f
-                        )
-                ) {
-
-                    Text(
-
-                        text =
-                            line.translationPa,
-
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(
-                                    horizontal = 14.dp,
-                                    vertical = 12.dp
-                                ),
-
-                        color =
-                            punjabiColor,
-
-                        textAlign =
-
-                            if (uiState.centerGurmukhi)
-                                TextAlign.Center
-                            else
-                                TextAlign.Start,
-
-                        fontSize =
-                            uiState.translationFontSize.sp,
-
-                        lineHeight =
-                            (uiState.translationFontSize * 1.5f).sp
-                    )
-                }
-            }
-        }
-
-        // Spacer(
-        //     Modifier.width(12.dp)
-        // )
-
-        // /*
-        //  * ACTION RAIL
-        //  */
-
-        // Column(
-
-        //     verticalArrangement =
-        //         Arrangement.spacedBy(10.dp),
-
-        //     horizontalAlignment =
-        //         Alignment.CenterHorizontally
-        // ) {
-
-        //     val actionContainer =
-
-        //         Modifier
-        //             .size(38.dp)
-        //             .clip(CircleShape)
-        //             .background(
-        //                 hukamnamaAccent.copy(
-        //                     alpha = 0.08f
-        //                 )
-        //             )
-
-        //     /*
-        //      * BOOKMARK
-        //      */
-
-        //     Box(
-
-        //         modifier =
-        //             actionContainer
-        //                 .clickable {
-
-        //                     viewModel.toggleBookmark(
-        //                        "hukamnama-$index"
-        //                     )
-        //                 },
-
-        //         contentAlignment =
-        //             Alignment.Center
-        //     ) {
-
-        //         Icon(
-
-        //             imageVector =
-
-        //                 if (
-        //                     uiState.bookmarkedLineIds.contains(
-        //                        "hukamnama-$index"
-        //                     )
-        //                 ) {
-        //                     Icons.Default.Bookmark
-        //                 } else {
-        //                     Icons.Default.BookmarkBorder
-        //                 },
-
-        //             contentDescription = null,
-
-        //             tint =
-        //                 hukamnamaAccent,
-
-        //             modifier =
-        //                 Modifier.size(18.dp)
-        //         )
-        //     }
-
-        //     /*
-        //      * MEANING
-        //      */
-
-        //     Box(
-
-        //         modifier =
-        //             actionContainer
-        //                 .clickable {
-
-        //                     selectedMeaningLine =
-        //                         line
-        //                 },
-
-        //         contentAlignment =
-        //             Alignment.Center
-        //     ) {
-
-        //         Icon(
-
-        //             imageVector =
-        //                 Icons.Default.Lightbulb,
-
-        //             contentDescription = null,
-
-        //             tint =
-        //                 hukamnamaAccent,
-
-        //             modifier =
-        //                 Modifier.size(18.dp)
-        //         )
-        //     }
-
-        //     /*
-        //      * COPY
-        //      */
-
-        //     Box(
-
-        //         modifier =
-        //             actionContainer
-        //                 .clickable {
-
-        //                     clipboardManager.setText(
-
-        //                         AnnotatedString(
-        //                             gurmukhiText
-        //                         )
-        //                     )
-        //                 },
-
-        //         contentAlignment =
-        //             Alignment.Center
-        //     ) {
-
-        //         Icon(
-
-        //             imageVector =
-        //                 Icons.Default.ContentCopy,
-
-        //             contentDescription = null,
-
-        //             tint =
-        //                 hukamnamaAccent,
-
-        //             modifier =
-        //                 Modifier.size(17.dp)
-        //         )
-        //     }
-        // }
-    }
-}
-                }
-
-                if (index != current.lines.lastIndex) {
-
-                    Spacer(
-                        Modifier.height(
-                            if (uiState.compactMode)
-                                8.dp
-                            else
-                                12.dp
-                        )
-                    )
+                        if (index != current.lines.lastIndex) {
+                            HorizontalDivider(
+                                color = hukamnamaAccent.copy(alpha = 0.08f),
+                                thickness = 1.dp
+                            )
+                        }
+                    }
                 }
             }
 
@@ -2440,6 +2215,49 @@ PremiumToggleChip(
                 Modifier.height(28.dp)
             )
         }
+    }
+
+    selectedMeaningLine?.let { hLine ->
+        val convertedBaniLine = remember(hLine) {
+            org.audiocular.nitnem.models.BaniLine(
+                id = "hukamnama_${hLine.gurmukhi.hashCode()}",
+                gurmukhi = hLine.gurmukhi,
+                transliteration = hLine.transliteration,
+                translation = hLine.translationEn,
+                hindi = hLine.transliterationHi,
+                punjabi = hLine.translationPa,
+                wordMeaning = "",
+                startsAtMs = 0L,
+                endsAtMs = 0L
+            )
+        }
+        GurbaniMeaningSheet(
+            line = convertedBaniLine,
+            onDismiss = { selectedMeaningLine = null },
+            gurmukhiFontSize = uiState.gurmukhiFontSize,
+            lineSpacing = uiState.lineSpacing,
+            boldGurmukhi = uiState.boldGurmukhi,
+            centerGurmukhi = uiState.centerGurmukhi,
+            showGurmukhi = uiState.showGurmukhi,
+            showEnglishTranslation = uiState.showEnglishTranslation,
+            showPunjabiTranslation = uiState.showPunjabiTranslation,
+            showDevanagariTransliteration = uiState.showDevanagariTransliteration,
+            showWordMeaning = uiState.showWordMeaning,
+            showRomanTransliteration = uiState.showRomanTransliteration,
+            larivaarMode = uiState.larivaarMode,
+            gurmukhiColorMode = uiState.gurmukhiColorMode,
+            translationColorMode = uiState.translationColorMode,
+            wordMeaningColorMode = uiState.wordMeaningColorMode,
+            displayLanguage = displayLanguage,
+            onToggleGurmukhi = { viewModel.setShowGurmukhi(it) },
+            onToggleEnglish = { viewModel.setShowEnglishTranslation(it) },
+            onTogglePunjabi = { viewModel.setShowPunjabiTranslation(it) },
+            onToggleHindi = { viewModel.setShowDevanagariTransliteration(it) },
+            onToggleWordMeaning = { viewModel.setShowWordMeaning(it) },
+            onToggleRoman = { viewModel.setShowRomanTransliteration(it) },
+            onToggleCenter = { viewModel.setCenterGurmukhi(it) },
+            onToggleLarivaar = { viewModel.setLarivaarMode(it) }
+        )
     }
 }
 
@@ -2632,21 +2450,11 @@ private fun PremiumInfoCard(
                  * MAIN TEXT
                  */
 
-                Text(
-
-                    text = mainText,
-
+                RollingNumberText(
+                    value = mainText,
                     color = primaryText,
-
                     fontSize = 13.sp,
-
-                    fontWeight =
-                        FontWeight.SemiBold,
-
-                    maxLines = 1,
-
-                    overflow =
-                        TextOverflow.Ellipsis
+                    fontWeight = FontWeight.SemiBold
                 )
 
                 /*

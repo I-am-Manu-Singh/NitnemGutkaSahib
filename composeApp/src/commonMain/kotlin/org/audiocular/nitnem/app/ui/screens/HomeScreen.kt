@@ -10,6 +10,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -34,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import org.audiocular.nitnem.models.NitnemUiState
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -42,6 +44,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.clickable
 import org.audiocular.nitnem.app.models.AppTab
 import org.audiocular.nitnem.app.models.DisplayLanguage
@@ -49,13 +52,21 @@ import org.audiocular.nitnem.app.ui.components.BaniCard
 import org.audiocular.nitnem.app.ui.components.HeroCard
 import org.audiocular.nitnem.app.ui.components.MascotBani
 import org.audiocular.nitnem.app.ui.components.MascotState
+import org.audiocular.nitnem.app.ui.components.WeeklyStreakDialog
+import org.audiocular.nitnem.app.ui.components.FamilyLeaderboardDialog
+import org.audiocular.nitnem.app.ui.components.GurbaniMeaningSheet
+import org.audiocular.nitnem.app.ui.components.RollingNumberText
+import org.audiocular.nitnem.domain.social.FamilyLeaderboardRepository
 import org.audiocular.nitnem.app.ui.theme.*
 import org.audiocular.nitnem.viewmodel.NitnemViewModel
+import org.audiocular.nitnem.app.ui.practice.BaniAiAssistantTab
+import org.audiocular.nitnem.app.ui.practice.practiceColors
 import org.audiocular.nitnem.utils.translate
 import org.audiocular.nitnem.utils.translateDigits
 import org.audiocular.nitnem.utils.translateAng
 import androidx.compose.ui.text.style.TextAlign
 import org.audiocular.nitnem.models.Bani
+import org.audiocular.nitnem.models.BaniLine
 import androidx.compose.runtime.LaunchedEffect
 import org.audiocular.nitnem.data.HukamnamaProvider
 import org.audiocular.nitnem.audio.StreamAudioController
@@ -64,13 +75,6 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 
-sealed interface HomeSheet {
-
-    data object AppInfo : HomeSheet
-
-    data class BaniInfo(val bani: Bani) : HomeSheet
-
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -95,7 +99,20 @@ val context = LocalContext.current
         mutableStateOf(false)
     }
 
-     var mascotMessage by remember { mutableStateOf<String?>(null) }
+    var showWeeklyStreakDialog by remember { mutableStateOf(false) }
+    var showLeaderboardDialog by remember { mutableStateOf(false) }
+    var streakToDisplay by remember { mutableStateOf(0) }
+    val lastStreak = remember { mutableStateOf(state.streakDays) }
+
+    LaunchedEffect(state.streakDays) {
+        if (state.streakDays > lastStreak.value && state.streakDays > 0 && state.streakDays % 7 == 0) {
+            streakToDisplay = state.streakDays
+            showWeeklyStreakDialog = true
+        }
+        lastStreak.value = state.streakDays
+    }
+
+    var mascotMessage by remember { mutableStateOf<String?>(null) }
     var mascotOverrideState by remember { mutableStateOf<MascotState?>(null) }
 
     // FIX: AUTOMATIC DISMISSAL TIMER LIFE-CYCLE STEP
@@ -152,6 +169,9 @@ val context = LocalContext.current
         }
     }
     var isMascotOverlayVisible by remember { mutableStateOf(false) }
+    var isGlobalSearchVisible by remember { mutableStateOf(false) }
+    var globalSearchQuery by remember { mutableStateOf("") }
+    var selectedSearchVerseLine by remember { mutableStateOf<BaniLine?>(null) }
     var interactiveInputText by remember { mutableStateOf("") }
     var isAssistantListening by remember { mutableStateOf(false) }
     val overallProgress by remember(
@@ -185,7 +205,8 @@ val context = LocalContext.current
         when {
             state.playback.isPlaying -> MascotState.Listening
             overallProgress >= 1f -> MascotState.Celebrating
-            currentHour in 3..8 -> MascotState.Reading
+            currentHour in 3..5 -> MascotState.AmritVela
+            currentHour in 6..9 -> MascotState.Reading
             currentHour in 22..23 || currentHour in 0..2 -> MascotState.Sleeping
             else -> MascotState.Happy
         }
@@ -237,16 +258,15 @@ val context = LocalContext.current
     }
 
 
-    Column(
-
-        modifier = Modifier
-            .fillMaxSize()
-           
+    Box(
+        modifier = Modifier.fillMaxSize()
     ) {
-
-       /*
-     * HEADER
-     */
+        Column(
+            modifier = Modifier.fillMaxSize()
+        ) {
+/*
+ * HEADER
+ */
 Surface(
     modifier = Modifier.fillMaxWidth(), 
     color = Color.Transparent, 
@@ -254,39 +274,42 @@ Surface(
     shadowElevation = 0.dp
 ) {
     Column {
+        // Main Sleek Single Row Top Bar
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(
-                    start = 8.dp,
-                    end = 8.dp,
-                    top = 2.dp,
-                    bottom = 2.dp
+                    start = 12.dp,
+                    end = 12.dp,
+                    top = 4.dp,
+                    bottom = 4.dp
                 ),
             verticalAlignment = Alignment.CenterVertically
         ) {
-                                            MascotBani(
+            // 1. Mascot
+            MascotBani(
                 state = mascotOverrideState ?: baseMascotState,
                 modifier = Modifier
-                    .padding(end = 12.dp)
-                    .size(60.dp)
+                    .padding(end = 8.dp)
+                    .size(46.dp)
                     .clickable {
-                        // FIX: Transition the mascot into a global interactive navigation anchor
                         isMascotOverlayVisible = true
                         isAssistantListening = true
                     }
             )
+            
+            // 2. App Title (compact, single row)
             Column(
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.Center
             ) {
                 Text(
                     text = "ੴ ਸਤਿਨਾਮੁ ਵਾਹਿਗੁਰੂ".translate(state.displayLanguage),
                     color = Gold,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1
                 )
-
-                Spacer(Modifier.height(2.dp))
 
                 Text(
                     text = "ਨਿਤਨੇਮ ਗੁਟਕਾ ਸਾਹਿਬ".translate(state.displayLanguage),
@@ -294,45 +317,144 @@ Surface(
                         Color(0xFF1A1816)
                     else
                         Color.White,
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            
-            Surface(
-                shape = RoundedCornerShape(22.dp),
-                color = Color.Transparent,
-                modifier = Modifier.padding(end = 8.dp)
-            ) {
-                Text(
-                    text = "${state.totalXp} XP",
-                    color = Accent,
+                    fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 12.sp,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                    maxLines = 1
                 )
             }
 
-            Surface(
-                onClick = { showInfoSheet = true },
-                shape = CircleShape,
-                color = Accent.copy(alpha = 0.10f)
+            Spacer(Modifier.width(6.dp))
+
+            // 3. Stats Pill (XP & Streak) - Tapping XP opens Leaderboard, Tapping Streak opens Weekly Streak
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier
+                    .clip(RoundedCornerShape(50))
+                    .background(Accent.copy(alpha = 0.08f))
+                    .padding(horizontal = 8.dp, vertical = 5.dp)
             ) {
-                Box(
-                    modifier = Modifier.size(42.dp),
-                    contentAlignment = Alignment.Center
+                // XP (Opens Real Sangat Leaderboard & Group Standings)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50))
+                        .clickable {
+                        }
+                        .padding(horizontal = 4.dp, vertical = 2.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Info,
-                        contentDescription = null,
-                        tint = Accent.copy(alpha = 0.8f),
-                        modifier = Modifier.size(20.dp)
+                        imageVector = Icons.Default.Star,
+                        contentDescription = "XP",
+                        tint = Accent,
+                        modifier = Modifier.size(13.dp)
                     )
+                    RollingNumberText(
+                        value = state.totalXp,
+                        suffix = " XP",
+                        color = Accent,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .size(width = 1.dp, height = 10.dp)
+                        .background(Accent.copy(alpha = 0.25f))
+                )
+
+                // Streak (Opens Weekly Streak & Monthly Heatmap)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50))
+                        .clickable {
+                            streakToDisplay = state.streakDays
+                            showWeeklyStreakDialog = true
+                        }
+                        .padding(horizontal = 4.dp, vertical = 2.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.LocalFireDepartment,
+                        contentDescription = "Streak",
+                        tint = Accent,
+                        modifier = Modifier.size(13.dp)
+                    )
+                    RollingNumberText(
+                        value = state.streakDays,
+                        suffix = " D",
+                        color = Accent,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp
+                    )
+                }
+            }
+
+            Spacer(Modifier.width(6.dp))
+
+            // 4. Action Buttons (Search & Info)
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(
+                    onClick = { isGlobalSearchVisible = true },
+                    shape = CircleShape,
+                    color = Accent.copy(alpha = 0.10f)
+                ) {
+                    Box(
+                        modifier = Modifier.size(32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = "Global Search",
+                            tint = Accent.copy(alpha = 0.85f),
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+                Surface(
+                    onClick = { showLeaderboardDialog = true },
+                    shape = CircleShape,
+                    color = Accent.copy(alpha = 0.10f)
+                ) {
+                    Box(
+                        modifier = Modifier.size(32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Leaderboard,
+                            contentDescription = "Show Leaderboard",
+                            tint = Accent.copy(alpha = 0.85f),
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+                Surface(
+                    onClick = { showInfoSheet = true },
+                    shape = CircleShape,
+                    color = Accent.copy(alpha = 0.10f)
+                ) {
+                    Box(
+                        modifier = Modifier.size(32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Info,
+                            contentDescription = "Show Info",
+                            tint = Accent.copy(alpha = 0.85f),
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
                 }
             }
         }
 
-                // ── TRANSFORMED THOUGHT BUBBLE ─────────────────────────────────────
+        // ── TRANSFORMED THOUGHT BUBBLE (Stays underneath the main content) ─────────────────────────────────────
         AnimatedVisibility(
             visible = mascotMessage != null
         ) {
@@ -340,7 +462,7 @@ Surface(
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(start = 72.dp, end = 18.dp, top = 2.dp, bottom = 6.dp) // Pushed right to align under the mascot avatar
+                        .padding(start = 66.dp, end = 18.dp, top = 2.dp, bottom = 6.dp) // Adjusted to match smaller mascot sizes
                         .clickable { mascotMessage = null },
                     colors = CardDefaults.cardColors(
                         containerColor = if (AppTheme.themeMode == ThemeMode.Light)
@@ -348,7 +470,6 @@ Surface(
                         else
                             Color(0xFF2C2720)
                     ),
-                    // Bubble shape pointing up towards the mascot
                     shape = RoundedCornerShape(
                         topStart = 4.dp, topEnd = 16.dp, 
                         bottomStart = 16.dp, bottomEnd = 16.dp
@@ -360,7 +481,7 @@ Surface(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = msg, // Removed the rigid emoji to let translations shine cleanly
+                            text = msg,
                             color = if (AppTheme.themeMode == ThemeMode.Light) Color(0xFF5D4037) else Color(0xFFE0F7FA),
                             fontSize = 13.sp,
                             lineHeight = 18.sp,
@@ -645,7 +766,7 @@ Surface(
 //                            )
                             .padding(
                                 horizontal = 6.dp,
-                                vertical = 4.dp
+                                vertical = 2.dp
                             ),
 
                     verticalAlignment =
@@ -665,7 +786,7 @@ Surface(
                                     selectedTab = 0
                                 }
                                 .padding(
-                                    vertical = 8.dp
+                                    vertical = 2.dp
                                 ),
 
                         horizontalAlignment =
@@ -751,7 +872,7 @@ Surface(
                                     selectedTab = 1
                                 }
                                 .padding(
-                                    vertical = 8.dp
+                                    vertical = 2.dp
                                 ),
 
                         horizontalAlignment =
@@ -853,28 +974,20 @@ Surface(
                     isCurrent
                 )
 
-            val artistName =
-                remember(
-                    bani.id,
-                    state.activeTrackId
-                ) {
+            val activeTrack = remember(
+                bani.id,
+                state.activeTrackId
+            ) {
+                val trackId = audioController.getActiveTrackId(bani.id)
+                val custom = audioController.getCustomTracks(bani.id).firstOrNull { it.id == trackId }
+                custom ?: org.audiocular.nitnem.data.CuratedAudioCatalog.getTracksForBani(bani.id).firstOrNull { it.id == trackId } ?: bani.audio
+            }
 
-                    val trackId =
-                        audioController
-                            .getActiveTrackId(
-                                bani.id
-                            )
-
-                    audioController
-                        .getCustomTracks(
-                            bani.id
-                        )
-                        .firstOrNull {
-                            it.id == trackId
-                        }
-                        ?.artist
-                        ?: bani.audio?.artist
-                }
+            val artistName = activeTrack?.artist ?: bani.audio?.artist
+            val hasAudioFile = activeTrack != null
+            val hasSyncedTiming = remember(activeTrack?.id, state.activeTrackId) {
+                activeTrack != null && audioController.hasTimingFile(bani.id, activeTrack.id)
+            }
 
             AnimatedVisibility(
 
@@ -900,6 +1013,12 @@ Surface(
 
                     artistName =
                         artistName,
+
+                    hasSyncedTiming =
+                        hasSyncedTiming,
+
+                    hasAudioFile =
+                        hasAudioFile,
 
                     displayLanguage =
                         state.displayLanguage,
@@ -961,7 +1080,8 @@ showInfoSheet = false
                 modifier = Modifier
                     .fillMaxWidth()
                     .verticalScroll(
-                        rememberScrollState()
+                        state = rememberScrollState(),
+                        enabled = !isMascotOverlayVisible && !isGlobalSearchVisible
                     )
                     .padding(
                         horizontal = 22.dp,
@@ -1099,6 +1219,36 @@ showInfoSheet = false
 
             }
         }
+    }
+
+    selectedSearchVerseLine?.let { line ->
+        GurbaniMeaningSheet(
+            line = line,
+            onDismiss = { selectedSearchVerseLine = null },
+            gurmukhiFontSize = state.gurmukhiFontSize,
+            lineSpacing = state.lineSpacing,
+            boldGurmukhi = state.boldGurmukhi,
+            centerGurmukhi = state.centerGurmukhi,
+            showGurmukhi = state.showGurmukhi,
+            showEnglishTranslation = state.showEnglishTranslation,
+            showPunjabiTranslation = state.showPunjabiTranslation,
+            showDevanagariTransliteration = state.showDevanagariTransliteration,
+            showWordMeaning = state.showWordMeaning,
+            showRomanTransliteration = state.showRomanTransliteration,
+            larivaarMode = state.larivaarMode,
+            gurmukhiColorMode = state.gurmukhiColorMode,
+            translationColorMode = state.translationColorMode,
+            wordMeaningColorMode = state.wordMeaningColorMode,
+            displayLanguage = state.displayLanguage,
+            onToggleGurmukhi = { viewModel.setShowGurmukhi(it) },
+            onToggleEnglish = { viewModel.setShowEnglishTranslation(it) },
+            onTogglePunjabi = { viewModel.setShowPunjabiTranslation(it) },
+            onToggleHindi = { viewModel.setShowDevanagariTransliteration(it) },
+            onToggleWordMeaning = { viewModel.setShowWordMeaning(it) },
+            onToggleRoman = { viewModel.setShowRomanTransliteration(it) },
+            onToggleCenter = { viewModel.setCenterGurmukhi(it) },
+            onToggleLarivaar = { viewModel.setLarivaarMode(it) }
+        )
     }
 
     if (selectedInfoBani != null) {
@@ -1249,1162 +1399,287 @@ showInfoSheet = false
             }
         }
     }
-}
+    }
+    } // Closes the root Column container!
     // ── FULL-SCREEN INTERACTIVE MASCOT OVERLAY ──────────────────────────────
     AnimatedVisibility(
         visible = isMascotOverlayVisible,
         enter = fadeIn(animationSpec = tween(400)),
         exit = fadeOut(animationSpec = tween(450))
     ) {
-        val infiniteTransition = rememberInfiniteTransition(label = "global_mascot_breath")
-        
-        // Crisp, multi-layered structural scaling loops
-        val breathingScale by infiniteTransition.animateFloat(
-            initialValue = 0.95f,
-            targetValue = 1.08f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(2800, easing = EaseInOutCubic),
-                repeatMode = RepeatMode.Reverse
-            ),
-            label = "body_breath"
-        )
-        
-        val rippleRadius1 by infiniteTransition.animateFloat(
-            initialValue = 120f,
-            targetValue = 480f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(3500, easing = LinearEasing),
-                repeatMode = RepeatMode.Restart
-            ),
-            label = "outer_ripple"
-        )
+        val colors = practiceColors()
+        val currentBani = state.currentBani ?: state.banis.firstOrNull()
 
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.92f))
-                .clickable { 
-                    // Safely dismiss overlay and release audio anchors on background tap
+                .background(Color.Black.copy(alpha = 0.45f))
+                .imePadding() // Moves the root container up dynamically with the keyboard cleanly
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) {
                     isMascotOverlayVisible = false
                     isAssistantListening = false
+                }
+        ) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.85f) // Keeps the sheet nicely proportioned as a bottom sheet overlay
+                    .align(Alignment.BottomCenter)
+                    .padding(horizontal = 12.dp, vertical = 12.dp)
+                    // REMOVED .imePadding() from here since the root Box handles it now
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) {
+                        // Prevent click-through dismissal
+                    },
+                shape = RoundedCornerShape(28.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (AppTheme.themeMode == ThemeMode.Light) Color(0xFFF7F5F0).copy(alpha = 0.98f) else Color(0xFF1C1A17).copy(alpha = 0.98f)
+                ),
+                border = BorderStroke(1.5.dp, Brush.verticalGradient(listOf(Gold.copy(alpha = 0.4f), Color.Transparent))),
+                elevation = CardDefaults.cardElevation(defaultElevation = 12.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .windowInsetsPadding(WindowInsets.statusBars)
+                ) {
+                    // Header with close button
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            MascotBani(
+                                state = MascotState.Meditating,
+                                modifier = Modifier.size(36.dp)
+                            )
+                            Spacer(Modifier.width(12.dp))
+                            Text(
+                                text = "Bani AI Assistant".translate(state.displayLanguage),
+                                color = colors.textPrimary,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 18.sp
+                            )
+                        }
+                        
+                        IconButton(
+                            onClick = {
+                                isMascotOverlayVisible = false
+                                isAssistantListening = false
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Close Assistant",
+                                tint = colors.textPrimary
+                            )
+                        }
+                    }
+                    
+                    if (currentBani != null) {
+                        BaniAiAssistantTab(
+                            bani = currentBani,
+                            colors = colors,
+                            displayLanguage = state.displayLanguage,
+                            uiState = state,
+                            onShowVerseDetails = { line ->
+                                selectedSearchVerseLine = line
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    if (isGlobalSearchVisible) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.5f))
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) {
+                    isGlobalSearchVisible = false
                 },
             contentAlignment = Alignment.Center
         ) {
-            // ── LAYER 1: CANVAS RIPPLE PROPAGATION ENGINE ────────────────────
-                       // ── LAYER 1: CANVAS RIPPLE PROPAGATION ENGINE ────────────────────
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                val centerPoint = Offset(size.width / 2f, size.height / 2.3f)
-                
-                // First Ripple Ring
-                drawCircle(
-                    color = Gold.copy(alpha = (1f - (rippleRadius1 / 480f)).coerceIn(0f, 0.25f)),
-                    radius = rippleRadius1,
-                    center = centerPoint,
-                    style = Stroke(width = 2.dp.toPx()) // FIX: Convert DP to Float Pixels safely
-                )
-                
-                // Second Ripple Ring
-                drawCircle(
-                    color = Accent.copy(alpha = (1f - ((rippleRadius1 + 120f) % 480f / 480f)).coerceIn(0f, 0.15f)),
-                    radius = (rippleRadius1 + 120f) % 480f, // FIX: Calculated purely using Float math operations
-                    center = centerPoint,
-                    style = Stroke(width = 1.5.dp.toPx()) // FIX: Convert DP to Float Pixels safely
-                )
-            }
-
-            // ── LAYER 2: INTERACTIVE CONTENT CARD DECK ───────────────────────
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
+            Card(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(24.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .scale(breathingScale)
-                        .size(180.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    MascotBani(
-                        state = when {
-                            isAssistantListening -> MascotState.Listening
-                            interactiveInputText.isNotBlank() -> MascotState.Reading
-                            else -> MascotState.Meditating
-                        },
-                        modifier = Modifier.size(160.dp)
-                    )
-                }
-
-                Spacer(Modifier.height(40.dp))
-
-                Text(
-                    text = if (isAssistantListening) "Listening to Voice Input..." else "Processing Database Insights...",
-                    color = Color.White,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center
-                )
-
-                Spacer(Modifier.height(12.dp))
-
-                Text(
-                    text = if (interactiveInputText.isBlank()) 
-                        "Speak clearly to analyze structural data, Ang placements, translations, or historical metrics from across our complete catalog rules."
-                    else 
-                        interactiveInputText,
-                    color = Color.White.copy(alpha = 0.7f),
-                    fontSize = 14.sp,
-                    lineHeight = 22.sp,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(horizontal = 16.dp)
-                )
-
-                Spacer(Modifier.height(48.dp))
-
-                // Action Controls Row Footer
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Manual Cancellation Button
-                    IconButton(
-                        onClick = { 
-                            isMascotOverlayVisible = false
-                            isAssistantListening = false
-                        },
-                        modifier = Modifier
-                            .size(54.dp)
-                            .background(Color.White.copy(alpha = 0.1f), CircleShape)
+                    .fillMaxWidth(0.9f)
+                    .padding(16.dp)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Dismiss Overlay",
-                            tint = Color.White
-                        )
-                    }
-
-                    // Simulated Vocal Stop/Process Toggle Action Trigger
-                    IconButton(
-                        onClick = { 
-                            isAssistantListening = !isAssistantListening 
-                            if (!isAssistantListening) {
-                                // Direct routing example link matching any targeted Bani segment or concept string
-                                interactiveInputText = "Analyzing 'Japji Sahib' across active database rows..."
-                            }
-                        },
-                        modifier = Modifier
-                            .size(68.dp)
-                            .background(if (isAssistantListening) Color(0xFFEF5350) else Gold, CircleShape)
-                    ) {
-                        Icon(
-                            imageVector = if (isAssistantListening) Icons.Default.MicOff else Icons.Default.Mic,
-                            contentDescription = "Mic Control Hook",
-                            tint = Color.White,
-                            modifier = Modifier.size(28.dp)
-                        )
-                    }
-                }
-            }
-        }
-    }
-    }
-}
-
-@Composable
-private fun PremiumInfoSection(
-
-    icon: ImageVector,
-
-    title: String,
-
-    content: String
-) {
-
-    Surface(
-
-        shape = RoundedCornerShape(24.dp),
-
-        color =
-            Accent.copy(alpha = 0.05f),
-
-        border =
-            BorderStroke(
-                1.dp,
-                Accent.copy(alpha = 0.08f)
-            )
-    ) {
-
-        Column(
-
-            modifier = Modifier
-                .fillMaxWidth()
-               .padding(
-                horizontal = 18.dp,
-                vertical = 16.dp
-            )
-        ) {
-
-            Row(
-
-                verticalAlignment =
-                    Alignment.CenterVertically
-            ) {
-
-                Box(
-
-                    modifier = Modifier
-                        .size(42.dp)
-                        .clip(CircleShape)
-                        .background(
-                            Accent.copy(alpha = 0.12f)
-                        ),
-
-                    contentAlignment =
-                        Alignment.Center
-                ) {
-
-                    Icon(
-
-                        imageVector = icon,
-
-                        contentDescription = null,
-
-                        tint = Accent,
-
-                        modifier =
-                            Modifier.size(20.dp)
-                    )
-                }
-
-                Spacer(
-                    Modifier.width(12.dp)
-                )
-
-                Text(
-
-                    text = title,
-
-                    fontWeight =
-                        FontWeight.Bold,
-
-                    fontSize = 17.sp,
-
-                    color =
-                        if (AppTheme.themeMode == ThemeMode.Light)
-                            Color(0xFF1B1815)
-                        else
-                            Color.White
-                )
-            }
-
-            Spacer(
-                Modifier.height(16.dp)
-            )
-
-            Text(
-
-                text = content,
-
-                color =
-                    TextPrimary.copy(alpha = 0.80f),
-
-                lineHeight = 20.sp,
-
-                fontSize = 13.sp
-                    )
-                }
-            }
-        }
-   
-enum class AnalyticsCardType {
-
-    Today,
-    Consistency,
-    Listening
-}
-
-@Composable
-private fun PremiumAnalyticsCard(
-
-    modifier: Modifier = Modifier,
-
-    title: String,
-
-    value: String,
-
-    subtitle: String,
-
-    icon: ImageVector,
-
-    type: AnalyticsCardType,
-
-    progress: Float
-) {
-
-    val infinite =
-        rememberInfiniteTransition(
-            label = "analytics_bg"
-        )
-
-    val glow by infinite.animateFloat(
-
-        initialValue = 0.04f,
-
-        targetValue = 0.10f,
-
-        animationSpec = infiniteRepeatable(
-
-            animation = tween(2400),
-
-            repeatMode = RepeatMode.Reverse
-        ),
-
-        label = "glow"
-    )
-
-    val wavePhase by infinite.animateFloat(
-
-        initialValue = 0f,
-
-        targetValue = 2f * PI.toFloat(),
-
-        animationSpec = infiniteRepeatable(
-
-            animation = tween(
-                4000,
-                easing = LinearEasing
-            ),
-
-            repeatMode = RepeatMode.Restart
-        ),
-
-        label = "wave"
-    )
-
-    val floatPhase by infinite.animateFloat(
-
-        initialValue = 0f,
-
-        targetValue = 1f,
-
-        animationSpec = infiniteRepeatable(
-
-            animation = tween(
-                6000,
-                easing = LinearEasing
-            ),
-
-            repeatMode = RepeatMode.Restart
-        ),
-
-        label = "float"
-    )
-val animatedProgress by animateFloatAsState(
-
-    targetValue = progress.coerceIn(0f, 1f),
-
-    animationSpec = tween(
-        durationMillis = 900,
-        easing = EaseOutCubic
-    ),
-
-    label = "analytics_progress"
-)
-val scale by animateFloatAsState(
-
-    targetValue =
-
-        if (progress > 0f) 1f else 0.96f,
-
-    animationSpec = spring(
-
-        dampingRatio = 0.7f,
-
-        stiffness = 180f
-
-    ),
-
-    label = "card_scale"
-
-)
-        Card(
-        modifier = modifier.scale(scale),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = Color.Transparent
-        ),
-        border = BorderStroke(
-            1.dp,
-            Accent.copy(alpha = 0.08f)
-        )
-    ) {
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(24.dp))
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            when(type) {
-                                AnalyticsCardType.Listening -> {
-                                    Accent.copy(alpha = 0.03f + (animatedProgress * 0.08f))
-                                }
-                                else -> {
-                                    Accent.copy(alpha = glow)
-                                }
-                            },
-                            Gold.copy(alpha = 0.03f)
-                        )
-                    )
-                )
-                .drawBehind {
-                    if (animatedProgress > 0.8f) {
-                        drawCircle(
-                            brush = Brush.radialGradient(
-                                listOf(Gold.copy(alpha = 0.10f), Color.Transparent)
-                            ),
-                            radius = this.size.maxDimension * 0.72f
-                        )
-                    }
-                }
-        ) {
-            /*
-             * FIX: BACKGROUND TEXTURE REFLECTION MESH LAYER
-             * Draws a high-premium, low-opacity mascot waterprint trace directly 
-             * embedded behind card content elements
-             */
-                       // Subtle character background reflection mask
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .padding(top = 40.dp, start = 32.dp),
-                contentAlignment = Alignment.BottomEnd
-            ) {
-                val isLightMode = AppTheme.themeMode == ThemeMode.Light
-                
-                MascotBani(
-                    state = when (type) {
-                        AnalyticsCardType.Today -> MascotState.Celebrating
-                        AnalyticsCardType.Listening -> MascotState.Listening
-                        AnalyticsCardType.Consistency -> MascotState.Meditating
+                        // Prevent click-through dismissal
                     },
-                    modifier = Modifier
-                        .size(110.dp)
-                        // Using graphicsLayer bypasses missing alpha function imports safely
-                        .graphicsLayer {
-                            alpha = if (isLightMode) 0.04f else 0.025f
-                        }
-                )
-            }
-
-            /*
-             * CANVAS FX
-             */
-
-            Canvas(
-                modifier = Modifier.matchParentSize()
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (AppTheme.themeMode == ThemeMode.Light) Color(0xFFF7F5F0) else Color(0xFF1C1A17)
+                ),
+                border = BorderStroke(1.5.dp, Gold.copy(alpha = 0.35f)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
             ) {
-
-                val width = size.width
-                val height = size.height
-
-                when(type) {
-
-                    /*
-                     * TODAY
-                     * WATER FILL
-                     */
-
-      AnalyticsCardType.Today -> {
-
-    /*
-     * LIQUID LEVEL
-     */
-
- val liquidLevel =
-    height -
-        (
-            height * 0.72f * animatedProgress
-            )
-
-    /*
-     * MOTION
-     */
-
-    val phase =
-        wavePhase * 0.75f
-
-    val waveAmplitude =
-        4f
-
-    val rippleAmplitude =
-        1.4f
-
-    val wavelength =
-        width * 0.9f
-
-    /*
-     * MAIN LIQUID PATH
-     */
-
-    val liquidPath = Path()
-
-    liquidPath.moveTo(
-        -60f,
-        height
-    )
-
-    liquidPath.lineTo(
-        -60f,
-        liquidLevel
-    )
-
-    var previousX = -60f
-
-    var previousY = liquidLevel
-
-    var firstPoint = true
-
-    for (
-        xInt in -60..(width.toInt() + 60) step 20
-    ) {
-
-        val x = xInt.toFloat()
-
-        /*
-         * FLATTER WATER MOTION
-         */
-
-        val largeWave =
-            sin(
-                (
-                    x / wavelength
-                    ) *
-                    (2f * PI.toFloat()) +
-                    phase
-            ) * waveAmplitude
-
-        val smallRipple =
-            cos(
-                (
-                    x / (
-                        wavelength * 0.45f
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Global Search".translate(state.displayLanguage),
+                            color = Gold,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold
                         )
-                    ) *
-                    (2f * PI.toFloat()) +
-                    (
-                        phase * 1.6f
-                        )
-            ) * rippleAmplitude
-
-        val y =
-            liquidLevel +
-                largeWave +
-                smallRipple
-
-        if (firstPoint) {
-
-            liquidPath.lineTo(
-                x,
-                y
-            )
-
-            firstPoint = false
-
-        } else {
-
-            val midX =
-                (previousX + x) / 2f
-
-            val midY =
-                (previousY + y) / 2f
-
-            liquidPath.quadraticBezierTo(
-
-                previousX,
-                previousY,
-
-                midX,
-                midY
-            )
-        }
-
-        previousX = x
-        previousY = y
-    }
-
-    liquidPath.lineTo(
-        width + 60f,
-        height
-    )
-
-    liquidPath.close()
-
-    /*
-     * FILLED LIQUID
-     */
-
-    drawPath(
-
-        path = liquidPath,
-
-        brush = Brush.verticalGradient(
-
-            colors = listOf(
-
-          Accent.copy(alpha = 0.30f),
-
-Gold.copy(alpha = 0.16f)
-            ),
-
-            startY = liquidLevel,
-
-            endY = height
-        )
-    )
-
-    /*
-     * SURFACE HIGHLIGHT
-     */
-
-    drawPath(
-
-        path = liquidPath,
-
-        brush = Brush.horizontalGradient(
-
-            listOf(
-
-              Gold.copy(alpha = 0.22f),
-
-Accent.copy(alpha = 0.42f),
-
-Gold.copy(alpha = 0.22f)
-            )
-        ),
-
-        style = Stroke(
-
-            width = 1.4f,
-
-            cap = StrokeCap.Round
-        )
-    )
-}
-                    /*
-                     * LISTENING
-                     * AUDIO BARS
-                     */
-                    AnalyticsCardType.Listening -> {
-
-                        // Intentionally minimal
+                        IconButton(onClick = { isGlobalSearchVisible = false }) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Close Search",
+                                tint = if (AppTheme.themeMode == ThemeMode.Light) Color.Black else Color.White
+                            )
+                        }
                     }
-                    /*
-                     * CONSISTENCY
-                     * EMBERS
-                     */
-
-                    AnalyticsCardType.Consistency -> {
-
-                        if (
-                            animatedProgress > 0.2f
+                    
+                    Spacer(Modifier.height(12.dp))
+                    
+                    OutlinedTextField(
+                        value = globalSearchQuery,
+                        onValueChange = { globalSearchQuery = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = {
+                            Text(
+                                text = "Search Gurmukhi, English, Hindi...".translate(state.displayLanguage),
+                                color = (if (AppTheme.themeMode == ThemeMode.Light) Color.Black else Color.White).copy(alpha = 0.5f),
+                                fontSize = 14.sp
+                            )
+                        },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Gold,
+                            unfocusedBorderColor = (if (AppTheme.themeMode == ThemeMode.Light) Color.Black else Color.White).copy(alpha = 0.2f),
+                            focusedTextColor = if (AppTheme.themeMode == ThemeMode.Light) Color.Black else Color.White,
+                            unfocusedTextColor = if (AppTheme.themeMode == ThemeMode.Light) Color.Black else Color.White
+                        ),
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    
+                    val searchMatches = remember(globalSearchQuery) {
+                        if (globalSearchQuery.length < 3) emptyList()
+                        else {
+                            val lowerQuery = globalSearchQuery.lowercase().trim()
+                            val matches = mutableListOf<Pair<BaniLine, String>>()
+                            outer@ for (dbBani in org.audiocular.nitnem.data.generated.GeneratedBaniCatalog.banis) {
+                                for (line in dbBani.lines) {
+                                    if (line.gurmukhi.lowercase().contains(lowerQuery) ||
+                                        line.translation.lowercase().contains(lowerQuery) ||
+                                        line.hindi.lowercase().contains(lowerQuery) ||
+                                        line.punjabi.lowercase().contains(lowerQuery) ||
+                                        line.transliteration.lowercase().contains(lowerQuery)) {
+                                        matches.add(line to dbBani.title)
+                                        if (matches.size >= 4) break@outer // Limit to 4 to prevent scrolling!
+                                    }
+                                }
+                            }
+                            matches
+                        }
+                    }
+                    
+                    if (searchMatches.isNotEmpty()) {
+                        Spacer(Modifier.height(12.dp))
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-
-                            repeat(6) { index ->
-
-                                val emberY =
-                                    height * (
-                                        0.15f +
-                                            (
-                                                (
-                                                    floatPhase +
-                                                        index * 0.12f
-                                                    ) % 1f
-                                                )
+                            searchMatches.forEach { (line, baniTitle) ->
+                                Surface(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            selectedSearchVerseLine = line
+                                            isGlobalSearchVisible = false
+                                        },
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = if (AppTheme.themeMode == ThemeMode.Light) Color(0xFFFAFAFA) else Color(0xFF252321),
+                                    border = BorderStroke(1.dp, (if (AppTheme.themeMode == ThemeMode.Light) Color.Black else Color.White).copy(alpha = 0.05f))
+                                ) {
+                                    Column(modifier = Modifier.padding(12.dp)) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text(
+                                                text = baniTitle,
+                                                color = Gold,
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                            Icon(
+                                                imageVector = Icons.Default.ArrowForward,
+                                                contentDescription = null,
+                                                tint = Gold.copy(alpha = 0.7f),
+                                                modifier = Modifier.size(14.dp)
+                                            )
+                                        }
+                                        Spacer(Modifier.height(4.dp))
+                                        Text(
+                                            text = line.gurmukhi,
+                                            color = if (AppTheme.themeMode == ThemeMode.Light) Color.Black else Color.White,
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.SemiBold
                                         )
-
-                                drawCircle(
-
-                                    color =
-                                        Gold.copy(
-                                            alpha = 0.22f
-                                        ),
-
-                                    radius = 3f,
-
-                                    center = Offset(
-
-                                        width * 0.5f +
-                                            sin(
-                                                wavePhase +
-                                                    index
-                                            ) * 20f,
-
-                                        emberY
-                                    )
-                                )
+                                        Spacer(Modifier.height(2.dp))
+                                        Text(
+                                            text = line.translation,
+                                            color = (if (AppTheme.themeMode == ThemeMode.Light) Color.Black else Color.White).copy(alpha = 0.7f),
+                                            fontSize = 12.sp,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                }
                             }
                         }
+                    } else if (globalSearchQuery.length >= 3) {
+                        Spacer(Modifier.height(16.dp))
+                        Text(
+                            text = "No matching verses found.".translate(state.displayLanguage),
+                            color = (if (AppTheme.themeMode == ThemeMode.Light) Color.Black else Color.White).copy(alpha = 0.5f),
+                            fontSize = 13.sp,
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Center
+                            )
+                        }
                     }
-
-                }
-            }
-
-          Column(
-
-    modifier = Modifier
-        .fillMaxSize()
-        .padding(
-            horizontal = 8.dp,
-            vertical = 10.dp
-        ),
-
-    horizontalAlignment =
-        Alignment.CenterHorizontally
-) {
-
-    /*
-     * ICON
-     */
-
-    Box(
-
-        modifier = Modifier
-            .size(42.dp)
-            .clip(CircleShape)
-            .scale(
-
-    if (
-        type ==
-        AnalyticsCardType.Listening
-    ) {
-
-        1f + (
-            animatedProgress * 0.06f
-        )
-
-    } else {
-
-        1f
-    }
-)
-            .background(
-
-                Brush.linearGradient(
-
-                    listOf(
-                        Accent,
-                        Gold
-                    )
-                )
-            ),
-
-        contentAlignment =
-            Alignment.Center
-    ) {
-
-        Icon(
-
-            imageVector = icon,
-
-            contentDescription = null,
-
-            tint = Color.White,
-
-            modifier = Modifier.size(18.dp)
-        )
-    }
-
-    Spacer(
-        Modifier.height(6.dp)
-    )
-
-    /*
-     * VALUE
-     */
-
-    Text(
-
-        text = value,
-
-        color =
-
-            if (
-                AppTheme.themeMode ==
-                ThemeMode.Light
-            ) {
-
-                Color(0xFF1F1B16)
-
-            } else {
-
-                Color.White
-            },
-
-        fontSize = 18.sp,
-
-        fontWeight =
-            FontWeight.Bold
-    )
-
-
-    Text(
-
-        text = title,
-
-        color =
-            TextPrimary.copy(
-                alpha = 0.72f
-            ),
-
-        fontSize = 12.sp,
-
-        fontWeight =
-            FontWeight.SemiBold
-    )
-
-
-    Text(
-
-        text = subtitle,
-
-        color =
-            TextPrimary.copy(
-                alpha = 0.45f
-            ),
-
-        fontSize = 10.sp,
-
-        maxLines = 1,
-
-        overflow =
-            TextOverflow.Ellipsis
-    )
-
-    Spacer(
-        Modifier.weight(1f)
-    )
-
-    /*
-     * HEATMAP
-     */
-
-    if (
-        type ==
-        AnalyticsCardType.Consistency
-    ) {
-
-        MonthlyHeatmap(
-            progress =
-                animatedProgress
-        )
-
-        Spacer(
-            Modifier.height(6.dp)
-        )
-    }
-}
-        }
-    }
-}
-    @Composable
-private fun MonthlyHeatmap(
-    progress: Float
-) {
-
-    val activeCount =
-        (28 * progress).toInt()
-
-    Column(
-
-        verticalArrangement =
-            Arrangement.spacedBy(2.dp),
-
-        horizontalAlignment =
-            Alignment.CenterHorizontally
-    ) {
-
-        repeat(4) { row ->
-
-            Row(
-
-                horizontalArrangement =
-                    Arrangement.spacedBy(2.dp)
-            ) {
-
-                repeat(7) { col ->
-
-                    val index =
-                        row * 7 + col
-
-                    val active =
-                        index < activeCount
-
-                    val backgroundBrush = if (active) {
-
-                        Brush.linearGradient(
-
-                            listOf(
-                                Gold,
-                                Accent
-                            )
-                        )
-
-                    } else {
-
-                        Brush.linearGradient(
-
-                            listOf(
-                                Color(0xFF8C8478)
-                                    .copy(alpha = 0.20f),
-
-                                Color(0xFF5E584F)
-                                    .copy(alpha = 0.12f)
-                            )
-                        )
-                    }
-
-                    Box(
-
-                        modifier = Modifier
-                            .size(7.dp)
-                            .clip(
-                                RoundedCornerShape(2.dp)
-                            )
-                            .background(
-                                brush = backgroundBrush
-                            )
-                    )
                 }
             }
         }
     }
-}
 
-
-@Composable
-private fun BaniDetailItem(
-    label: String,
-    value: String,
-    displayLanguage: DisplayLanguage
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.Top
-    ) {
-        Text(
-            text = label,
-            color = TextPrimary.copy(alpha = 0.6f),
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium,
-            modifier = Modifier.weight(0.4f)
-        )
-        Text(
-            text = value,
-            color = TextPrimary,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.SemiBold,
-            textAlign = TextAlign.End,
-            modifier = Modifier.weight(0.6f)
-        )
-    }
-}
-private fun calculatePlaybackProgress(
-    bani: Bani,
-    state: NitnemUiState,
-    isCurrent: Boolean
-): Float {
-
-    return when {
-
-        isCurrent -> {
-
-            if (state.playback.durationMs <= 0L) {
-
-                0f
-
-            } else {
-
-                (
-                    state.playback.positionMs.toFloat() /
-                        state.playback.durationMs.toFloat()
-                ).coerceIn(0f, 1f)
-            }
-        }
-
-        else -> 0f
-    }
-}
-private fun getMascotMessage(
-    state: NitnemUiState,
-    displayLanguage: DisplayLanguage
-): String {
-
-    val messages = mutableListOf<String>()
-    val currentHour: Int = Clock.System.now()
-        .toLocalDateTime(TimeZone.currentSystemDefault()).hour
-    val completedBanis = state.completedBanis.map { it.lowercase() }
-
-    val totalRequiredCount = 5
-
-    if (state.completedBanis.size >= totalRequiredCount) {
-        return when (displayLanguage) {
-            DisplayLanguage.Punjabi ->
-                "ਵਾਹਿਗੁਰੂ! ਤੁਸੀਂ ਅੱਜ ਆਪਣਾ ਸਾਰਾ ਨਿਤਨੇਮ ਪਾਠ ਪੂਰਾ ਕਰ ਲਿਆ ਹੈ। ਬਹੁਤ ਵਧੀਆ!"
-
-            DisplayLanguage.Hindi ->
-                "वाहेगुरु! आपने आज अपना सारा नितनेम पाठ पूरा कर लिया है। बहुत बढ़िया!"
-
-            DisplayLanguage.English ->
-                "Waheguru! You have completed all your daily Nitnem path today. Splendid dedication!"
-        }
-    }
-
-    when {
-
-        currentHour in 3..9 &&
-            !completedBanis.contains("japji sahib") -> {
-
-            messages.add(
-                when (displayLanguage) {
-                    DisplayLanguage.Punjabi ->
-                        "ਅੰਮ੍ਰਿਤ ਵੇਲਾ ਚੱਲ ਰਿਹਾ ਹੈ। ਆਓ ਅੱਜ ਜਪੁਜੀ ਸਾਹਿਬ ਦਾ ਪਾਠ ਸ਼ੁਰੂ ਕਰੀਏ!"
-
-                    DisplayLanguage.Hindi ->
-                        "अमृत वेला चल रहा है। आइए आज जपुजी साहिब का पाठ शुरू करें!"
-
-                    DisplayLanguage.English ->
-                        "It's Amrit Vela. Let's start the day with Japji Sahib!"
-                }
-            )
-        }
-
-        currentHour in 6..11 &&
-            !completedBanis.contains("jaap sahib") -> {
-
-            messages.add(
-                when (displayLanguage) {
-                    DisplayLanguage.Punjabi ->
-                        "ਕੀ ਤੁਸੀਂ ਅੱਜ ਜਾਪੁ ਸਾਹਿਬ ਜੀ ਦਾ ਪਾਠ ਕੀਤਾ ਹੈ? ਆਓ ਇਸ ਨੂੰ ਸ਼ੁਰੂ ਕਰੀਏ।"
-
-                    DisplayLanguage.Hindi ->
-                        "क्या आपने आज जापु साहिब जी का पाठ किया है? आइए इसे शुरू करें।"
-
-                    DisplayLanguage.English ->
-                        "Have you read Jaap Sahib today? Let's tune in now."
-                }
-            )
-        }
-
-        currentHour in 16..19 &&
-            !completedBanis.contains("rehras sahib") -> {
-
-            messages.add(
-                when (displayLanguage) {
-                    DisplayLanguage.Punjabi ->
-                        "ਸ਼ਾਮ ਹੋ ਗਈ ਹੈ। ਆਓ ਰਹਿਰਾਸ ਸਾਹਿਬ ਜੀ ਦੇ ਪਾਠ ਨਾਲ ਸ਼ਾਂਤੀ ਪ੍ਰਾਪਤ ਕਰੀਏ।"
-
-                    DisplayLanguage.Hindi ->
-                        "शाम हो गई है। आइए रहिरास साहिब जी के पाठ से शांति प्राप्त करें।"
-
-                    DisplayLanguage.English ->
-                        "It is evening. Let's find peace with Rehras Sahib."
-                }
-            )
-        }
-
-        currentHour >= 20 &&
-            !completedBanis.contains("kirtan sohila") -> {
-
-            messages.add(
-                when (displayLanguage) {
-                    DisplayLanguage.Punjabi ->
-                        "ਸੌਣ ਤੋਂ ਪਹਿਲਾਂ ਕੀਰਤਨ ਸੋਹਿਲਾ ਜੀ ਦਾ ਪਾਠ ਕਰਕੇ ਚੰਗੀ ਨੀਂਦ ਅਤੇ ਸ਼ਾਂਤੀ ਪ੍ਰਾਪਤ ਕਰੋ।"
-
-                    DisplayLanguage.Hindi ->
-                        "सोने से पहले कीर्तन सोहिला जी का पाठ करके अच्छी नींद और शांति प्राप्त करें।"
-
-                    DisplayLanguage.English ->
-                        "Read Kirtan Sohila before sleeping to bring tranquility and protection."
-                }
-            )
-        }
-    }
-
-    if (state.streakDays > 0) {
-
-        messages.add(
-            when (displayLanguage) {
-                DisplayLanguage.Punjabi ->
-                    "ਤੁਹਾਡੀ ਲੜੀ ${state.streakDays} ਦਿਨਾਂ ਦੀ ਹੈ! ਅੱਜ ਦਾ ਪਾਠ ਕਰਕੇ ਇਸ ਲੜੀ ਨੂੰ ਸੁਰੱਖਿਅਤ ਕਰੋ।"
-
-                DisplayLanguage.Hindi ->
-                    "आपकी निरंतरता ${state.streakDays} दिनों की है! आज का पाठ करके इसे सुरक्षित करें।"
-
-                DisplayLanguage.English ->
-                    "You're on a ${state.streakDays}-day streak! Secure it today by finishing your daily path."
-            }
+    if (showWeeklyStreakDialog) {
+        WeeklyStreakDialog(
+            streakDays = streakToDisplay,
+            displayLanguage = state.displayLanguage,
+            onDismiss = { showWeeklyStreakDialog = false }
         )
     }
 
-    if (state.totalXp > 0) {
-
-        messages.add(
-            when (displayLanguage) {
-                DisplayLanguage.Punjabi ->
-                    "ਤੁਸੀਂ ਅੱਜ ${state.totalXp} XP ਕਮਾ ਲਏ ਹਨ। ਵਾਹਿਗੁਰੂ ਤੁਹਾਡੇ ਅਭਿਆਸ ਵਿੱਚ ਵਾਧਾ ਕਰੇ!"
-
-                DisplayLanguage.Hindi ->
-                    "आपने आज ${state.totalXp} XP कमा लिए हैं। वाहेगुरु आपके अभ्यास में वृद्धि करे!"
-
-                DisplayLanguage.English ->
-                    "You've earned ${state.totalXp} XP today! Keep engaging with Gurbani to grow."
-            }
+    if (showLeaderboardDialog) {
+        FamilyLeaderboardDialog(
+            uiState = state,
+            displayLanguage = state.displayLanguage,
+            onDismiss = { showLeaderboardDialog = false }
         )
     }
-
-    messages.add(
-        when (displayLanguage) {
-            DisplayLanguage.Punjabi ->
-                "ਆਪਣੀ ਬਾਣੀ ਦੀ ਸਮਝ ਨੂੰ ਪਰਖਣ ਲਈ ਪ੍ਰੈਕਟਿਸ ਟੈਬ ਵਿੱਚ AI ਗੁਰਬਾਣੀ ਕੁਇਜ਼ ਖੇਡੋ!"
-
-            DisplayLanguage.Hindi ->
-                "अपनी बाणी की समझ को परखने के लिए प्रैक्टिस टैब में AI गुरबाणी क्विज़ खेलें!"
-
-            DisplayLanguage.English ->
-                "Test your understanding of Gurbani with the AI Quiz in the Practice tab."
-        }
-    )
-
-    messages.add(
-        when (displayLanguage) {
-            DisplayLanguage.Punjabi ->
-                "ਅੱਜ ਮਨ ਨੂੰ ਸ਼ਾਂਤ ਕਰਨ ਲਈ ਸਿਮਰਨ ਅਭਿਆਸ ਵਿੱਚ ਕੁਝ ਸਮਾਂ ਬਿਤਾਓ।"
-
-            DisplayLanguage.Hindi ->
-                "आज मन को शांत करने के लिए सिमरन अभ्यास में कुछ समय बिताएं।"
-
-            DisplayLanguage.English ->
-                "Spend a few minutes in Simran Abhyas today."
-        }
-    )
-
-    if (messages.isEmpty()) {
-
-        messages.add(
-            when (displayLanguage) {
-                DisplayLanguage.Punjabi ->
-                    "ਵਾਹਿਗੁਰੂ ਜੀ ਕਾ ਖਾਲਸਾ ਵਾਹਿਗੁਰੂ ਜੀ ਕੀ ਫਤਿਹ।"
-
-                DisplayLanguage.Hindi ->
-                    "वाहेगुरु जी का खालसा, वाहेगुरु जी की फतेह।"
-
-                DisplayLanguage.English ->
-                    "Waheguru Ji Ka Khalsa, Waheguru Ji Ki Fateh."
-            }
-        )
-    }
-
-    return messages.random()
 }

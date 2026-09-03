@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.*
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.first
 import org.audiocular.nitnem.app.models.DisplayLanguage
 import org.audiocular.nitnem.app.ui.theme.AccentStyle
 import org.audiocular.nitnem.models.NitnemUiState
@@ -71,6 +72,11 @@ class SettingsRepository(
         /*
          * CONTENT
          */
+
+        private val SHOW_GURMUKHI =
+            booleanPreferencesKey(
+                "show_gurmukhi"
+            )
 
         private val SHOW_TRANSLATION =
             booleanPreferencesKey(
@@ -146,6 +152,16 @@ class SettingsRepository(
                 "focus_mode"
             )
 
+        private val FULL_SCREEN_READING_MODE =
+            booleanPreferencesKey(
+                "full_screen_reading_mode"
+            )
+
+        private val BLACK_AND_WHITE_AOD_MODE =
+            booleanPreferencesKey(
+                "black_and_white_aod_mode"
+            )
+
         private val SHOW_MINI_PLAYER =
             booleanPreferencesKey(
                 "show_mini_player"
@@ -171,7 +187,7 @@ class SettingsRepository(
             )
 
         private val REPEAT_MODE =
-            booleanPreferencesKey(
+            stringPreferencesKey(
                 "repeat_mode"
             )
 
@@ -251,6 +267,16 @@ class SettingsRepository(
                 "roman_color_mode"
             )
 
+        private val DEVANAGARI_COLOR_MODE =
+            stringPreferencesKey(
+                "devanagari_color_mode"
+            )
+
+        private val PUNJABI_COLOR_MODE =
+            stringPreferencesKey(
+                "punjabi_color_mode"
+            )
+
         private val TRANSLATION_COLOR_MODE =
             stringPreferencesKey(
                 "translation_color_mode"
@@ -279,6 +305,23 @@ class SettingsRepository(
             stringPreferencesKey(
                 "widget_content"
             )
+
+        private val LAST_STREAK_CELEBRATED_DATE =
+            stringPreferencesKey(
+                "last_streak_celebrated_date"
+            )
+    }
+
+    suspend fun getLastStreakCelebratedDate(): String {
+        return context.settingsDataStore.data.map { prefs ->
+            prefs[LAST_STREAK_CELEBRATED_DATE] ?: ""
+        }.first()
+    }
+
+    suspend fun setLastStreakCelebratedDate(date: String) {
+        context.settingsDataStore.edit { prefs ->
+            prefs[LAST_STREAK_CELEBRATED_DATE] = date
+        }
     }
 
     /*
@@ -340,6 +383,10 @@ class SettingsRepository(
                  * CONTENT
                  */
 
+                showGurmukhi =
+                    prefs[SHOW_GURMUKHI]
+                        ?: true,
+
                 showTranslation =
                     prefs[SHOW_TRANSLATION]
                         ?: true,
@@ -374,7 +421,7 @@ class SettingsRepository(
 
                 centerGurmukhi =
                     prefs[CENTER_GURMUKHI]
-                        ?: false,
+                        ?: true,
 
                 compactMode =
                     prefs[COMPACT_MODE]
@@ -382,7 +429,7 @@ class SettingsRepository(
 
                 larivaarMode =
                     prefs[LARIVAAR_MODE]
-                        ?: false,
+                        ?: true,
 
                 highlightActiveLine =
                     prefs[HIGHLIGHT_ACTIVE]
@@ -398,6 +445,14 @@ class SettingsRepository(
 
                 focusMode =
                     prefs[FOCUS_MODE]
+                        ?: false,
+
+                fullScreenReadingMode =
+                    prefs[FULL_SCREEN_READING_MODE]
+                        ?: false,
+
+                blackAndWhiteAodMode =
+                    prefs[BLACK_AND_WHITE_AOD_MODE]
                         ?: false,
 
                 /*
@@ -418,7 +473,7 @@ class SettingsRepository(
 
                 repeatMode =
                     prefs[REPEAT_MODE]
-                        ?: false,
+                        ?: "OFF",
 
                 ambientMode =
                     prefs[AMBIENT_MODE]
@@ -484,6 +539,14 @@ class SettingsRepository(
 
                 romanTransliterationColorMode =
                     prefs[ROMAN_COLOR_MODE]
+                        ?: "default",
+
+                devanagariTransliterationColorMode =
+                    prefs[DEVANAGARI_COLOR_MODE]
+                        ?: "default",
+
+                punjabiTranslationColorMode =
+                    prefs[PUNJABI_COLOR_MODE]
                         ?: "default",
 
                 translationColorMode =
@@ -616,6 +679,12 @@ class SettingsRepository(
     /*
      * CONTENT
      */
+
+    suspend fun setShowGurmukhi(enabled: Boolean) {
+        context.settingsDataStore.edit {
+            it[SHOW_GURMUKHI] = enabled
+        }
+    }
 
     suspend fun setShowTranslation(enabled: Boolean) {
 
@@ -812,6 +881,22 @@ class SettingsRepository(
         }
     }
 
+    suspend fun setFullScreenReadingMode(enabled: Boolean) {
+
+        context.settingsDataStore.edit {
+
+            it[FULL_SCREEN_READING_MODE] = enabled
+        }
+    }
+
+    suspend fun setBlackAndWhiteAodMode(enabled: Boolean) {
+
+        context.settingsDataStore.edit {
+
+            it[BLACK_AND_WHITE_AOD_MODE] = enabled
+        }
+    }
+
     /*
      * PLAYBACK
      */
@@ -840,11 +925,9 @@ class SettingsRepository(
         }
     }
 
-    suspend fun setRepeatMode(enabled: Boolean) {
-
+    suspend fun setRepeatMode(mode: String) {
         context.settingsDataStore.edit {
-
-            it[REPEAT_MODE] = enabled
+            it[REPEAT_MODE] = mode
         }
     }
 
@@ -904,6 +987,22 @@ class SettingsRepository(
         }
     }
 
+    suspend fun setDevanagariColorMode(mode: String) {
+
+        context.settingsDataStore.edit {
+
+            it[DEVANAGARI_COLOR_MODE] = mode
+        }
+    }
+
+    suspend fun setPunjabiColorMode(mode: String) {
+
+        context.settingsDataStore.edit {
+
+            it[PUNJABI_COLOR_MODE] = mode
+        }
+    }
+
     suspend fun setTranslationColorMode(mode: String) {
 
         context.settingsDataStore.edit {
@@ -954,10 +1053,17 @@ class SettingsRepository(
         rehrasTime: String,
         sohilaTime: String,
         autoScroll: Boolean,
-        repeatMode: Boolean,
+        repeatMode: String = "OFF",
         ambientMode: Boolean,
         widgetTheme: String,
-        widgetContent: String
+        widgetContent: String,
+        showGurmukhi: Boolean? = null,
+        showDevanagari: Boolean? = null,
+        showRoman: Boolean? = null,
+        showEnglish: Boolean? = null,
+        showPunjabi: Boolean? = null,
+        showWordMeaning: Boolean? = null,
+        larivaarMode: Boolean? = null
     ) {
         context.settingsDataStore.edit { preferences ->
             preferences[DISPLAY_LANGUAGE] = language.name
@@ -975,13 +1081,17 @@ class SettingsRepository(
             preferences[WIDGET_CONTENT] = widgetContent
             preferences[ONBOARDING_DONE] = true
 
-            val showEn = language == DisplayLanguage.English
-            val showPa = language == DisplayLanguage.Punjabi
-            val showHi = language == DisplayLanguage.Hindi
-            preferences[SHOW_ENGLISH] = showEn
-            preferences[SHOW_PUNJABI] = showPa
-            preferences[SHOW_DEVANAGARI] = showHi
-            preferences[SHOW_ROMAN] = showEn
+            val defaultEn = language == DisplayLanguage.English
+            val defaultPa = language == DisplayLanguage.Punjabi
+            val defaultHi = language == DisplayLanguage.Hindi
+
+            if (showGurmukhi != null) preferences[SHOW_GURMUKHI] = showGurmukhi
+            preferences[SHOW_ENGLISH] = showEnglish ?: defaultEn
+            preferences[SHOW_PUNJABI] = showPunjabi ?: defaultPa
+            preferences[SHOW_DEVANAGARI] = showDevanagari ?: defaultHi
+            preferences[SHOW_ROMAN] = showRoman ?: defaultEn
+            if (showWordMeaning != null) preferences[SHOW_WORD_MEANING] = showWordMeaning
+            if (larivaarMode != null) preferences[LARIVAAR_MODE] = larivaarMode
         }
     }
 }

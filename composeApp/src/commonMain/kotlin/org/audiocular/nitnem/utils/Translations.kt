@@ -258,6 +258,22 @@ object Translations {
     }
 
     private val map = mapOf(
+        "Weekly Streak!" to mapOf(
+            DisplayLanguage.Hindi to "साप्ताहिक निरंतरता!",
+            DisplayLanguage.Punjabi to "ਹਫਤਾਵਾਰੀ ਲੜੀ!"
+        ),
+        "You've stayed consistent for" to mapOf(
+            DisplayLanguage.Hindi to "आप निरंतर बने रहे हैं",
+            DisplayLanguage.Punjabi to "ਤੁਸੀਂ ਲਗਾਤਾਰ ਪਾਠ ਕੀਤਾ ਹੈ"
+        ),
+        "Keep up the daily Nitnem to grow your streak and earn more XP." to mapOf(
+            DisplayLanguage.Hindi to "अपनी निरंतरता बढ़ाने और अधिक XP अर्जित करने के लिए दैनिक नितनेम जारी रखें।",
+            DisplayLanguage.Punjabi to "ਆਪਣੀ ਲੜੀ ਨੂੰ ਵਧਾਉਣ ਅਤੇ ਹੋਰ XP ਕਮਾਉਣ ਲਈ ਰੋਜ਼ਾਨਾ ਨਿਤਨੇਮ ਜਾਰੀ ਰੱਖੋ।"
+        ),
+        "Weekly Streak!" to mapOf(
+            DisplayLanguage.Hindi to "साप्ताहिक निरंतरता!",
+            DisplayLanguage.Punjabi to "ਹਫਤਾਵਾਰੀ ਲੜੀ!"
+        ),
         "View Results" to mapOf(
             DisplayLanguage.Hindi to "परिणाम देखें",
             DisplayLanguage.Punjabi to "ਨਤੀਜਾ ਦੇਖੋ"
@@ -351,10 +367,7 @@ object Translations {
     DisplayLanguage.Hindi to "श्वास लेते समय 'वाहे' और छोड़ते समय 'गुरु' का मानसिक जाप करें। प्रत्येक श्वास चक्र के साथ जागरूकता को समक्रमित करें।",
     DisplayLanguage.Punjabi to "ਸਾਹ ਲੈਂਦਿਆਂ 'ਵਾਹਿ' ਅਤੇ ਛੱਡਦਿਆਂ 'ਗੁਰੂ' ਦਾ ਮਾਨਸਿਕ ਜਾਪ ਕਰੋ। ਹਰ ਸਾਹ ਚੱਕਰ ਦੇ ਨਾਲ ਜਾਗਰੂਕਤਾ ਨੂੰ ਸਮਕਾਲੀ ਕਰੋ।"
 ),
-"Dhyaan" to mapOf(
-    DisplayLanguage.Hindi to "ध्यान",
-    DisplayLanguage.Punjabi to "ਧਿਆਨ"
-),
+
 "Naam Listening" to mapOf(
     DisplayLanguage.Hindi to "नाम सुनना",
     DisplayLanguage.Punjabi to "ਨਾਮ ਸੁਣਨਾ"
@@ -363,9 +376,9 @@ object Translations {
     DisplayLanguage.Hindi to "श्वास लेते समय 'वाहे' और छोड़ते समय 'गुरु' का मानसिक जाप करें। प्रत्येक श्वास चक्र के साथ जागरूकता को समक्रमित करें।",
     DisplayLanguage.Punjabi to "ਸਾਹ ਲੈਂਦਿਆਂ 'ਵਾਹਿ' ਅਤੇ ਛੱਡਦਿਆਂ 'ਗੁਰੂ' ਦਾ ਮਾਨਸਿਕ ਜਾਪ ਕਰੋ। ਹਰ ਸਾਹ ਚੱਕਰ ਦੇ ਨਾਲ ਜਾਗਰੂਕਤਾ ਨੂੰ ਸਮਕਾਲੀ ਕਰੋ।"
 ),
-"Anhad" to mapOf(
-    DisplayLanguage.Hindi to "अनहद",
-    DisplayLanguage.Punjabi to "ਅਨਹਦ"
+"MoonMantar" to mapOf(
+    DisplayLanguage.Hindi to "मूल मन्त्र",
+    DisplayLanguage.Punjabi to "ਮੂਲ ਮੰਤਰ"
 ),
 "Stillness" to mapOf(
     DisplayLanguage.Hindi to "शांति",
@@ -996,20 +1009,20 @@ object Translations {
             DisplayLanguage.Hindi to "हिंदी",
             DisplayLanguage.Punjabi to "ਹਿੰਦੀ"
         ),
-        "Hindi Translation" to mapOf(
-            DisplayLanguage.Hindi to "हिंदी अनुवाद",
+        "Hindi Transliteration" to mapOf(
+            DisplayLanguage.Hindi to "हिंदी लिप्यंतरण",
             DisplayLanguage.Punjabi to "ਹਿੰਦੀ ਅਨੁਵਾਦ"
         ),
-        "Hindi translation not available" to mapOf(
-            DisplayLanguage.Hindi to "हिंदी अनुवाद उपलब्ध नहीं है",
+        "Hindi Transliteration not available" to mapOf(
+            DisplayLanguage.Hindi to "हिंदी लिप्यंतरण उपलब्ध नहीं है",
             DisplayLanguage.Punjabi to "ਹਿੰਦੀ ਅਨੁਵਾਦ ਉਪਲਬਧ ਨਹੀਂ ਹੈ"
         ),
         "Hindi Transliteration" to mapOf(
             DisplayLanguage.Hindi to "हिंदी लिप्यंतरण",
             DisplayLanguage.Punjabi to "ਹਿੰਦੀ ਲਿਪੀਅੰਤਰਨ"
         ),
-        "Hint / Translation" to mapOf(
-            DisplayLanguage.Hindi to "संकेत/अनुवाद",
+        "Hint / Tranliteration" to mapOf(
+            DisplayLanguage.Hindi to "संकेत/लिप्यंतरण",
             DisplayLanguage.Punjabi to "ਇਸ਼ਾਰਾ/ਅਨੁਵਾਦ"
         ),
 
@@ -1203,10 +1216,6 @@ object Translations {
         "Meanings" to mapOf(
             DisplayLanguage.Hindi to "शब्दार्थ",
             DisplayLanguage.Punjabi to "ਸ਼ਬਦਾਰਥ"
-        ),
-        "Meditate upon the Divine with every fiber of your being." to mapOf(
-            DisplayLanguage.Hindi to "अपने रोम-रोम से परमात्मा का ध्यान करें।",
-            DisplayLanguage.Punjabi to "ਆਪਣੇ ਰੋਮ-ਰੋਮ ਨਾਲ ਪਰਮਾਤਮਾ ਦਾ ਸਿਮਰਨ ਕਰੋ।"
         ),
         "mins" to mapOf(
             DisplayLanguage.Hindi to "मिनट",
@@ -2478,6 +2487,82 @@ object Translations {
             DisplayLanguage.Hindi to "आपकी सिंक की गई टाइमिंग फ़ाइल गुरबाणी अनुभव मोड में अपने आप लाइव हाइलाइटिंग शुरू कर देगी।",
             DisplayLanguage.Punjabi to "ਤੁਹਾਡੀ ਸਿੰਕ ਕੀਤੀ ਟਾਈਮਿੰਗ ਫਾਈਲ ਗੁਰਬਾਣੀ ਅਨੁਭਵ ਮੋਡ ਵਿੱਚ ਆਪਣੇ ਆਪ ਲਾਈਵ ਹਾਈਲਾਈਟਿੰਗ ਨੂੰ ਚਲਾਏਗੀ।"
         ),
+        "Sign in with Google" to mapOf(
+            DisplayLanguage.Hindi to "Google से साइन इन करें",
+            DisplayLanguage.Punjabi to "Google ਨਾਲ ਸਾਈਨ ਇਨ ਕਰੋ"
+        ),
+        "Continue Without Login" to mapOf(
+            DisplayLanguage.Hindi to "बिना लॉगिन जारी रखें",
+            DisplayLanguage.Punjabi to "ਬਿਨਾਂ ਲੌਗਇਨ ਜਾਰੀ ਰੱਖੋ"
+        ),
+        "Continue Offline / Private Mode" to mapOf(
+            DisplayLanguage.Hindi to "ऑफ़लाइन / निजी मोड जारी रखें",
+            DisplayLanguage.Punjabi to "ਔਫਲਾਈਨ / ਨਿੱਜੀ ਮੋਡ ਜਾਰੀ ਰੱਖੋ"
+        ),
+        "Account & Cloud Sync" to mapOf(
+            DisplayLanguage.Hindi to "खाता और क्लाउड सिंक",
+            DisplayLanguage.Punjabi to "ਖਾਤਾ ਅਤੇ ਕਲਾਉਡ ਸਿੰਕ"
+        ),
+        "Cloud backup & community features" to mapOf(
+            DisplayLanguage.Hindi to "क्लाउड बैकअप और संगत सुविधाएं",
+            DisplayLanguage.Punjabi to "ਕਲਾਉਡ ਬੈਕਅੱਪ ਅਤੇ ਸੰਗਤ ਵਿਸ਼ੇਸ਼ਤਾਵਾਂ"
+        ),
+        "Automatic data & streak restoration across all devices" to mapOf(
+            DisplayLanguage.Hindi to "सभी डिवाइसों पर स्वचालित डेटा और लड़ी (स्ट्रीक) पुनर्स्थापना",
+            DisplayLanguage.Punjabi to "ਸਾਰੇ ਡਿਵਾਈਸਾਂ 'ਤੇ ਆਟੋਮੈਟਿਕ ਡੇਟਾ ਅਤੇ ਸਟ੍ਰੀਕ ਰੀਸਟੋਰ"
+        ),
+        "Keep track of friends & family in real-time Sangat leaderboards" to mapOf(
+            DisplayLanguage.Hindi to "रीयल-टाइम संगत लीडरबोर्ड में मित्रों और परिवार से जुड़े रहें",
+            DisplayLanguage.Punjabi to "ਰੀਅਲ-ਟਾਈਮ ਸੰਗਤ ਲੀਡਰਬੋਰਡਾਂ ਵਿੱਚ ਦੋਸਤਾਂ ਅਤੇ ਪਰਿਵਾਰ ਨਾਲ ਜੁੜੇ ਰਹੋ"
+        ),
+        "Sync recitation minutes, XP milestones & prayer history" to mapOf(
+            DisplayLanguage.Hindi to "पाठ के मिनट, XP उपलब्धियां और प्रार्थना इतिहास सिंक करें",
+            DisplayLanguage.Punjabi to "ਪਾਠ ਦੇ ਮਿੰਟ, XP ਪ੍ਰਾਪਤੀਆਂ ਅਤੇ ਇਤਿਹਾਸ ਸਿੰਕ ਕਰੋ"
+        ),
+        "100% Private, offline-first experience" to mapOf(
+            DisplayLanguage.Hindi to "100% निजी, ऑफ़लाइन-प्रथम अनुभव",
+            DisplayLanguage.Punjabi to "100% ਨਿੱਜੀ, ਔਫਲਾਈਨ ਅਨੁਭਵ"
+        ),
+        "100% Privacy with 0 cloud tracking or personal data collection" to mapOf(
+            DisplayLanguage.Hindi to "शून्य क्लाउड ट्रैकिंग और संपूर्ण डेटा गोपनीयता",
+            DisplayLanguage.Punjabi to "ਜ਼ੀਰੋ ਕਲਾਉਡ ਟਰੈਕਿੰਗ ਅਤੇ ਪੂਰੀ ਡੇਟਾ ਗੋਪਨੀਯਤਾ"
+        ),
+        "Works entirely offline — all bookmarks & streaks saved locally on your phone" to mapOf(
+            DisplayLanguage.Hindi to "पूरी तरह से ऑफ़लाइन — सभी बुकमार्क और स्ट्रीक फोन पर सुरक्षित",
+            DisplayLanguage.Punjabi to "ਪੂਰੀ ਤਰ੍ਹਾਂ ਔਫਲਾਈਨ — ਸਾਰੇ ਬੁੱਕਮਾਰਕ ਅਤੇ ਸਟ੍ਰੀਕ ਫ਼ੋਨ 'ਤੇ ਸੁਰੱਖਿਅਤ"
+        ),
+        "No account, email, or credentials required to read or listen" to mapOf(
+            DisplayLanguage.Hindi to "पढ़ने या सुनने के लिए किसी खाते या ईमेल की आवश्यकता नहीं",
+            DisplayLanguage.Punjabi to "ਪੜ੍ਹਨ ਜਾਂ ਸੁਣਨ ਲਈ ਕਿਸੇ ਖਾਤੇ ਜਾਂ ਈਮੇਲ ਦੀ ਲੋੜ ਨਹੀਂ"
+        ),
+        "Black & White AOD Mode" to mapOf(
+            DisplayLanguage.Hindi to "ब्लैक एंड व्हाइट AOD मोड",
+            DisplayLanguage.Punjabi to "ਬਲੈਕ ਐਂਡ ਵ੍ਹਾਈਟ AOD ਮੋਡ"
+        ),
+        "Ultra-minimalist AOD mode: pure black background, crisp white text, and only essential elements on screen in Reading & Meditation views." to mapOf(
+            DisplayLanguage.Hindi to "अल्ट्रा-मिनिमलिस्ट AOD मोड: शुद्ध काला बैकग्राउंड, स्पष्ट सफेद पाठ और स्क्रीन पर केवल आवश्यक तत्व।",
+            DisplayLanguage.Punjabi to "ਅਲਟਰਾ-ਮਿਨੀਮਲਿਸਟ AOD ਮੋਡ: ਸ਼ੁੱਧ ਕਾਲਾ ਬੈਕਗ੍ਰਾਊਂਡ, ਸਪਸ਼ਟ ਚਿੱਟਾ ਟੈਕਸਟ ਅਤੇ ਸਕ੍ਰੀਨ 'ਤੇ ਸਿਰਫ਼ ਜ਼ਰੂਰੀ ਤੱਤ।"
+        ),
+        "Full-Screen Reading Mode" to mapOf(
+            DisplayLanguage.Hindi to "फुल-स्क्रीन पठन मोड",
+            DisplayLanguage.Punjabi to "ਫੁੱਲ-ਸਕ੍ਰੀਨ ਪਾਠ ਮੋਡ"
+        ),
+        "Auto-hides top header & bottom bar after 4s in Gurbani & Meditation views. Tap screen to restore." to mapOf(
+            DisplayLanguage.Hindi to "गुरबाणी और ध्यान दृश्यों में 4 सेकंड के बाद हेडर और बॉटम बार स्वतः छिप जाते हैं। वापस लाने के लिए स्क्रीन पर टैप करें।",
+            DisplayLanguage.Punjabi to "ਗੁਰਬਾਣੀ ਅਤੇ ਅਭਿਆਸ ਦ੍ਰਿਸ਼ਾਂ ਵਿੱਚ 4 ਸਕਿੰਟਾਂ ਬਾਅਦ ਹੈਡਰ ਅਤੇ ਹੇਠਲੀ ਪੱਟੀ ਆਪਣੇ ਆਪ ਲੁਕ ਜਾਂਦੇ ਹਨ। ਮੁੜ ਲਿਆਉਣ ਲਈ ਸਕ੍ਰੀਨ 'ਤੇ ਟੈਪ ਕਰੋ।"
+        ),
+        "Visible Content" to mapOf(
+            DisplayLanguage.Hindi to "दृश्य सामग्री",
+            DisplayLanguage.Punjabi to "ਦ੍ਰਿਸ਼ਮਾਨ ਸਮੱਗਰੀ"
+        ),
+        "Text Colors" to mapOf(
+            DisplayLanguage.Hindi to "पाठ रंग",
+            DisplayLanguage.Punjabi to "ਟੈਕਸਟ ਰੰਗ"
+        ),
+        "Display" to mapOf(
+            DisplayLanguage.Hindi to "डिस्प्ले",
+            DisplayLanguage.Punjabi to "ਡਿਸਪਲੇ"
+        ),
         "ਨਿਤਨੇਮ ਗੁਟਕਾ ਸਾਹਿਬ" to mapOf(
             DisplayLanguage.English to "Nitnem Gutka Sahib",
             DisplayLanguage.Hindi to "नितनेम गुटका साहिब",
@@ -2487,6 +2572,331 @@ object Translations {
             DisplayLanguage.English to "Ek Onkar Satnam Waheguru",
             DisplayLanguage.Hindi to "ੴ सतनाम वाहेगुरु",
             DisplayLanguage.Punjabi to "ੴ ਸਤਿਨਾਮੁ ਵਾਹਿਗੁਰੂ"
+        ),
+        "Repeat One" to mapOf(
+            DisplayLanguage.Hindi to "एक दोहराएं",
+            DisplayLanguage.Punjabi to "ਇੱਕ ਦੁਹਰਾਓ"
+        ),
+        "Repeat All" to mapOf(
+            DisplayLanguage.Hindi to "सभी दोहराएं",
+            DisplayLanguage.Punjabi to "ਸਾਰੇ ਦੁਹਰਾਓ"
+        ),
+        "Off" to mapOf(
+            DisplayLanguage.Hindi to "बंद",
+            DisplayLanguage.Punjabi to "ਬੰਦ"
+        ),
+        "Real-time Leaderboard & Streaks" to mapOf(
+            DisplayLanguage.Hindi to "रीयल-टाइम लीडरबोर्ड और स्ट्रीक्स",
+            DisplayLanguage.Punjabi to "ਰੀਅਲ-ਟਾਈਮ ਲੀਡਰਬੋਰਡ ਅਤੇ ਸਟ੍ਰੀਕਸ"
+        ),
+        "🏆 Sangat Member Rankings" to mapOf(
+            DisplayLanguage.Hindi to "🏆 संगत सदस्य रैंकिंग",
+            DisplayLanguage.Punjabi to "🏆 ਸੰਗਤ ਮੈਂਬਰ ਦਰਜਾਬੰਦੀ"
+        ),
+        "Transliteration not available" to mapOf(
+            DisplayLanguage.Hindi to "लिप्यंतरण उपलब्ध नहीं है",
+            DisplayLanguage.Punjabi to "ਲਿਪੀਅੰਤਰਨ ਉਪਲਬਧ ਨਹੀਂ ਹੈ"
+        ),
+        "Hindi Transliteration not available" to mapOf(
+            DisplayLanguage.Hindi to "हिंदी लिप्यंतरण उपलब्ध नहीं है",
+            DisplayLanguage.Punjabi to "ਹਿੰਦੀ ਲਿਪੀਅੰਤਰਨ ਉਪਲਬਧ ਨਹੀਂ ਹੈ"
+        ),
+        "English translation not available" to mapOf(
+            DisplayLanguage.Hindi to "अंग्रेजी अनुवाद उपलब्ध नहीं है",
+            DisplayLanguage.Punjabi to "ਅੰਗਰੇਜ਼ੀ ਅਨੁਵਾਦ ਉਪਲਬਧ ਨਹੀਂ ਹੈ"
+        ),
+        "Punjabi translation not available" to mapOf(
+            DisplayLanguage.Hindi to "पंजाबी अनुवाद उपलब्ध नहीं है",
+            DisplayLanguage.Punjabi to "ਪੰਜਾਬੀ ਅਨੁਵਾਦ ਉਪਲਬਧ ਨਹੀਂ ਹੈ"
+        ),
+        "Signed in as" to mapOf(
+            DisplayLanguage.Hindi to "के रूप में साइन इन हैं",
+            DisplayLanguage.Punjabi to "ਵਜੋਂ ਸਾਈਨ ਇਨ ਕੀਤਾ ਗਿਆ"
+        ),
+        "Sign In Error" to mapOf(
+            DisplayLanguage.Hindi to "साइन इन त्रुटि",
+            DisplayLanguage.Punjabi to "ਸਾਈਨ ਇਨ ਗਲਤੀ"
+        ),
+        "Signed out successfully" to mapOf(
+            DisplayLanguage.Hindi to "सफलतापूर्वक साइन आउट किया गया",
+            DisplayLanguage.Punjabi to "ਸਫਲਤਾਪੂਰਵਕ ਸਾਈਨ ਆਊਟ ਹੋ ਗਏ"
+        ),
+        "Suggested questions" to mapOf(
+            DisplayLanguage.Hindi to "सुझाए गए प्रश्न",
+            DisplayLanguage.Punjabi to "ਸੁਝਾਏ ਗਏ ਸਵਾਲ"
+        ),
+        "What does Japji Sahib teach?" to mapOf(
+            DisplayLanguage.Hindi to "जपजी साहिब क्या सिखाता है?",
+            DisplayLanguage.Punjabi to "ਜਪੁਜੀ ਸਾਹਿਬ ਕੀ ਸਿਖਾਉਂਦਾ ਹੈ?"
+        ),
+        "What is the meaning of Waheguru?" to mapOf(
+            DisplayLanguage.Hindi to "वाहेगुरु का क्या अर्थ है?",
+            DisplayLanguage.Punjabi to "ਵਾਹਿਗੁਰੂ ਦਾ ਕੀ ਅਰਥ ਹੈ?"
+        ),
+        "What is the opening line of Jaap Sahib?" to mapOf(
+            DisplayLanguage.Hindi to "जाप साहिब की शुरुआती पंक्ति क्या है?",
+            DisplayLanguage.Punjabi to "ਜਾਪੁ ਸਾਹਿਬ ਦੀ ਸ਼ੁਰੂਆਤੀ ਪੰਕਤੀ ਕੀ ਹੈ?"
+        ),
+        "What is Amrit Vela?" to mapOf(
+            DisplayLanguage.Hindi to "अमृत वेला क्या है?",
+            DisplayLanguage.Punjabi to "ਅੰਮ੍ਰਿਤ ਵੇਲਾ ਕੀ ਹੈ?"
+        ),
+        "Who composed Chaupai Sahib?" to mapOf(
+            DisplayLanguage.Hindi to "चौपाई साहिब की रचना किसने की?",
+            DisplayLanguage.Punjabi to "ਚੌਪਈ ਸਾਹਿਬ ਦੀ ਰਚਨਾ ਕਿਸਨੇ ਕੀਤੀ?"
+        ),
+        "What does Rehras Sahib celebrate?" to mapOf(
+            DisplayLanguage.Hindi to "रह्रास साहिब क्या संदेश देता है?",
+            DisplayLanguage.Punjabi to "ਰਹਿਰਾਸ ਸਾਹਿਬ ਕੀ ਸੰਦੇਸ਼ ਦਿੰਦਾ ਹੈ?"
+        ),
+        "Verse matches (tap to view meanings):" to mapOf(
+            DisplayLanguage.Hindi to "पंक्ति मिलान (अर्थ देखने के लिए टैप करें):",
+            DisplayLanguage.Punjabi to "ਪੰਕਤੀ ਮਿਲਾਨ (ਅਰਥ ਵੇਖਣ ਲਈ ਟੈਪ ਕਰੋ):"
+        ),
+        "Ask about Gurbani..." to mapOf(
+            DisplayLanguage.Hindi to "गुरबाणी के बारे में पूछें...",
+            DisplayLanguage.Punjabi to "ਗੁਰਬਾਣੀ ਬਾਰੇ ਪੁੱਛੋ..."
+        ),
+        "Listening to voice run..." to mapOf(
+            DisplayLanguage.Hindi to "आवाज़ सुनी जा रही है...",
+            DisplayLanguage.Punjabi to "ਆਵਾਜ਼ ਸੁਣੀ ਜਾ ਰਹੀ ਹੈ..."
+        ),
+        "Nitnem Daily Journey" to mapOf(
+            DisplayLanguage.Hindi to "दैनिक नितनेम यात्रा",
+            DisplayLanguage.Punjabi to "ਰੋਜ਼ਾਨਾ ਨਿਤਨੇਮ ਯਾਤਰਾ"
+        ),
+        "Nitnem Completed! 🎉" to mapOf(
+            DisplayLanguage.Hindi to "नितनेम पूरा हुआ! 🎉",
+            DisplayLanguage.Punjabi to "ਨਿਤਨੇਮ ਪੂਰਾ ਹੋਇਆ! 🎉"
+        ),
+        "Banis Completed" to mapOf(
+            DisplayLanguage.Hindi to "बाणियां पूर्ण हुईं",
+            DisplayLanguage.Punjabi to "ਬਾਣੀਆਂ ਸੰਪੂਰਨ ਹੋਈਆਂ"
+        ),
+        "Waheguru Ji! You Won Today's Journey!" to mapOf(
+            DisplayLanguage.Hindi to "वाहेगुरु जी! आपने आज की यात्रा पूर्ण की!",
+            DisplayLanguage.Punjabi to "ਵਾਹਿਗੁਰੂ ਜੀ! ਤੁਸੀਂ ਅੱਜ ਦੀ ਯਾਤਰਾ ਜਿੱਤ ਲਈ ਹੈ!"
+        ),
+        "All 7 Banis recited today. Blissful peace & blessings!" to mapOf(
+            DisplayLanguage.Hindi to "आज सभी 7 बाणियों का पाठ किया गया। असीम शांति और कृपा!",
+            DisplayLanguage.Punjabi to "ਅੱਜ ਸਾਰੀਆਂ ੭ ਬਾਣੀਆਂ ਦਾ ਪਾਠ ਕੀਤਾ ਗਿਆ। ਅਥਾਹ ਸ਼ਾਂਤੀ ਅਤੇ ਬਖਸ਼ਿਸ਼!"
+        ),
+        "Climb the Nitnem path step by step towards peace." to mapOf(
+            DisplayLanguage.Hindi to "शांति की ओर नितनेम पथ पर कदम दर कदम आगे बढ़ें।",
+            DisplayLanguage.Punjabi to "ਸ਼ਾਂਤੀ ਵੱਲ ਨਿਤਨੇਮ ਦੇ ਮਾਰਗ 'ਤੇ ਕਦਮ-ਦਰ-ਕਦਮ ਅੱਗੇ ਵਧੋ।"
+        ),
+        "Advancing on Spiritual Ladder" to mapOf(
+            DisplayLanguage.Hindi to "आध्यात्मिक सीढ़ी पर अग्रसर",
+            DisplayLanguage.Punjabi to "ਰੂਹਾਨੀ ਪੌੜੀ 'ਤੇ ਅੱਗੇ ਵਧ ਰਹੇ ਹੋ"
+        ),
+        "Anand Sahib & Ardas" to mapOf(
+            DisplayLanguage.Hindi to "आनंद साहिब व अरदास",
+            DisplayLanguage.Punjabi to "ਅਨੰਦੁ ਸਾਹਿਬ ਅਤੇ ਅਰਦਾਸ"
+        ),
+        "Rehras & Ardas" to mapOf(
+            DisplayLanguage.Hindi to "रह्रास साहिब व अरदास",
+            DisplayLanguage.Punjabi to "ਰਹਿਰਾਸ ਸਾਹਿਬ ਅਤੇ ਅਰਦਾਸ"
+        ),
+        "Bonus!" to mapOf(
+            DisplayLanguage.Hindi to "बोनस!",
+            DisplayLanguage.Punjabi to "ਬੋਨਸ!"
+        ),
+        "Per Bani" to mapOf(
+            DisplayLanguage.Hindi to "प्रति बाणी",
+            DisplayLanguage.Punjabi to "ਪ੍ਰਤੀ ਬਾਣੀ"
+        ),
+        "Meet Bani" to mapOf(
+            DisplayLanguage.Hindi to "मिलिए बाणी से",
+            DisplayLanguage.Punjabi to "ਬਾਣੀ ਨਾਲ ਮਿਲੋ"
+        ),
+        "In the quiet, sacred hours of Amrit Vela, a small golden bird named Bani wakes up — her wings painted with the warm orange hues of a breaking dawn, carrying an ancient crimson Gutka Sahib close to her chest." to mapOf(
+            DisplayLanguage.Hindi to "अमृत वेले के शांत और पवित्र पहर में, बाणी नाम की एक नन्ही सुनहरी चिड़िया जागती है — उसके पंख भोर की सुनहरी लाली से सजे हैं, और वह अपने सीने से एक पावन गुटका साहिब लगाए रखती है।",
+            DisplayLanguage.Punjabi to "ਅੰਮ੍ਰਿਤ ਵੇਲੇ ਦੇ ਸ਼ਾਂਤ ਅਤੇ ਪਵਿੱਤਰ ਪਹਿਰ ਵਿੱਚ, ਬਾਣੀ ਨਾਮ ਦੀ ਇੱਕ ਨਿੱਕੀ ਸੁਨਹਿਰੀ ਚਿੜੀ ਜਾਗਦੀ ਹੈ — ਉਸਦੇ ਖੰਭ ਪ੍ਰਭਾਤ ਦੀ ਨਿੱਘੀ ਲਾਲੀ ਨਾਲ ਰੰਗੇ ਹੋਏ ਹਨ ਅਤੇ ਉਹ ਆਪਣੇ ਹਿਰਦੇ ਨਾਲ ਇੱਕ ਪਾਵਨ ਗੁਟਕਾ ਸਾਹਿਬ ਲਗਾਈ ਰੱਖਦੀ ਹੈ।"
+        ),
+        "Your Guardian of Consistency" to mapOf(
+            DisplayLanguage.Hindi to "आपकी निरंतरता की संरक्षिका",
+            DisplayLanguage.Punjabi to "ਤੁਹਾਡੀ ਨਿਰੰਤਰਤਾ ਦੀ ਰਾਖੀ"
+        ),
+        "Bani's entire purpose is to guard mindfulness and consistency. She flew from her digital sanctuary to sit right on your home screen — ready to guide you through your daily Nitnem, one line at a time." to mapOf(
+            DisplayLanguage.Hindi to "बाणी का मुख्य उद्देश्य आपकी एकाग्रता और निरंतरता का ध्यान रखना है। वह आपके दैनिक नितनेम में आपका मार्गदर्शन करने के लिए सीधे आपकी होम स्क्रीन पर आकर बैठती है।",
+            DisplayLanguage.Punjabi to "ਬਾਣੀ ਦਾ ਮਕਸਦ ਤੁਹਾਡੀ ਇਕਾਗਰਤਾ ਅਤੇ ਲਗਾਤਾਰਤਾ ਦੀ ਰਾਖੀ ਕਰਨਾ ਹੈ। ਉਹ ਤੁਹਾਡੀ ਹੋਮ ਸਕ੍ਰੀਨ 'ਤੇ ਆਣ ਬੈਠਦੀ ਹੈ — ਤੁਹਾਨੂੰ ਰੋਜ਼ਾਨਾ ਨਿਤਨੇਮ ਦੀ ਹਰ ਤੁਕ ਵਿੱਚ ਅਗਵਾਈ ਦੇਣ ਲਈ।"
+        ),
+        "A Joyful Companion" to mapOf(
+            DisplayLanguage.Hindi to "एक आनंदमयी साथी",
+            DisplayLanguage.Punjabi to "ਇੱਕ ਅਨੰਦਮਈ ਸਾਥੀ"
+        ),
+        "Whenever you open your Gutka Sahib with a smile, Bani flutters her golden wings with pure joy, cheering you on as you read each sacred verse of Gurbani." to mapOf(
+            DisplayLanguage.Hindi to "जब भी आप मुस्कान के साथ गुटका साहिब खोलते हैं, बाणी खुशी से अपने सुनहरे पंख फड़फड़ाती है और गुरबाणी की प्रत्येक पावन पंक्ति पढ़ते समय आपका उत्साह बढ़ाती है।",
+            DisplayLanguage.Punjabi to "ਜਦੋਂ ਵੀ ਤੁਸੀਂ ਮੁਸਕਰਾਹਟ ਨਾਲ ਗੁਟਕਾ ਸਾਹਿਬ ਖੋਲ੍ਹਦੇ ਹੋ, ਬਾਣੀ ਪੂਰੇ ਚਾਅ ਨਾਲ ਆਪਣੇ ਸੁਨਹਿਰੇ ਖੰਭ ਫੜਫੜਾਉਂਦੀ ਹੈ ਅਤੇ ਗੁਰਬਾਣੀ ਦੀ ਹਰ ਪਾਵਨ ਤੁਕ ਪੜ੍ਹਨ 'ਤੇ ਤੁਹਾਡਾ ਉਤਸ਼ਾਹ ਵਧਾਉਂਦੀ ਹੈ।"
+        ),
+        "Exploring Meanings" to mapOf(
+            DisplayLanguage.Hindi to "अर्थों की खोज",
+            DisplayLanguage.Punjabi to "ਅਰਥਾਂ ਦੀ ਖੋਜ"
+        ),
+        "Wondering what a line of Gurbani means? Bani taps her tiny beak in deep thought, looking into her magical library to find the translation and word references just for you." to mapOf(
+            DisplayLanguage.Hindi to "सोच रहे हैं कि गुरबाणी की किसी पंक्ति का क्या अर्थ है? बाणी सोच-विचार कर आपके लिए सही अनुवाद और शब्दार्थ खोज लाती है।",
+            DisplayLanguage.Punjabi to "ਸੋਚ ਰਹੇ ਹੋ ਕਿ ਗੁਰਬਾਣੀ ਦੀ ਕਿਸੇ ਤੁਕ ਦਾ ਕੀ ਅਰਥ ਹੈ? ਬਾਣੀ ਡੂੰਘੇ ਵਿਚਾਰ ਵਿੱਚ ਆਪਣੀ ਚੁੰਝ ਛੁਹਾਉਂਦੀ ਹੈ ਅਤੇ ਤੁਹਾਡੇ ਲਈ ਸਹੀ ਅਰਥ ਅਤੇ ਵਿਆਖਿਆ ਲੱਭ ਕੇ ਲਿਆਉਂਦੀ ਹੈ।"
+        ),
+        "Peaceful Focus" to mapOf(
+            DisplayLanguage.Hindi to "शांत एकाग्रता",
+            DisplayLanguage.Punjabi to "ਸ਼ਾਂਤ ਇਕਾਗਰਤਾ"
+        ),
+        "When it is time for Simran, Bani closes her eyes and sits in quiet meditation, helping your heart find calmness, peace, and deep concentration." to mapOf(
+            DisplayLanguage.Hindi to "जब सिमरन का समय होता है, बाणी अपनी आंखें बंद करके शांत ध्यान में बैठ जाती है, जिससे आपके मन को शांति, सुकून और गहरा ध्यान प्राप्त होता है।",
+            DisplayLanguage.Punjabi to "ਜਦੋਂ ਸਿਮਰਨ ਦਾ ਵੇਲਾ ਹੁੰਦਾ ਹੈ, ਬਾਣੀ ਅੱਖਾਂ ਮੀਟ ਕੇ ਸ਼ਾਂਤ ਧਿਆਨ ਵਿੱਚ ਬੈਠ ਜਾਂਦੀ ਹੈ, ਜਿਸ ਨਾਲ ਤੁਹਾਡੇ ਹਿਰਦੇ ਨੂੰ ਠੰਢ, ਸ਼ਾਂਤੀ ਅਤੇ ਡੂੰਘੀ ਇਕਾਗਰਤਾ ਮਿਲਦੀ ਹੈ।"
+        ),
+        "Listening to Your Voice" to mapOf(
+            DisplayLanguage.Hindi to "आपकी आवाज़ सुनना",
+            DisplayLanguage.Punjabi to "ਤੁਹਾਡੀ ਆਵਾਜ਼ ਸੁਣਨਾ"
+        ),
+        "Bani cups her tiny ear to listen closely when you use your voice or practice reciting your prayers out loud, making sure every word is heard with love." to mapOf(
+            DisplayLanguage.Hindi to "जब आप बोलकर पाठ करते हैं, तो बाणी ध्यान से सुनने के लिए अपने कान लगाती है, ताकि हर शब्द प्यार और आदर से सुना जा सके।",
+            DisplayLanguage.Punjabi to "ਜਦੋਂ ਤੁਸੀਂ ਬੋਲ ਕੇ ਪਾਠ ਕਰਦੇ ਹੋ, ਬਾਣੀ ਧਿਆਨ ਨਾਲ ਸੁਣਨ ਲਈ ਕੰਨ ਲਗਾਉਂਦੀ ਹੈ, ਤਾਂ ਜੋ ਹਰ ਸ਼ਬਦ ਪਿਆਰ ਤੇ ਸਤਿਕਾਰ ਨਾਲ ਸੁਣਿਆ ਜਾਵੇ।"
+        ),
+        "Resting After Sohila" to mapOf(
+            DisplayLanguage.Hindi to "सोहिला के बाद विश्राम",
+            DisplayLanguage.Punjabi to "ਸੋਹਿਲਾ ਸਾਹਿਬ ਤੋਂ ਬਾਅਦ ਆਰਾਮ"
+        ),
+        "If you complete your Kirtan Sohila before bedtime, Bani sleeps soundly and peacefully under the starry night sky, knowing your sleep is guarded by peace." to mapOf(
+            DisplayLanguage.Hindi to "यदि आप सोने से पहले कीर्तन सोहिला का पाठ पूरा कर लेते हैं, तो बाणी तारों भरे आसमान के नीचे चैन से सोती है, यह जानते हुए कि आपकी नींद में शांति की पहरेदारी है।",
+            DisplayLanguage.Punjabi to "ਜੇਕਰ ਤੁਸੀਂ ਸੌਣ ਤੋਂ ਪਹਿਲਾਂ ਕੀਰਤਨ ਸੋਹਿਲਾ ਸਾਹਿਬ ਦਾ ਪਾਠ ਕਰ ਲੈਂਦੇ ਹੋ, ਤਾਂ ਬਾਣੀ ਤਾਰਿਆਂ ਭਰੇ ਅਸਮਾਨ ਹੇਠ ਚੈਨ ਨਾਲ ਸੌਂਦੀ ਹੈ, ਇਹ ਜਾਣਦਿਆਂ ਕਿ ਤੁਹਾਡੀ ਨੀਂਦ ਅਮਨ-ਸ਼ਾਂਤੀ ਨਾਲ ਭਰੀ ਹੈ।"
+        ),
+        "Gentle Guidance" to mapOf(
+            DisplayLanguage.Hindi to "स्नेहपूर्ण मार्गदर्शन",
+            DisplayLanguage.Punjabi to "ਨਿਮਰ ਅਗਵਾਈ"
+        ),
+        "If a prayer is missed or a mistake is made, Bani tilts her head with a caring look, reminding you gently that every new morning is a fresh start to try again." to mapOf(
+            DisplayLanguage.Hindi to "यदि कोई पाठ छूट जाए या कोई भूल हो जाए, तो बाणी स्नेहपूर्वक आपको याद दिलाती है कि हर नई सुबह फिर से शुरुआत करने का एक नया अवसर है।",
+            DisplayLanguage.Punjabi to "ਜੇਕਰ ਕੋਈ ਪਾਠ ਰਹਿ ਜਾਵੇ ਜਾਂ ਭੁੱਲ ਹੋ ਜਾਵੇ, ਤਾਂ ਬਾਣੀ ਪਿਆਰ ਨਾਲ ਯਾਦ ਦਿਵਾਉਂਦੀ ਹੈ ਕਿ ਹਰ ਨਵੀਂ ਸਵੇਰ ਮੁੜ ਯਤਨ ਕਰਨ ਦਾ ਇੱਕ ਤਾਜ਼ਾ ਮੌਕਾ ਹੈ।"
+        ),
+        "Celebrating Your Streak" to mapOf(
+            DisplayLanguage.Hindi to "आपकी निरंतरता का उत्सव",
+            DisplayLanguage.Punjabi to "ਤੁਹਾਡੀ ਲੜੀ ਦਾ ਜਸ਼ਨ"
+        ),
+        "When you build a prayer streak, a vibrant golden aura ignites around Bani. She leaps with joy in a state of glowing celebration — because consistency is its own reward!" to mapOf(
+            DisplayLanguage.Hindi to "जब आप नियमित पाठ की निरंतरता बनाते हैं, तो बाणी के चारों ओर एक सुनहरा प्रकाश छा जाता है। वह खुशी से झूम उठती है — क्योंकि निरंतरता अपने आप में सबसे बड़ा फल है!",
+            DisplayLanguage.Punjabi to "ਜਦੋਂ ਤੁਸੀਂ ਰੋਜ਼ਾਨਾ ਪਾਠ ਦੀ ਲੜੀ ਬਣਾਉਂਦੇ ਹੋ, ਬਾਣੀ ਦੁਆਲੇ ਸੁਨਹਿਰੀ ਨੂਰ ਚਮਕ ਉੱਠਦਾ ਹੈ। ਉਹ ਖੁਸ਼ੀ ਨਾਲ ਝੂਮ ਉੱਠਦੀ ਹੈ — ਕਿਉਂਕਿ ਨਿਰੰਤਰਤਾ ਆਪਣੇ ਆਪ ਵਿੱਚ ਇੱਕ ਵੱਡਾ ਫਲ ਹੈ!"
+        ),
+        "Wisdom of the Gurus" to mapOf(
+            DisplayLanguage.Hindi to "गुरुओं का ज्ञान",
+            DisplayLanguage.Punjabi to "ਗੁਰੂ ਸਾਹਿਬਾਨ ਦੀ ਸਿੱਖਿਆ"
+        ),
+        "Bani looks back through history with wide, curious eyes, sharing timeless lessons and stories from the lives of the Gurus to inspire your everyday actions." to mapOf(
+            DisplayLanguage.Hindi to "बाणी इतिहास के पन्नों से गुरु साहिबान के जीवन की अमर साखियाँ और उपदेश साझा करती है, जो आपके दैनिक जीवन को प्रेरित करते हैं।",
+            DisplayLanguage.Punjabi to "ਬਾਣੀ ਇਤਿਹਾਸ ਦੇ ਸੁਨਹਿਰੀ ਪੰਨਿਆਂ ਤੋਂ ਗੁਰੂ ਸਾਹਿਬਾਨ ਦੇ ਜੀਵਨ ਦੀਆਂ ਅਮਰ ਸਿੱਖਿਆਵਾਂ ਸਾਂਝੀਆਂ ਕਰਦੀ ਹੈ ਜੋ ਤੁਹਾਡੇ ਰੋਜ਼ਾਨਾ ਜੀਵਨ ਨੂੰ ਰੋਸ਼ਨੀ ਦਿੰਦੀਆਂ ਹਨ।"
+        ),
+        "The Early Morning Blessing" to mapOf(
+            DisplayLanguage.Hindi to "अमृत वेले की बख्शीश",
+            DisplayLanguage.Punjabi to "ਅੰਮ੍ਰਿਤ ਵੇਲੇ ਦੀ ਦਾਤ"
+        ),
+        "Waking up before the sun? Bani puts on her brightest morning glow to greet the Amrit Vela hours with you, filling your day with spiritual energy and fresh hope." to mapOf(
+            DisplayLanguage.Hindi to "सूरज निकलने से पहले उठ रहे हैं? बाणी आपके साथ अमृत वेले का स्वागत करती है, जिससे आपका पूरा दिन आत्मिक ऊर्जा और नई आशा से भर जाता है।",
+            DisplayLanguage.Punjabi to "ਸੂਰਜ ਚੜ੍ਹਨ ਤੋਂ ਪਹਿਲਾਂ ਜਾਗ ਰਹੇ ਹੋ? ਬਾਣੀ ਤੁਹਾਡੇ ਨਾਲ ਅੰਮ੍ਰਿਤ ਵੇਲੇ ਦਾ ਸੁਆਗਤ ਕਰਦੀ ਹੈ, ਜਿਸ ਨਾਲ ਤੁਹਾਡਾ ਸਾਰਾ ਦਿਨ ਆਤਮਕ ਊਰਜਾ ਅਤੇ ਨਵੀਂ ਉਮੀਦ ਨਾਲ ਭਰ ਜਾਂਦਾ ਹੈ।"
+        ),
+        "Chanting Waheguru" to mapOf(
+            DisplayLanguage.Hindi to "वाहेगुरु सिमरन",
+            DisplayLanguage.Punjabi to "ਵਾਹਿਗੁਰੂ ਸਿਮਰਨ"
+        ),
+        "With every bead counted and every breath focused, Bani whispers 'Waheguru' right alongside you, turning your daily practice into a magical journey of love and light." to mapOf(
+            DisplayLanguage.Hindi to "प्रत्येक मनके और प्रत्येक श्वास के साथ, बाणी आपके साथ 'वाहेगुरु' का जाप करती है, जिससे आपका दैनिक अभ्यास प्रेम और प्रकाश की यात्रा बन जाता है।",
+            DisplayLanguage.Punjabi to "ਹਰ ਮਣਕੇ ਅਤੇ ਹਰ ਸੁਆਸ ਦੇ ਨਾਲ, ਬਾਣੀ ਤੁਹਾਡੇ ਨਾਲ 'ਵਾਹਿਗੁਰੂ' ਦਾ ਜਾਪ ਕਰਦੀ ਹੈ, ਜਿਸ ਨਾਲ ਤੁਹਾਡਾ ਰੋਜ਼ਾਨਾ ਅਭਿਆਸ ਪਿਆਰ ਅਤੇ ਨੂਰ ਦੀ ਯਾਤਰਾ ਬਣ ਜਾਂਦਾ ਹੈ।"
         )
     )
+}
+
+/**
+ * Converts Gurmukhi script text to Devanagari with proper conjuncts, vowel signs, and independent vowels.
+ */
+fun String.gurmukhiToDevanagari(): String {
+    if (this.isBlank()) return this
+
+    // 1. Map whole independent vowels / vowel bearer clusters and multi-character Devanagari signs first
+    var text = this
+        .replace("ੴ", "ੴ")
+        .replace("ਆ", "आ")
+        .replace("ਇ", "इ")
+        .replace("ਈ", "ई")
+        .replace("ਉ", "उ")
+        .replace("ਊ", "ऊ")
+        .replace("ਏ", "ए")
+        .replace("ਐ", "ऐ")
+        .replace("ਓ", "ओ")
+        .replace("ਔ", "औ")
+        .replace("ਅੰ", "अं")
+        .replace("ਅਂ", "अं")
+        .replace("ਅ", "अ")
+        .replace("ੲੀ", "ई")
+        .replace("ੲਿ", "इ")
+        .replace("ੲੇ", "ए")
+        .replace("ੲ", "इ")
+        .replace("ੳੂ", "ऊ")
+        .replace("ੳੁ", "उ")
+        .replace("ੳੋ", "ओ")
+        .replace("ੳ", "उ")
+        .replace("ੜ", "ड़")
+        .replace("ਜ਼", "ज़")
+        .replace("ਫ਼", "फ़")
+        .replace("ਖ਼", "ख़")
+        .replace("ਗ਼", "ग़")
+        .replace("੍ਰ", "्र") // Pair Rara
+        .replace("੍ਹ", "्ह") // Pair Haha
+        .replace("੍ਵ", "्व") // Pair Vava
+        .replace("ੵ", "्य") // Pair Yaya
+        .replace("ੑ", "्")
+
+    val charMap = mapOf(
+        'ਸ' to 'स', 'ਹ' to 'ह',
+        'ਕ' to 'क', 'ਖ' to 'ख', 'ਗ' to 'ग', 'ਘ' to 'घ', 'ਙ' to 'ङ',
+        'ਚ' to 'च', 'ਛ' to 'छ', 'ਜ' to 'ज', 'ਝ' to 'झ', 'ਞ' to 'ञ',
+        'ਟ' to 'ट', 'ਠ' to 'ठ', 'ਡ' to 'ड', 'ਢ' to 'ढ', 'ਣ' to 'ण',
+        'ਤ' to 'त', 'ਥ' to 'थ', 'ਦ' to 'द', 'ਧ' to 'ध', 'ਨ' to 'न',
+        'ਪ' to 'प', 'ਫ' to 'फ', 'ਬ' to 'ब', 'ਭ' to 'भ', 'ਮ' to 'म',
+        'ਯ' to 'य', 'ਰ' to 'र', 'ਲ' to 'ल', 'ਵ' to 'व',
+        'ਸ਼' to 'श', 'ਲ਼' to 'ल',
+        'ਾ' to 'ा', 'ਿ' to 'ि', 'ੀ' to 'ी', 'ੁ' to 'ु', 'ੂ' to 'ू',
+        'ੇ' to 'े', 'ੈ' to 'ै', 'ੋ' to 'ो', 'ੌ' to 'ौ',
+        'ਂ' to 'ं', 'ੰ' to 'ं', '਼' to '़', 'ੑ' to '्'
+    )
+
+    val sb = StringBuilder()
+    var i = 0
+    while (i < text.length) {
+        val ch = text[i]
+        if (ch == 'ੱ' && i + 1 < text.length) {
+            // Adhak indicates double consonant in Devanagari (consonant + virama)
+            val nextCh = text[i + 1]
+            val devNext = charMap[nextCh] ?: nextCh
+            sb.append(devNext).append('्')
+        } else {
+            sb.append(charMap[ch] ?: ch)
+        }
+        i++
+    }
+    return sb.toString()
+}
+
+/**
+ * Translates English Steek or Punjabi Viakhya into Hindi translation text.
+ */
+fun String.toHindiTranslation(): String {
+    if (this.isBlank()) return this
+    // If the text contains Punjabi Gurmukhi Viakhya, perform high-fidelity transliteration + Hindi vocabulary mapping
+    val isGurmukhi = this.any { it in '\u0A00'..'\u0A7F' }
+    if (isGurmukhi) {
+        val punjabiToHindiMap = listOf(
+            "ਵਿੱਚ" to "में", "ਵਿਚ" to "में", "ਹੈ" to "है", "ਹਨ" to "हैं", "ਦਾ" to "का", "ਦੀ" to "की", "ਦੇ" to "के",
+            "ਨੂੰ" to "को", "ਤੋਂ" to "से", "ਨਾਲ" to "साथ", "ਉਹ" to "वह", "ਜੋ" to "जो", "ਕਿ" to "कि", "ਇਹ" to "यह",
+            "ਕਰਦਾ" to "करता", "ਕਰਦੀ" to "करती", "ਕਰਦੇ" to "करते", "ਨਾਮ" to "नाम", "ਪਰਮਾਤਮਾ" to "परमात्मा",
+            "ਵਾਹਿਗੁਰੂ" to "वाहेगुरु", "ਗੁਰੂ" to "गुरु", "ਸਤਿਗੁਰੂ" to "सतगुरु", "ਕਿਰਪਾ" to "कृपा",
+            "ਸਦਾ" to "सदा", "ਹਮੇਸ਼ਾ" to "हमेशा", "ਸਭ" to "सब", "ਵਡਿਆਈ" to "महिमा",
+            "ਅੰਦਰ" to "भीतर", "ਬਾਹਰ" to "बाहर", "ਜੀਵ" to "जीव", "ਮਨ" to "मन"
+        )
+        var result = this
+        for ((pa, hi) in punjabiToHindiMap) {
+            result = result.replace(Regex("\\b$pa\\b"), hi)
+        }
+        return result.gurmukhiToDevanagari()
+    }
+
+    return this
 }

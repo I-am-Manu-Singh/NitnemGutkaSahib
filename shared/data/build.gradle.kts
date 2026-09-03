@@ -20,6 +20,7 @@ kotlin {
         commonMain.dependencies {
             implementation(projects.shared.domain)
             implementation(projects.shared.models)
+            implementation(projects.shared.streak)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.ktor.client.core)

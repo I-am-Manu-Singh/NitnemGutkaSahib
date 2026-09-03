@@ -28,6 +28,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
@@ -41,12 +42,13 @@ import org.audiocular.nitnem.app.ui.components.MascotBani
 import org.audiocular.nitnem.app.ui.components.MascotState
 import org.audiocular.nitnem.app.ui.theme.*
 import org.audiocular.nitnem.models.Bani
+import org.audiocular.nitnem.models.BaniLine
 import org.audiocular.nitnem.models.NitnemUiState
+import androidx.compose.foundation.BorderStroke
 import org.audiocular.nitnem.utils.translate
 import org.audiocular.nitnem.data.generated.GeneratedBaniCatalog
 import org.audiocular.nitnem.utils.rememberTextToSpeechHelper
 import androidx.compose.ui.text.style.TextOverflow as StyleTextOverflow
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Data
 // ─────────────────────────────────────────────────────────────────────────────
@@ -72,7 +74,7 @@ private val suggestedQuestions = listOf(
 // Theme-Linked Dynamic DB Response Engine
 // ─────────────────────────────────────────────────────────────────────────────
 
-private fun generateResponse(query: String, currentExploringBani: Bani): ChatMessage {
+private fun generateResponse(query: String, currentExploringBani: Bani, displayLanguage: DisplayLanguage): ChatMessage {
     val lower = query.lowercase().trim()
     val allBanisFromDb = GeneratedBaniCatalog.banis
 
@@ -91,12 +93,12 @@ private fun generateResponse(query: String, currentExploringBani: Bani): ChatMes
         val firstLineGurmukhi = matchedBaniFromCatalog.lines.firstOrNull()?.gurmukhi
 
         val generatedSummary = buildString {
-            append("${matchedBaniFromCatalog.title} was composed by ${themeInfo.author}. ")
-            append("It is positioned chronologically at ${themeInfo.ang} and retains a structure of ${themeInfo.structure}. ")
-            append("This recitation is optimally assigned to the ${themeInfo.heroTitle} period (${themeInfo.heroTime}) to achieve ${themeInfo.heroSubtitle}. ")
-            append("\n\nInsight: ${themeInfo.heroStatus}")
+            append("${matchedBaniFromCatalog.title} was composed by ${themeInfo.author}. ".translate(displayLanguage))
+            append("It is positioned chronologically at ${themeInfo.ang} and retains a structure of ${themeInfo.structure}. ".translate(displayLanguage))
+            append("This recitation is optimally assigned to the ${themeInfo.heroTitle} period (${themeInfo.heroTime}) to achieve ${themeInfo.heroSubtitle}. ".translate(displayLanguage))
+            append("\n\nInsight: ${themeInfo.heroStatus}".translate(displayLanguage))
             if (themeInfo.about.isNotBlank() && !themeInfo.about.contains("About")) {
-                append("\n\nContext:\n${themeInfo.about}")
+                append("\n\nContext:\n${themeInfo.about}".translate(displayLanguage))
             }
         }
 
@@ -117,7 +119,7 @@ private fun generateResponse(query: String, currentExploringBani: Bani): ChatMes
         val translationText = lineMatch.translation.ifBlank { lineMatch.punjabi }
         return ChatMessage(
             id = System.currentTimeMillis(),
-            text = "Inside ${currentExploringBani.title}, I found an overlapping verse:\n\n\"$translationText\"\n\n${if (lineMatch.wordMeaning.isNotBlank()) "Word Reference:\n${lineMatch.wordMeaning}" else ""}",
+            text = "Inside ${currentExploringBani.title}, I found an overlapping verse:\n\n\"$translationText\"\n\n${if (lineMatch.wordMeaning.isNotBlank()) "Word Reference:\n${lineMatch.wordMeaning}" else ""}".translate(displayLanguage),
             isUser = false,
             gurmukhi = lineMatch.gurmukhi,
             mascotState = MascotState.Reading
@@ -125,29 +127,75 @@ private fun generateResponse(query: String, currentExploringBani: Bani): ChatMes
     }
 
     if (lower.contains("waheguru")) {
+        val txt = when (displayLanguage) {
+            DisplayLanguage.Punjabi -> "ਵਾਹੇਗੁਰੂ ਸਿੱਖ ਧਰਮ ਦਾ ਕੇਂਦਰੀ ਮੰਤਰ ਹੈ, ਜੋ ਅਗਿਆਨਤਾ ਦੇ ਹਨੇਰੇ ਨੂੰ ਦੂਰ ਕਰਨ ਵਾਲੇ ਅਕਾਲ ਪੁਰਖ ਨੂੰ ਦਰਸਾਉਂਦਾ ਹੈ। ਇਹ ਸਿਮਰਨ ਅਭਿਆਸ ਦਾ ਮੁੱਖ ਕੇਂਦਰ ਹੈ।"
+            DisplayLanguage.Hindi -> "वाहेगुरु सिख धर्म का केंद्रीय मंत्र है, जो अज्ञानता के अंधकार को दूर करने वाले अकाल पुरख को दर्शाता है। यह सिमरन अभ्यास का मुख्य केंद्र है।"
+            DisplayLanguage.English -> "Waheguru is the central mantra of Sikhism, representing the Wondrous Enlightener who dispels dark ignorance. It is the primary focus of Simran focus loops."
+        }
         return ChatMessage(
             id = System.currentTimeMillis(),
-            text = "Waheguru (ਵਾਹੇਗੁਰੂ) is the central mantra of Sikhism, representing the Wondrous Enlightener who dispels dark ignorance. It is the primary Naam targeted during Simran focus loops.",
+            text = txt,
             isUser = false,
             gurmukhi = "ਵਾਹੁ ਵਾਹੁ ਕਿਸ ਨੋ ਆਖੀਐ ਜਿਸੁ ਅੰਤੁ ਨ ਪਾਰਾਵਾਰੁ ॥",
             mascotState = MascotState.Happy
         )
     }
+    
     if (lower.contains("amrit vela") || lower.contains("amritvela")) {
+        val txt = when (displayLanguage) {
+            DisplayLanguage.Punjabi -> "ਅੰਮ੍ਰਿਤ ਵੇਲਾ ਅੰਮ੍ਰਿਤਮਈ ਸਵੇਰ ਦੇ ਸਮੇਂ (3 AM - 6 AM) ਨੂੰ ਦਰਸਾਉਂਦਾ ਹੈ। ਇਹ ਸਿਮਰਨ ਅਤੇ ਮਨ ਦੀ ਇਕਾਗਰਤਾ ਲਈ ਸਭ ਤੋਂ ਉੱਤਮ ਸਮਾਂ ਹੈ।"
+            DisplayLanguage.Hindi -> "अमृत वेला अमृतमयी सुबह के समय (3 AM - 6 AM) को दर्शाता है। यह सिमरन और मन की एकाग्रता के लिए सबसे उत्तम समय है।"
+            DisplayLanguage.English -> "Amrit Vela signifies the ambrosial morning hours (3 AM - 6 AM). As mapped inside our spiritual calendar framework, it represents the absolute peak period for clarity and internal meditation."
+        }
         return ChatMessage(
             id = System.currentTimeMillis(),
-            text = "Amrit Vela signifies the ambrosial morning hours (3 AM - 6 AM). As mapped inside our spiritual calendar framework, it represents the absolute peak period for clarity and internal meditation.",
+            text = txt,
             isUser = false,
             gurmukhi = "ਅੰਮ੍ਰਿਤ ਵੇਲਾ ਸਚੁ ਨਾਉ ਵਡਿਆਈ ਵੀਚਾਰੁ ॥",
-            mascotState = MascotState.Reading
+            mascotState = MascotState.AmritVela
         )
+    }
+
+    val matches = mutableListOf<Pair<BaniLine, String>>()
+    outer@ for (dbBani in allBanisFromDb) {
+        for (line in dbBani.lines) {
+            if (line.translation.lowercase().contains(lower) || 
+                line.gurmukhi.lowercase().contains(lower) || 
+                line.hindi.lowercase().contains(lower)) {
+                matches.add(line to dbBani.title)
+                if (matches.size >= 2) break@outer
+            }
+        }
+    }
+
+    if (matches.isNotEmpty()) {
+        val generatedText = buildString {
+            append("I searched all compositions for \"$query\" and found these matches:\n\n".translate(displayLanguage))
+            matches.forEach { (line, baniTitle) ->
+                append("• **$baniTitle**:\n")
+                append("\"${line.gurmukhi}\"\n")
+                append("Translation: ${line.translation}\n\n".translate(displayLanguage))
+            }
+        }
+        return ChatMessage(
+            id = System.currentTimeMillis(),
+            text = generatedText,
+            isUser = false,
+            mascotState = MascotState.Happy
+        )
+    }
+
+    val defaultText = when (displayLanguage) {
+        DisplayLanguage.Punjabi -> "ਵਾਹਿਗੁਰੂ ਜੀ ਕਾ ਖਾਲਸਾ ਵਾਹਿਗੁਰੂ ਜੀ ਕੀ ਫਤਿਹ। ਮੈਂ ਬਾਣੀ ਹਾਂ, ਤੁਹਾਡੀ ਮਾਰਗਦਰਸ਼ਕ। ਮੈਂ ${allBanisFromDb.size} ਬਾਣੀਆਂ ਦੇ ਡਾਟਾਬੇਸ ਨਾਲ ਜੁੜੀ ਹੋਈ ਹਾਂ। ਕਿਰਪਾ ਕਰਕੇ ਕੋਈ ਹੋਰ ਸਵਾਲ ਪੁੱਛੋ।"
+        DisplayLanguage.Hindi -> "वाहेगुरु जी का खालसा वाहेगुरु जी की फतेह। मैं बाणी हूँ, आपकी मार्गदर्शिका। मैं ${allBanisFromDb.size} बाणियों के डेटाबेस से जुड़ी हूँ। कृपया कोई अन्य प्रश्न पूछें।"
+        DisplayLanguage.English -> "Waheguru Ji Ka Khalsa, Waheguru Ji Ki Fateh. I am Bani, your database-linked guide. I search across our active catalog of ${allBanisFromDb.size} compositions. Ask me about any verse, translation, or composition."
     }
 
     return ChatMessage(
         id = System.currentTimeMillis(),
-        text = "Waheguru Ji Ka Khalsa, Waheguru Ji Ki Fateh. I am Bani, your learning guide. I interact natively with our catalog parameters of ${allBanisFromDb.size} configured paths.\n\nAsk me about any Nitnem composition, author properties, or input a keyword phrase to search our active model: ${currentExploringBani.title}.",
+        text = defaultText,
         isUser = false,
-        mascotState = MascotState.Idle
+        mascotState = MascotState.Reflecting
     )
 }
 
@@ -160,8 +208,9 @@ fun BaniAiAssistantTab(
     bani: Bani,
     colors: PracticeColors,
     displayLanguage: DisplayLanguage,
-    uiState: NitnemUiState
-) {
+    uiState: NitnemUiState,
+    onShowVerseDetails: (BaniLine) -> Unit = {}
+) { 
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
     val keyboard = LocalSoftwareKeyboardController.current
@@ -172,6 +221,22 @@ fun BaniAiAssistantTab(
     var ttsOutputEnabled by remember { mutableStateOf(true) }
 
     val ttsEngineHelper = rememberTextToSpeechHelper()
+    
+    // Dynamic bottom padding tracking purely for player state spacing (non-hardcoded)
+    val playerSpacingPadding = remember(uiState.playback.isPlaying) {
+        if (uiState.playback.isPlaying) 78.dp else 0.dp
+    }
+
+    // Dynamic list bottom padding avoiding hardcoded keyboard heights
+    val listBottomPadding = remember(playerSpacingPadding, inputText) {
+        val query = inputText.lowercase().trim()
+        val isSearching = query.length >= 3
+        if (isSearching) {
+            280.dp
+        } else {
+            playerSpacingPadding + 80.dp
+        }
+    }
     
     LaunchedEffect(displayLanguage) {
         val calculatedLanguageToken = when (displayLanguage) {
@@ -221,11 +286,10 @@ fun BaniAiAssistantTab(
                 delay(800L + (query.length * 10L).coerceAtMost(1500L))
                 isTyping = false
                 
-                val response = generateResponse(query, bani)
+                val response = generateResponse(query, bani, displayLanguage)
                 messages.add(response)
                 
                 if (ttsOutputEnabled) {
-                    // FIX: Replaces special markdown tags and characters so TTS engine speaks cleanly without stutters
                     val cleanTextForSpeech = response.text
                         .replace("**", "")
                         .replace("`", "")
@@ -237,27 +301,19 @@ fun BaniAiAssistantTab(
         }
     }
 
-      // FIX: Dynamic bottom padding calculation rule tracking if the miniplayer is active
-    val playerSpacingPadding = remember(uiState.playback.isPlaying) {
-        if (uiState.playback.isPlaying) 78.dp else 0.dp
-    }
-
-    // Scoping to manage layout window adjustments smoothly when keyboard pops up
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Transparent)
-            .windowInsetsPadding(WindowInsets.ime) // System-level clean keyboard slider track
     ) {
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
-            // FIX: Content padding stops content from being clipped behind the input track bar or the player
             contentPadding = PaddingValues(
                 start = 16.dp, 
                 end = 16.dp, 
                 top = 12.dp, 
-                bottom = playerSpacingPadding + 76.dp
+                bottom = listBottomPadding
             ),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
@@ -285,162 +341,247 @@ fun BaniAiAssistantTab(
                     SuggestionChips(
                         suggestions = suggestedQuestions,
                         colors = colors,
+                        displayLanguage = displayLanguage,
                         onSelect = sendMessage
                     )
                 }
             }
         }
 
-        // ── INPUT NAVIGATION OVERLAY TRACK BAR ───────────────────────────
-        // FIX: Aligns dynamically at the bottom, shifting cleanly based on player heights
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.BottomCenter)
-                .padding(bottom = playerSpacingPadding)
-                .shadow(
-                    elevation = 6.dp,
-                    shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
-                    clip = false
-                ),
-            shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
-            color = colors.card.copy(alpha = 0.98f),
-            tonalElevation = 2.dp
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(
-                    onClick = { ttsOutputEnabled = !ttsOutputEnabled },
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Icon(
-                        imageVector = if (ttsOutputEnabled) Icons.Default.VolumeUp else Icons.Default.VolumeMute,
-                        contentDescription = "Toggle Speech Out",
-                        tint = if (ttsOutputEnabled) Gold else colors.textSecondary.copy(alpha = 0.4f),
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-
-                Spacer(Modifier.width(4.dp))
-
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .background(Brush.radialGradient(listOf(Gold.copy(alpha = 0.5f), Gold.copy(alpha = 0.15f)))),
-                    contentAlignment = Alignment.Center
-                ) {
-                    MascotBani(
-                        state = when {
-                            isTyping -> MascotState.Thinking
-                            isListening -> MascotState.Listening
-                            else -> MascotState.Idle
-                        },
-                        modifier = Modifier.size(28.dp)
-                    )
-                }
-
-                Spacer(Modifier.width(8.dp))
-
-                TextField(
-                    value = inputText,
-                    onValueChange = { inputText = it },
-                    modifier = Modifier.weight(1f),
-                    placeholder = {
-                        Text(
-                            text = if (isListening) "Listening to voice run..." else "Ask about Gurbani...",
-                            color = colors.textSecondary.copy(alpha = 0.5f),
-                            fontSize = 14.sp
-                        )
-                    },
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor   = Color.Transparent,
-                        unfocusedContainerColor = Color.Transparent,
-                        focusedIndicatorColor   = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent,
-                        focusedTextColor        = colors.textPrimary,
-                        unfocusedTextColor      = colors.textPrimary,
-                        cursorColor             = Gold
-                    ),
-                    singleLine = false,
-                    maxLines = 3,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                    keyboardActions = KeyboardActions(onSend = { sendMessage(inputText) }),
-                    shape = RoundedCornerShape(20.dp),
-                    textStyle = LocalTextStyle.current.copy(fontSize = 14.sp)
-                )
-
-                Spacer(Modifier.width(6.dp))
-
-                val microphobePulseColor by animateColorAsState(
-                    targetValue = if (isListening) Color(0xFFEF5350) else colors.textSecondary.copy(alpha = 0.1f),
-                    label = "mic_glow"
-                )
-
-                Surface(
-                    modifier = Modifier.size(38.dp),
-                    shape = CircleShape,
-                    color = microphobePulseColor
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clickable {
-                                isListening = !isListening
-                                if (isListening) {
-                                    ttsEngineHelper.stop()
-                                    coroutineScope.launch {
-                                        delay(3500)
-                                        if (isListening) {
-                                            isListening = false
-                                            sendMessage("What does ${bani.title} celebrate?")
-                                        }
-                                    }
-                                }
-                            },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = if (isListening) Icons.Default.MicOff else Icons.Default.Mic,
-                            contentDescription = "Voice Input Control",
-                            tint = if (isListening) Color.White else colors.textPrimary.copy(alpha = 0.8f),
-                            modifier = Modifier.size(18.dp)
-                        )
+        val autocompleteSuggestions = remember(inputText) {
+            if (inputText.length < 3) emptyList()
+            else {
+                val query = inputText.lowercase().trim()
+                val matches = mutableListOf<BaniLine>()
+                outer@ for (dbBani in GeneratedBaniCatalog.banis) {
+                    for (line in dbBani.lines) {
+                        if (line.gurmukhi.lowercase().contains(query) ||
+                            line.translation.lowercase().contains(query) ||
+                            line.hindi.lowercase().contains(query) ||
+                            line.punjabi.lowercase().contains(query) ||
+                            line.transliteration.lowercase().contains(query)) {
+                            matches.add(line)
+                            if (matches.size >= 5) break@outer
+                        }
                     }
                 }
+                matches
+            }
+        }
 
-                if (inputText.isNotBlank() && !isListening) {
+      Column(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding() // Safely handles the bottom system bar
+                .imePadding()            // Handles the software keyboard height dynamically
+        ) {
+            if (autocompleteSuggestions.isNotEmpty()) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp)
+                        .shadow(6.dp, RoundedCornerShape(16.dp)),
+                    shape = RoundedCornerShape(16.dp),
+                    color = colors.card.copy(alpha = 0.98f),
+                    border = BorderStroke(1.dp, Gold.copy(alpha = 0.35f))
+                ) {
+                    Column(
+                        modifier = Modifier.padding(vertical = 6.dp)
+                    ) {
+                        Text(
+                            text = "Verse matches (tap to view meanings):".translate(displayLanguage),
+                            color = Gold,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                        )
+                        HorizontalDivider(color = colors.textSecondary.copy(alpha = 0.1f))
+                        autocompleteSuggestions.forEach { line ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        onShowVerseDetails(line)
+                                    }
+                                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = line.gurmukhi,
+                                        color = colors.textPrimary,
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Spacer(Modifier.height(2.dp))
+                                    Text(
+                                        text = line.translation,
+                                        color = colors.textSecondary,
+                                        fontSize = 12.sp,
+                                        maxLines = 1,
+                                        overflow = StyleTextOverflow.Ellipsis
+                                    )
+                                }
+                                Icon(
+                                    imageVector = Icons.Default.ArrowForward,
+                                    contentDescription = null,
+                                    tint = Gold.copy(alpha = 0.7f),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    // REMOVED the hardcoded padding = playerSpacingPadding here because 
+                    // it leaves a dead zone gap when the keyboard opens up.
+                    .shadow(
+                        elevation = 6.dp,
+                        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+                        clip = false
+                    ),
+                shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+                color = colors.card.copy(alpha = 0.98f),
+                tonalElevation = 2.dp
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(
+                        onClick = { ttsOutputEnabled = !ttsOutputEnabled },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (ttsOutputEnabled) Icons.Default.VolumeUp else Icons.Default.VolumeMute,
+                            contentDescription = "Toggle Speech Out",
+                            tint = if (ttsOutputEnabled) Gold else colors.textSecondary.copy(alpha = 0.4f),
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
+                    Spacer(Modifier.width(4.dp))
+
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(Brush.radialGradient(listOf(Gold.copy(alpha = 0.5f), Gold.copy(alpha = 0.15f)))),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        MascotBani(
+                            state = when {
+                                isTyping -> MascotState.Thinking
+                                isListening -> MascotState.Listening
+                                else -> MascotState.Idle
+                            },
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
+
+                    Spacer(Modifier.width(8.dp))
+
+                    TextField(
+                        value = inputText,
+                        onValueChange = { inputText = it },
+                        modifier = Modifier.weight(1f),
+                        placeholder = {
+                            Text(
+                                text = if (isListening) "Listening to voice run...".translate(displayLanguage) else "Ask about Gurbani...".translate(displayLanguage),
+                                color = colors.textSecondary.copy(alpha = 0.5f),
+                                fontSize = 14.sp
+                            )
+                        },
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor   = Color.Transparent,
+                            unfocusedContainerColor = Color.Transparent,
+                            focusedIndicatorColor   = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent,
+                            focusedTextColor        = colors.textPrimary,
+                            unfocusedTextColor      = colors.textPrimary,
+                            cursorColor             = Gold
+                        ),
+                        singleLine = false,
+                        maxLines = 3,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                        keyboardActions = KeyboardActions(onSend = { sendMessage(inputText) }),
+                        shape = RoundedCornerShape(20.dp),
+                        textStyle = LocalTextStyle.current.copy(fontSize = 14.sp)
+                    )
+
                     Spacer(Modifier.width(6.dp))
+
+                    val microphobePulseColor by animateColorAsState(
+                        targetValue = if (isListening) Color(0xFFEF5350) else colors.textSecondary.copy(alpha = 0.1f),
+                        label = "mic_glow"
+                    )
+
                     Surface(
                         modifier = Modifier.size(38.dp),
                         shape = CircleShape,
-                        color = Gold
+                        color = microphobePulseColor
                     ) {
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .clickable { sendMessage(inputText) },
+                                .clickable {
+                                    isListening = !isListening
+                                    if (isListening) {
+                                        ttsEngineHelper.stop()
+                                        coroutineScope.launch {
+                                            delay(3500)
+                                            if (isListening) {
+                                                isListening = false
+                                                sendMessage("What does ${bani.title} celebrate?")
+                                            }
+                                        }
+                                    }
+                                },
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.Default.ArrowUpward,
-                                contentDescription = "Send",
-                                tint = Color.White,
+                                imageVector = if (isListening) Icons.Default.MicOff else Icons.Default.Mic,
+                                contentDescription = "Voice Input Control",
+                                tint = if (isListening) Color.White else colors.textPrimary.copy(alpha = 0.8f),
                                 modifier = Modifier.size(18.dp)
                             )
+                        }
+                    }
+
+                    if (inputText.isNotBlank() && !isListening) {
+                        Spacer(Modifier.width(6.dp))
+                        Surface(
+                            modifier = Modifier.size(38.dp),
+                            shape = CircleShape,
+                            color = Gold
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clickable { sendMessage(inputText) },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ArrowUpward,
+                                    contentDescription = "Send",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
                         }
                     }
                 }
             }
         }
     }
-
 }
-
 // ─────────────────────────────────────────────────────────────────────────────
 // User Bubble UI Component
 // ─────────────────────────────────────────────────────────────────────────────
@@ -624,13 +765,14 @@ private fun TypingIndicator(colors: PracticeColors) {
 private fun SuggestionChips(
     suggestions: List<String>,
     colors: PracticeColors,
+    displayLanguage: DisplayLanguage = DisplayLanguage.English,
     onSelect: (String) -> Unit
 ) {
     Column(
         modifier = Modifier.fillMaxWidth()
     ) {
         Text(
-            text = "Suggested questions",
+            text = "Suggested questions".translate(displayLanguage),
             color = colors.textSecondary,
             fontSize = 11.sp,
             fontWeight = FontWeight.Medium,
@@ -644,13 +786,13 @@ private fun SuggestionChips(
         ) {
             items(suggestions) { suggestion ->
                 Surface(
-                    modifier = Modifier.clickable { onSelect(suggestion) },
+                    modifier = Modifier.clickable { onSelect(suggestion.translate(displayLanguage)) },
                     shape = RoundedCornerShape(12.dp),
                     color = Gold.copy(alpha = 0.08f),
                     contentColor = colors.textPrimary
                 ) {
                     Text(
-                        text = suggestion,
+                        text = suggestion.translate(displayLanguage),
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                         fontSize = 11.sp,
                         maxLines = 1, // Optional: Prevents text wrapping if string is exceptionally long

@@ -47,41 +47,19 @@ class AndroidNotificationBridge(
     ) {
 
         val baniId = when {
+            title.contains("Amrit Vela", ignoreCase = true) ||
+                    title.contains("Japji", ignoreCase = true) ||
+                    title.contains("Hukamnama", ignoreCase = true) ||
+                    title.contains("Morning", ignoreCase = true) ||
+                    title.contains("Reflection", ignoreCase = true) ||
+                    title.contains("Midday", ignoreCase = true) -> "japji-sahib"
 
-            title.contains(
+            title.contains("Rehras", ignoreCase = true) -> "rehras-sahib"
 
-                "Amrit Vela",
-
-                ignoreCase = true
-
-            ) ||
-
-                    title.contains(
-
-                        "Japji",
-
-                        ignoreCase = true
-
-                    ) -> "japji-sahib"
-
-            title.contains(
-
-                "Rehras",
-
-                ignoreCase = true
-
-            ) -> "rehras-sahib"
-
-            title.contains(
-
-                "Sohila",
-
-                ignoreCase = true
-
-            ) -> "kirtan-sohila"
+            title.contains("Sohila", ignoreCase = true) ||
+                    title.contains("streak", ignoreCase = true) -> "kirtan-sohila"
 
             else -> null
-
         }
 
         val targetTab = when {
@@ -190,6 +168,7 @@ class AndroidNotificationBridge(
                 .setPriority(
                     NotificationCompat.PRIORITY_HIGH
                 )
+                .setFullScreenIntent(pendingIntent, true)
                 .setColor(0xFFFFB300.toInt())
                 .setLights(0xFFFFB300.toInt(), 1000, 1000)
                 .setVibrate(longArrayOf(0, 250, 250, 250))

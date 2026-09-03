@@ -3,6 +3,13 @@ package org.audiocular.nitnem.app.ui.components
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.EaseInOutSine
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.ui.draw.scale
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -39,10 +46,14 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.PathEffect
 import org.audiocular.nitnem.models.BaniLine
+import org.audiocular.nitnem.utils.translate
 import org.audiocular.nitnem.utils.translateHindiTransliteration
+import org.audiocular.nitnem.utils.toHindiTranslation
 
 @Stable
 data class GurbaniLineUiConfig(
+
+    val showGurmukhi: Boolean = true,
 
     val gurmukhiFontSize: Float,
 
@@ -70,6 +81,10 @@ data class GurbaniLineUiConfig(
 
     val romantransliterationColorMode: String,
 
+    val devanagariTransliterationColorMode: String = "default",
+
+    val punjabiTranslationColorMode: String = "default",
+
     val translationColorMode: String,
 
     val wordMeaningColorMode: String,
@@ -86,7 +101,15 @@ data class GurbaniLineUiConfig(
 
     val compactMode: Boolean,
 
-    val larivaarMode: Boolean
+    val larivaarMode: Boolean,
+
+    val larivaarAssistMode: Boolean = false,
+
+    val showVishraam: Boolean = true,
+
+    val blackAndWhiteAodMode: Boolean = false,
+
+    val displayLanguage: org.audiocular.nitnem.app.models.DisplayLanguage = org.audiocular.nitnem.app.models.DisplayLanguage.English
 )
 
 @OptIn(
@@ -160,114 +183,155 @@ fun GurbaniLineCard(
         label = ""
     )
 
+    val breathingTransition = rememberInfiniteTransition(label = "GuidanceHalo")
+    val haloScale by breathingTransition.animateFloat(
+        initialValue = 1.0f,
+        targetValue = 1.025f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 2800, easing = EaseInOutSine),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "HaloScale"
+    )
+    val haloAlpha by breathingTransition.animateFloat(
+        initialValue = 0.35f,
+        targetValue = 0.08f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 2800, easing = EaseInOutSine),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "HaloAlpha"
+    )
+
     val cardColor by animateColorAsState(
-
         targetValue = when {
-
-            isActive &&
-                config.highlightActiveLine -> {
-
-                colors.primary.copy(alpha = 0.10f)
-            }
-
-            selected -> {
-
-                colors.surfaceContainerLow
-            }
-
-            else -> {
-
-                colors.surface
-            }
+            config.blackAndWhiteAodMode -> Color.Black
+            isActive && config.highlightActiveLine -> colors.primary.copy(alpha = 0.10f)
+            selected -> colors.surfaceContainerLow
+            else -> colors.surface
         },
-
         label = ""
     )
 
     val borderColor by animateColorAsState(
-
         targetValue = when {
-
-            isActive &&
-                config.highlightActiveLine -> {
-
-                colors.primary.copy(alpha = 0.18f)
-            }
-
-            else -> {
-
-                colors.outlineVariant.copy(alpha = 0.18f)
-            }
+            config.blackAndWhiteAodMode -> if (isActive) Color.White.copy(alpha = 0.40f) else Color.Transparent
+            isActive && config.highlightActiveLine -> colors.primary.copy(alpha = 0.18f)
+            else -> colors.outlineVariant.copy(alpha = 0.18f)
         },
-
         label = ""
     )
 
     val gurmukhiColor = remember(
         config.gurmukhiColorMode,
+        config.blackAndWhiteAodMode,
         colors
     ) {
-
-        resolveTextColor(
-
-            mode = config.gurmukhiColorMode,
-
-            colors = colors,
-
-            default = colors.onSurface
-        )
+        if (config.blackAndWhiteAodMode) {
+            Color.White
+        } else {
+            resolveTextColor(
+                mode = config.gurmukhiColorMode,
+                colors = colors,
+                default = colors.onSurface
+            )
+        }
     }
 
     val romanTransliterationColor = remember(
         config.romantransliterationColorMode,
+        config.blackAndWhiteAodMode,
         colors
     ) {
+        if (config.blackAndWhiteAodMode) {
+            Color.White.copy(alpha = 0.90f)
+        } else {
+            resolveTextColor(
+                mode = config.romantransliterationColorMode,
+                colors = colors,
+                default = colors.onSurfaceVariant.copy(alpha = 0.82f)
+            )
+        }
+    }
 
-        resolveTextColor(
+    val devanagariTransliterationColor = remember(
+        config.devanagariTransliterationColorMode,
+        config.blackAndWhiteAodMode,
+        colors
+    ) {
+        if (config.blackAndWhiteAodMode) {
+            Color.White.copy(alpha = 0.90f)
+        } else {
+            resolveTextColor(
+                mode = config.devanagariTransliterationColorMode,
+                colors = colors,
+                default = colors.onSurfaceVariant.copy(alpha = 0.82f)
+            )
+        }
+    }
 
-            mode =
-                config.romantransliterationColorMode,
-
-            colors = colors,
-
-            default =
-                colors.onSurfaceVariant.copy(
-                    alpha = 0.82f
-                )
-        )
+    val punjabiTranslationColor = remember(
+        config.punjabiTranslationColorMode,
+        config.blackAndWhiteAodMode,
+        colors
+    ) {
+        if (config.blackAndWhiteAodMode) {
+            Color.White.copy(alpha = 0.82f)
+        } else {
+            resolveTextColor(
+                mode = config.punjabiTranslationColorMode,
+                colors = colors,
+                default = colors.onSurfaceVariant
+            )
+        }
     }
 
     val translationColor = remember(
         config.translationColorMode,
+        config.blackAndWhiteAodMode,
         colors
     ) {
-
-        resolveTextColor(
-
-            mode = config.translationColorMode,
-
-            colors = colors,
-
-            default =
-                colors.onSurfaceVariant
-        )
+        if (config.blackAndWhiteAodMode) {
+            Color.White.copy(alpha = 0.82f)
+        } else {
+            resolveTextColor(
+                mode = config.translationColorMode,
+                colors = colors,
+                default = colors.onSurfaceVariant
+            )
+        }
     }
 
     val wordMeaningColor = remember(
         config.wordMeaningColorMode,
+        config.blackAndWhiteAodMode,
         colors
     ) {
-
-        resolveTextColor(
-
-            mode = config.wordMeaningColorMode,
-
-            colors = colors,
-
-            default =
-                colors.onSurfaceVariant
-        )
+        if (config.blackAndWhiteAodMode) {
+            Color.White.copy(alpha = 0.82f)
+        } else {
+            resolveTextColor(
+                mode = config.wordMeaningColorMode,
+                colors = colors,
+                default = colors.onSurfaceVariant
+            )
+        }
     }
+
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        if (isActive && !config.blackAndWhiteAodMode) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .scale(haloScale),
+                shape = cardShape,
+                color = colors.primary.copy(alpha = haloAlpha),
+                border = BorderStroke(1.2.dp, colors.primary.copy(alpha = haloAlpha * 1.5f))
+            ) {}
+        }
 
     Surface(
 
@@ -320,243 +384,182 @@ fun GurbaniLineCard(
             ) {
 
                 /*
-                 * TOP BAR
+                 * TOP BAR (Hidden in Black & White mode for pure distraction-free text)
                  */
 
-                Row(
-
-                    modifier =
-                        Modifier.fillMaxWidth(),
-
-                    verticalAlignment =
-                        Alignment.CenterVertically
-                ) {
-
-                    AnimatedVisibility(
-
-                        visible =
-
-                            isActive &&
-                            config.highlightActiveLine
+                if (!config.blackAndWhiteAodMode) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
+                        AnimatedVisibility(
+                            visible = isActive && config.highlightActiveLine
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .clip(CircleShape)
+                                        .background(colors.primary.copy(alpha = 0.08f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.GraphicEq,
+                                        contentDescription = null,
+                                        tint = colors.primary.copy(alpha = 0.85f),
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                }
+                                Spacer(Modifier.width(8.dp))
+                            }
+                        }
+
+                        Spacer(Modifier.weight(1f))
 
                         Row(
-
-                            verticalAlignment =
-                                Alignment.CenterVertically
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
+                            MinimalActionButton(
+                                icon = if (isBookmarked) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                                tint = if (isBookmarked) colors.primary.copy(alpha = 0.85f) else colors.onSurfaceVariant.copy(alpha = 0.52f),
+                                containerColor = colors.surfaceVariant.copy(alpha = 0.22f),
+                                onClick = onBookmark
+                            )
 
-                            Box(
-
-                                modifier = Modifier
-                                    .size(24.dp)
-                                    .clip(CircleShape)
-                                    .background(
-
-                                        colors.primary.copy(
-                                            alpha = 0.08f
-                                        )
-                                    ),
-
-                                contentAlignment =
-                                    Alignment.Center
-                            ) {
-
-                                Icon(
-
-                                    imageVector =
-                                        Icons.Default.GraphicEq,
-
-                                    contentDescription =
-                                        null,
-
-                                    tint =
-                                        colors.primary.copy(
-                                            alpha = 0.85f
-                                        ),
-
-                                    modifier =
-                                        Modifier.size(14.dp)
-                                )
-                            }
-
-                            Spacer(
-                                Modifier.width(8.dp)
+                            MinimalActionButton(
+                                icon = Icons.Default.MenuBook,
+                                tint = wordMeaningColor.copy(alpha = 0.70f),
+                                containerColor = colors.surfaceVariant.copy(alpha = 0.18f),
+                                onClick = { onMeaningClick(line) }
                             )
                         }
                     }
 
                     Spacer(
-                        Modifier.weight(1f)
+                        Modifier.height(
+                            if (config.compactMode) 12.dp else 18.dp
+                        )
                     )
-
-                    Row(
-
-                        horizontalArrangement =
-                            Arrangement.spacedBy(4.dp)
-                    ) {
-
-                        MinimalActionButton(
-
-                            icon =
-
-                                if (isBookmarked) {
-                                    Icons.Default.Bookmark
-                                } else {
-                                    Icons.Default.BookmarkBorder
-                                },
-
-                            tint =
-
-                                if (isBookmarked) {
-
-                                    colors.primary.copy(
-                                        alpha = 0.85f
-                                    )
-
-                                } else {
-
-                                    colors.onSurfaceVariant.copy(
-                                        alpha = 0.52f
-                                    )
-                                },
-
-                            containerColor =
-                                colors.surfaceVariant.copy(
-                                    alpha = 0.22f
-                                ),
-
-                            onClick = onBookmark
-                        )
-
-                        MinimalActionButton(
-
-                            icon =
-                                Icons.Default.MenuBook,
-
-                            tint =
-                                wordMeaningColor.copy(
-                                    alpha = 0.70f
-                                ),
-
-                            containerColor =
-                                colors.surfaceVariant.copy(
-                                    alpha = 0.18f
-                                ),
-
-                            onClick = {
-                                onMeaningClick(line)
-                            }
-                        )
-                    }
                 }
-
-                Spacer(
-
-                    Modifier.height(
-
-                        if (config.compactMode) {
-                            12.dp
-                        } else {
-                            18.dp
-                        }
-                    )
-                )
 
                 /*
                  * GURMUKHI
                  */
 
-                val words = remember(line.gurmukhi) {
-                    line.gurmukhi.split(" ").filter { it.isNotBlank() }
-                }
-
-                val wordMeaningsMap = remember(line.wordMeaning) {
-                    parseWordMeanings(line.wordMeaning)
-                }
-
-                var activePopupWordIndex by remember { mutableStateOf<Int?>(null) }
-
-                LaunchedEffect(activePopupWordIndex) {
-                    if (activePopupWordIndex != null) {
-                        kotlinx.coroutines.delay(4000)
-                        activePopupWordIndex = null
+                if (config.showGurmukhi) {
+                    val words = remember(line.gurmukhi) {
+                        line.gurmukhi.split(" ").filter { it.isNotBlank() }
                     }
-                }
 
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = if (config.centerGurmukhi) Arrangement.Center else Arrangement.Start,
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    words.forEachIndexed { wordIndex, word ->
-                        val cleanWord = remember(word) {
-                            word.replace(Regex("[।|.||?;:!,='\"/\\\\]"), "").trim().lowercase()
+                    val wordMeaningsMap = remember(line.wordMeaning) {
+                        parseWordMeanings(line.wordMeaning)
+                    }
+
+                    var activePopupWordIndex by remember { mutableStateOf<Int?>(null) }
+
+                    LaunchedEffect(activePopupWordIndex) {
+                        if (activePopupWordIndex != null) {
+                            kotlinx.coroutines.delay(4000)
+                            activePopupWordIndex = null
                         }
-                        val meaning = wordMeaningsMap[cleanWord]
-                        val hasMeaning = !meaning.isNullOrBlank()
+                    }
 
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier.wrapContentSize()
-                        ) {
-                            Text(
-                                text = word,
-                                color = gurmukhiColor,
-                                fontSize = config.gurmukhiFontSize.sp,
-                                lineHeight = config.lineSpacing.sp,
-                                fontWeight = if (config.boldGurmukhi) FontWeight.Bold else FontWeight.Medium,
-                                modifier = Modifier
-                                    .clickable(enabled = hasMeaning) {
-                                        activePopupWordIndex = if (activePopupWordIndex == wordIndex) null else wordIndex
-                                    }
-                                    .drawBehind {
-                                        if (hasMeaning) {
-                                            val strokeWidth = 1.2.dp.toPx()
-                                            val y = size.height - 1.dp.toPx()
-                                            val pathEffect = PathEffect.dashPathEffect(floatArrayOf(3f, 3f), 0f)
-                                            drawLine(
-                                                color = colors.primary.copy(alpha = 0.5f),
-                                                start = Offset(0f, y),
-                                                end = Offset(size.width, y),
-                                                strokeWidth = strokeWidth,
-                                                pathEffect = pathEffect
-                                            )
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = if (config.centerGurmukhi) Arrangement.Center else Arrangement.Start,
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        words.forEachIndexed { wordIndex, rawWord ->
+                            val cleanWord = remember(rawWord) {
+                                rawWord.replace(Regex("[।|.||?;:!,='\"/\\\\]"), "").trim().lowercase()
+                            }
+                            val meaning = wordMeaningsMap[cleanWord]
+                            val hasMeaning = !meaning.isNullOrBlank()
+
+                            // Vishraam token color mapping: ; = heavy pause (orange), , = soft pause (emerald green)
+                            val isHeavyVishraam = config.showVishraam && (rawWord.endsWith(";") || rawWord.contains(";"))
+                            val isSoftVishraam = config.showVishraam && (rawWord.endsWith(",") || rawWord.contains(","))
+
+                            // Clean the punctuation from the visible word text if it ended with ; or ,
+                            val displayWord = remember(rawWord) {
+                                if (rawWord.endsWith(";") || rawWord.endsWith(",")) {
+                                    rawWord.dropLast(1)
+                                } else rawWord
+                            }
+
+                            val effectiveWordColor = when {
+                                isHeavyVishraam -> Color(0xFFFF9800) // Heavy Vishraam (Orange)
+                                isSoftVishraam -> Color(0xFF4CAF50) // Soft Vishraam (Green)
+                                config.larivaarMode || config.larivaarAssistMode -> {
+                                    // Subtle same-shade difference (contrast in tone/weight) rather than harsh multi-color shifts
+                                    if (wordIndex % 2 == 0) gurmukhiColor
+                                    else gurmukhiColor.copy(alpha = 0.74f)
+                                }
+                                else -> gurmukhiColor
+                            }
+
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier.wrapContentSize()
+                            ) {
+                                Text(
+                                    text = displayWord,
+                                    color = effectiveWordColor,
+                                    fontSize = config.gurmukhiFontSize.sp,
+                                    lineHeight = config.lineSpacing.sp,
+                                    fontWeight = if (config.boldGurmukhi) FontWeight.Bold else FontWeight.Medium,
+                                    modifier = Modifier
+                                        .clickable(enabled = hasMeaning) {
+                                            activePopupWordIndex = if (activePopupWordIndex == wordIndex) null else wordIndex
                                         }
-                                    }
-                                    .padding(horizontal = if (config.larivaarMode) 0.dp else 2.dp)
-                            )
+                                        .drawBehind {
+                                            if (hasMeaning && !config.blackAndWhiteAodMode) {
+                                                val strokeWidth = 1.2.dp.toPx()
+                                                val y = size.height - 1.dp.toPx()
+                                                val pathEffect = PathEffect.dashPathEffect(floatArrayOf(3f, 3f), 0f)
+                                                drawLine(
+                                                    color = colors.primary.copy(alpha = 0.5f),
+                                                    start = Offset(0f, y),
+                                                    end = Offset(size.width, y),
+                                                    strokeWidth = strokeWidth,
+                                                    pathEffect = pathEffect
+                                                )
+                                            }
+                                        }
+                                        .padding(horizontal = if (config.larivaarMode) 0.dp else 2.dp)
+                                )
 
-                            if (activePopupWordIndex == wordIndex && hasMeaning) {
-                                Popup(
-                                    alignment = Alignment.TopCenter,
-                                    offset = IntOffset(0, -50),
-                                    onDismissRequest = { activePopupWordIndex = null }
-                                ) {
-                                    Surface(
-                                        shape = RoundedCornerShape(12.dp),
-                                        color = colors.surfaceContainerHigh,
-                                        border = BorderStroke(1.dp, colors.outlineVariant.copy(alpha = 0.24f)),
-                                        tonalElevation = 6.dp,
-                                        modifier = Modifier.widthIn(max = 220.dp)
+                                if (activePopupWordIndex == wordIndex && hasMeaning) {
+                                    Popup(
+                                        alignment = Alignment.TopCenter,
+                                        offset = IntOffset(0, -50),
+                                        onDismissRequest = { activePopupWordIndex = null }
                                     ) {
-                                        Column(
-                                            modifier = Modifier.padding(12.dp),
-                                            horizontalAlignment = Alignment.CenterHorizontally
+                                        Surface(
+                                            shape = RoundedCornerShape(12.dp),
+                                            color = colors.surfaceContainerHigh,
+                                            border = BorderStroke(1.dp, colors.outlineVariant.copy(alpha = 0.24f)),
+                                            tonalElevation = 6.dp,
+                                            modifier = Modifier.widthIn(max = 220.dp)
                                         ) {
-                                            Text(
-                                                text = word,
-                                                color = colors.primary,
-                                                fontWeight = FontWeight.Bold,
-                                                fontSize = (config.gurmukhiFontSize * 0.75f).sp
-                                            )
-                                            Spacer(Modifier.height(4.dp))
-                                            Text(
-                                                text = meaning!!,
-                                                color = colors.onSurface,
-                                                fontSize = (config.gurmukhiFontSize * 0.60f).sp,
-                                                textAlign = TextAlign.Center
-                                            )
+                                            Column(
+                                                modifier = Modifier.padding(12.dp),
+                                                horizontalAlignment = Alignment.CenterHorizontally
+                                            ) {
+                                                Text(
+                                                    text = displayWord,
+                                                    color = colors.primary,
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = (config.gurmukhiFontSize * 0.75f).sp
+                                                )
+                                                Spacer(Modifier.height(4.dp))
+                                                Text(
+                                                    text = meaning!!,
+                                                    color = colors.onSurface,
+                                                    fontSize = (config.gurmukhiFontSize * 0.60f).sp,
+                                                    textAlign = TextAlign.Center
+                                                )
+                                            }
                                         }
                                     }
                                 }
@@ -583,7 +586,7 @@ fun GurbaniLineCard(
                             Icons.Default.Language,
 
                         text =
-                            if (line.transliteration.isNotBlank()) line.transliteration else "Transliteration not available",
+                            if (line.transliteration.isNotBlank()) line.transliteration else "Transliteration not available".translate(config.displayLanguage),
 
                         color =
                             romanTransliterationColor,
@@ -602,7 +605,7 @@ fun GurbaniLineCard(
                 }
 
                 /*
-                 * HINDI (DEVANAGARI TRANSLITERATION)
+                 * HINDI (DEVANAGARI TRANSLITERATION & TEEKA)
                  */
 
                 if (
@@ -619,10 +622,10 @@ fun GurbaniLineCard(
                             Icons.Default.AutoStories,
 
                         text =
-                            if (line.hindi.isNotBlank()) line.hindi.translateHindiTransliteration() else "Hindi translation not available",
+                            if (line.hindi.isNotBlank()) line.hindi.translateHindiTransliteration() else "Hindi Transliteration not available".translate(config.displayLanguage),
 
                         color =
-                            romanTransliterationColor,
+                            devanagariTransliterationColor,
 
                         fontSize =
                             config.romanTransliterationFontSize,
@@ -630,6 +633,25 @@ fun GurbaniLineCard(
                         lineSpacing =
                             config.lineSpacing
                     )
+
+                    // Hindi Teeka (Translation/Meaning)
+                    val hindiTeeka = remember(line.punjabi, line.translation) {
+                        if (line.punjabi.isNotBlank()) line.punjabi.toHindiTranslation()
+                        else if (line.translation.isNotBlank()) line.translation
+                        else ""
+                    }
+                    if (hindiTeeka.isNotBlank()) {
+                        Spacer(
+                            Modifier.height(sectionSpacing * 0.7f)
+                        )
+                        MinimalTranslationSection(
+                            icon = Icons.Default.Translate,
+                            text = hindiTeeka,
+                            color = devanagariTransliterationColor.copy(alpha = 0.85f),
+                            fontSize = config.translationFontSize,
+                            lineSpacing = config.lineSpacing
+                        )
+                    }
                 }
 
                 /*
@@ -650,7 +672,7 @@ fun GurbaniLineCard(
                             Icons.Default.Translate,
 
                         text =
-                            if (line.translation.isNotBlank()) line.translation else "English translation not available",
+                            if (line.translation.isNotBlank()) line.translation else "English translation not available".translate(config.displayLanguage),
 
                         color =
                             translationColor.copy(alpha = 0.85f),
@@ -681,10 +703,10 @@ fun GurbaniLineCard(
                             Icons.Default.MenuBook,
 
                         text =
-                            if (line.punjabi.isNotBlank()) line.punjabi else "Punjabi translation not available",
+                            if (line.punjabi.isNotBlank()) line.punjabi else "Punjabi translation not available".translate(config.displayLanguage),
 
                         color =
-                            translationColor.copy(alpha = 0.85f),
+                            punjabiTranslationColor,
 
                         fontSize =
                             config.translationFontSize,
@@ -740,6 +762,7 @@ fun GurbaniLineCard(
                 )
             }
         }
+    }
     }
 }
 

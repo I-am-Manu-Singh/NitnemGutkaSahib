@@ -533,7 +533,8 @@ private val activeTrackState =
                 isEnded =
                     isEnded,
 
-                error = null
+                error = null,
+                isMuted = player.volume == 0f
             )
         }
 
@@ -973,16 +974,56 @@ private fun createUri(
             return
         }
 
-        player.playbackParameters =
-
-            PlaybackParameters(
-                speed.coerceIn(
-                    0.5f,
-                    2f
-                )
-            )
-
+        val currentPitch = player.playbackParameters.pitch
+        player.playbackParameters = PlaybackParameters(speed.coerceIn(0.5f, 2f), currentPitch)
         updateState()
+    }
+
+    override fun updatePlaybackPitch(
+        pitch: Float
+    ) {
+        if (isSimulated) return
+        val currentSpeed = player.playbackParameters.speed
+        player.playbackParameters = PlaybackParameters(currentSpeed, pitch.coerceIn(0.5f, 2f))
+        updateState()
+    }
+
+    private var sleepTimerJob: Job? = null
+    private var sleepTimerEndTimestamp: Long? = null
+
+    override fun setSleepTimer(minutes: Int?) {
+        sleepTimerJob?.cancel()
+        if (minutes == null || minutes <= 0) {
+            sleepTimerEndTimestamp = null
+            _playback.update { it.copy(sleepTimerRemainingMs = null) }
+            return
+        }
+
+        val durationMs = minutes * 60 * 1000L
+        sleepTimerEndTimestamp = System.currentTimeMillis() + durationMs
+
+        sleepTimerJob = scope.launch {
+            while (isActive) {
+                val remaining = (sleepTimerEndTimestamp ?: break) - System.currentTimeMillis()
+                if (remaining <= 0L) {
+                    _playback.update { it.copy(sleepTimerRemainingMs = 0L) }
+                    pause()
+                    sleepTimerEndTimestamp = null
+                    break
+                }
+                _playback.update { it.copy(sleepTimerRemainingMs = remaining) }
+                delay(1000L)
+            }
+        }
+    }
+
+    override fun setRepeatMode(mode: String) {
+        _playback.update { it.copy(repeatMode = mode) }
+        when (mode) {
+            "ONE" -> player.repeatMode = Player.REPEAT_MODE_ONE
+            "ALL" -> player.repeatMode = Player.REPEAT_MODE_ALL
+            else -> player.repeatMode = Player.REPEAT_MODE_OFF
+        }
     }
 
     /*
@@ -1148,6 +1189,20 @@ private fun createUri(
     override fun release() {
         println("PLAYER RELEASE")
         savePlaybackState()
+        try {
+            stopPollingProgress()
+            prepareTimeoutJob?.cancel()
+            player.stop()
+            player.release()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        } finally {
+            synchronized(Companion) {
+                if (INSTANCE === this) {
+                    INSTANCE = null
+                }
+            }
+        }
     }
 
     /*
@@ -1900,6 +1955,12 @@ private fun createUri(
             println("TIMING ASSET -> $fileName")
 
         }
+        val localTimingFile = java.io.File(context.filesDir, "audio/${timingKey}_timing.json")
+        if (localTimingFile.exists() && localTimingFile.length() > 0) {
+            println("TIMING FILE FOUND IN LOCAL STORAGE -> ${localTimingFile.absolutePath}")
+            return true
+        }
+
         return try {
 
             context.assets.open(assetPath).use { }

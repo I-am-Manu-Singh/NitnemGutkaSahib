@@ -12,12 +12,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.input.pointer.pointerInput
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import org.audiocular.nitnem.audio.rememberStreamAudioController
 import org.audiocular.nitnem.app.models.AppTab
 import org.audiocular.nitnem.app.models.ExperienceTab
 import org.audiocular.nitnem.app.notifications.rememberNotificationBridge
+import org.audiocular.nitnem.app.ui.components.BaniCompletionMascotOverlay
 import org.audiocular.nitnem.app.ui.components.BottomBar
 import org.audiocular.nitnem.app.ui.player.ThinMiniPlayer
 import org.audiocular.nitnem.app.ui.screens.GurbaniExperienceScreen
@@ -95,6 +97,22 @@ fun NitnemRoot(
         mutableStateOf(true)
     }
 
+    // Tracks user touch events to re-show chrome and restart the auto-hide countdown
+    var interactionTick by remember { mutableStateOf(0) }
+
+    // Auto-hide chrome (BottomBar + headers) when fullScreenReadingMode is enabled
+    // and the user is on a reading/meditation tab.
+    val autoHideTabs = setOf(AppTab.Experience, AppTab.Practice)
+    LaunchedEffect(uiState.selectedTab, uiState.fullScreenReadingMode, interactionTick) {
+        if (uiState.fullScreenReadingMode && uiState.selectedTab in autoHideTabs) {
+            showChrome = true   // always show briefly on interaction / tab switch
+            delay(4_000L)
+            showChrome = false
+        } else {
+            showChrome = true
+        }
+    }
+
     /*
      * WIDGET
      */
@@ -161,6 +179,43 @@ fun NitnemRoot(
         }
     }
 
+    // Synchronize user progress directly to Firestore whenever stats change
+    val leaderboardRepo = org.audiocular.nitnem.domain.social.rememberFamilyLeaderboardRepository()
+    val authLauncher = org.audiocular.nitnem.utils.rememberAuthLauncher()
+    val authUser = authLauncher.currentUser
+
+    LaunchedEffect(
+        uiState.totalXp,
+        uiState.streakDays,
+        uiState.quizHighscore,
+        uiState.totalListeningMinutes,
+        uiState.completedBanis,
+        authUser?.uid
+    ) {
+        if (leaderboardRepo != null && authUser != null) {
+            val userDisplayName = authUser.displayName.takeIf { it.isNotBlank() }
+                ?: authUser.email.substringBefore('@').replace(".", " ").replace("_", " ").split(" ").joinToString(" ") { it.replaceFirstChar { c -> c.titlecase() } }
+                .takeIf { it.isNotBlank() }
+                ?: "Gurmukh"
+
+            val progress = org.audiocular.nitnem.domain.social.FamilyMemberProgress(
+                userId = authUser.uid,
+                username = authUser.email.substringBefore('@'),
+                displayName = userDisplayName,
+                xp = uiState.totalXp,
+                level = (uiState.totalXp / 500).coerceAtLeast(1),
+                currentStreak = uiState.streakDays,
+                bestStreak = uiState.streakDays.coerceAtLeast(1),
+                totalRecitationMinutes = uiState.totalListeningMinutes,
+                completedBanisCount = uiState.completedBanis.size,
+                completedBanisToday = uiState.completedBanis.toList(),
+                quizScore = uiState.quizHighscore,
+                avatarMascotState = ""
+            )
+            leaderboardRepo.syncUserProgress("family_group_main", progress)
+        }
+    }
+
     /*
      * NOTIFICATIONS
      */
@@ -173,9 +228,28 @@ fun NitnemRoot(
             mutableStateOf(-1)
         }
 
+    var globalCelebrationBaniTitle by remember { mutableStateOf<String?>(null) }
+    var globalStreakCelebrationDays by remember { mutableStateOf<Int?>(null) }
+    
+    // Remember initial set to identify new completions correctly across initial load and runtime
+    var previousCompletedBanis by remember { mutableStateOf<Set<String>?>(null) }
+
     LaunchedEffect(
         uiState.completedBanis
     ) {
+        val prev = previousCompletedBanis
+        if (prev == null) {
+            // Initial load of completed banis
+            previousCompletedBanis = uiState.completedBanis
+        } else {
+            val newlyAdded = uiState.completedBanis - prev
+            if (newlyAdded.isNotEmpty()) {
+                val newlyCompletedId = newlyAdded.first()
+                val baniObj = banis.firstOrNull { it.id == newlyCompletedId }
+                globalCelebrationBaniTitle = baniObj?.title ?: newlyCompletedId
+            }
+            previousCompletedBanis = uiState.completedBanis
+        }
 
         val currentCount =
             uiState.completedBanis.size
@@ -212,17 +286,19 @@ fun NitnemRoot(
     }
 
     /*
-     * STREAK NOTIFICATION
+     * STREAK CELEBRATION & NOTIFICATION
      */
 
-    val lastStreak =
-        remember {
-            mutableStateOf(-1)
-        }
+    val lastStreak = remember { mutableStateOf(-1) }
 
     LaunchedEffect(
         uiState.streakDays
     ) {
+        if (uiState.streakDays > 0) {
+            viewModel.checkAndCelebrateDailyStreak(uiState.streakDays) { celebrationDays ->
+                globalStreakCelebrationDays = celebrationDays
+            }
+        }
 
         if (
             uiState.notifications &&
@@ -415,7 +491,18 @@ fun NitnemRoot(
                 .fillMaxSize()
                 .then(backgroundModifier)
                 .padding(padding)
-                .padding(top = 28.dp)
+                // .padding(top = 28.dp)
+                .pointerInput(uiState.fullScreenReadingMode, uiState.selectedTab) {
+                    // On any touch in fullscreen mode tabs, restore chrome and restart the hide timer
+                    if (uiState.fullScreenReadingMode && uiState.selectedTab in autoHideTabs) {
+                        awaitPointerEventScope {
+                            while (true) {
+                                awaitPointerEvent()
+                                interactionTick++
+                            }
+                        }
+                    }
+                }
 
         ) {
 
@@ -502,7 +589,7 @@ fun NitnemRoot(
                 AnimatedVisibility(
 
                     visible =
-                        uiState.miniPlayerVisible
+                        uiState.miniPlayerVisible && (!uiState.fullScreenReadingMode || showChrome)
                 ) {
 
                     ThinMiniPlayer(
@@ -529,56 +616,55 @@ fun NitnemRoot(
 
                         displayLanguage =
                             uiState.displayLanguage,
-
+                        repeatMode =
+                            playback.repeatMode,
+                        isMuted =
+                            playback.isMuted,
+                        onMuteToggle = {
+                            audioController.setVolume(if (playback.isMuted) 1f else 0f)
+                        },
                         onOpenPlayer = {
-
                             viewModel.selectTab(
                                 AppTab.Experience
                             )
-
                             viewModel.selectExperienceTab(
                                 ExperienceTab.Listen
                             )
                         },
-
                         onPlayPause = {
-
                             audioController.playPause()
                         },
-
                         onSeekForward = {
-
                             audioController
                                 .seekForward(
                                     10000L
                                 )
                         },
-
                         onSeekBack = {
-
                             audioController
                                 .seekBack(
                                     10000L
                                 )
                         },
-
-                        onRepeatLine = {
-
-                            val currentLine =
-
-                                synchronizer.activeLine(
-
-                                    effectiveLines,
-
-                                    playback.positionMs
-                                )
-
-                            currentLine?.let { line ->
-
-                                audioController.seekTo(
-                                    line.startsAtMs
-                                )
+                        onRepeatToggle = {
+                            val nextMode = when (playback.repeatMode) {
+                                "OFF" -> "ONE"
+                                "ONE" -> "ALL"
+                                else -> "OFF"
                             }
+                            audioController.setRepeatMode(nextMode)
+                        },
+                        onSpeedToggle = {
+                            val currentSpeed = playback.speed
+                            val nextSpeed = when {
+                                currentSpeed < 1.0f -> 1.0f
+                                currentSpeed < 1.25f -> 1.25f
+                                currentSpeed < 1.5f -> 1.5f
+                                currentSpeed < 2.0f -> 2.0f
+                                else -> 0.75f
+                            }
+                            viewModel.setPlaybackSpeed(nextSpeed)
+                            audioController.updatePlaybackSpeed(nextSpeed)
                         },
 
                         onBookmark = {
@@ -602,6 +688,28 @@ fun NitnemRoot(
                     )
                 }
             }
+        }
+
+        globalCelebrationBaniTitle?.let { bTitle ->
+            val completedNitnemCount = uiState.completedBanis.count { it in nitnemBaniIds }
+            val totalNitnemCount = banis.count { it.id in nitnemBaniIds }.takeIf { it > 0 } ?: 7
+            BaniCompletionMascotOverlay(
+                baniTitle = bTitle,
+                completedTodayCount = completedNitnemCount,
+                totalNitnemCount = totalNitnemCount,
+                completedBaniIds = uiState.completedBanis,
+                displayLanguage = uiState.displayLanguage,
+                onDismiss = { globalCelebrationBaniTitle = null }
+            )
+        }
+
+        globalStreakCelebrationDays?.let { sDays ->
+            BaniCompletionMascotOverlay(
+                streakDayCount = sDays,
+                completedBaniIds = uiState.completedBanis,
+                displayLanguage = uiState.displayLanguage,
+                onDismiss = { globalStreakCelebrationDays = null }
+            )
         }
     }
 }

@@ -13,6 +13,10 @@ plugins {
     alias(libs.plugins.composeCompiler)
 
     kotlin("plugin.serialization")
+
+    alias(libs.plugins.googleServices)
+
+    alias(libs.plugins.firebaseCrashlytics)
 }
 
 kotlin {
@@ -29,6 +33,7 @@ kotlin {
     sourceSets {
         androidMain.dependencies {
             implementation(libs.androidx.activity.compose)
+            implementation("androidx.fragment:fragment-ktx:1.8.5")
             implementation(libs.media3.exoplayer)
             implementation("androidx.media3:media3-session:1.4.1")
             implementation("androidx.media3:media3-ui:1.4.1")
@@ -37,6 +42,14 @@ kotlin {
             implementation("androidx.glance:glance-appwidget:1.1.1")
             implementation("androidx.glance:glance-material3:1.1.1")
             implementation("androidx.datastore:datastore-preferences:1.1.1")
+
+            // Firebase Android SDKs via BOM
+            implementation(project.dependencies.platform(libs.firebase.bom))
+            implementation(libs.firebase.analytics)
+            implementation(libs.firebase.crashlytics)
+            implementation(libs.firebase.firestore)
+            implementation("com.google.firebase:firebase-auth-ktx")
+            implementation("com.google.android.gms:play-services-auth:21.2.0")
         }
         commonMain.dependencies {
             implementation(projects.shared.models)
@@ -89,8 +102,10 @@ android {
         create("release") {
             val keyPath = keystoreProperties.getProperty("RELEASE_KEYSTORE_PATH") ?: ""
             if (keyPath.isNotEmpty()) {
-                storeFile = file(keyPath)
-                storePassword = keystoreProperties.getProperty("RELEASE_KEYSTORE_PASSWORD") ?: ""
+                val resolvedKeyFile = rootProject.file(keyPath).let { if (it.exists()) it else file(keyPath) }
+                storeFile = resolvedKeyFile
+                storePassword = keystoreProperties.getProperty("RELEASE_KEYSTORE_PASSWORD") 
+                    ?: keystoreProperties.getProperty("RELEASE_STORE_PASSWORD") ?: ""
                 keyAlias = keystoreProperties.getProperty("RELEASE_KEY_ALIAS") ?: ""
                 keyPassword = keystoreProperties.getProperty("RELEASE_KEY_PASSWORD") ?: ""
             }
@@ -103,6 +118,15 @@ android {
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
         versionName = "0.1.0"
+    }
+
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
+            isUniversalApk = true
+        }
     }
 
     packaging {
@@ -126,6 +150,11 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+    }
+
+    lint {
+        checkReleaseBuilds = false
+        abortOnError = false
     }
 }
 

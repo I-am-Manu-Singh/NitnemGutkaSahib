@@ -86,6 +86,18 @@ interface StreamAudioController {
         speed: Float
     ) {}
 
+    fun updatePlaybackPitch(
+        pitch: Float
+    ) {}
+
+    fun setSleepTimer(
+        minutes: Int?
+    ) {}
+
+    fun setRepeatMode(
+        mode: String
+    ) {}
+
     /*
      * REPEAT
      */

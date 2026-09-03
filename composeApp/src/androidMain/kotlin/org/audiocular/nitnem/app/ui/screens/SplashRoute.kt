@@ -45,13 +45,8 @@ fun SplashRoute(
     val context = LocalContext.current
 
     LaunchedEffect(Unit) {
-
-        delay(1350)
-
         val prefs = AppPreferences(context)
-
-        val completed =
-            prefs.onboardingCompleted.first()
+        val completed = prefs.onboardingCompleted.first()
 
         if (completed) {
             onOpenHome()

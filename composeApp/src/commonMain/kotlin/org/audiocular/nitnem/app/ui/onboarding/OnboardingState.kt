@@ -16,5 +16,19 @@ data class OnboardingState(
 
     val widgetTheme: String = "Classic Gold",
 
-    val widgetContent: String = "Mascot Assistant"
+    val widgetContent: String = "Mascot Assistant",
+
+    val showGurmukhi: Boolean = true,
+
+    val showDevanagariTransliteration: Boolean = false,
+
+    val showRomanTransliteration: Boolean = true,
+
+    val showEnglishTranslation: Boolean = true,
+
+    val showPunjabiTranslation: Boolean = false,
+
+    val showWordMeaning: Boolean = false,
+
+    val larivaarMode: Boolean = false
 )

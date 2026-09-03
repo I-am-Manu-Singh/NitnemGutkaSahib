@@ -8,9 +8,12 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
+import androidx.compose.ui.unit.dp
 import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -34,8 +37,19 @@ import org.audiocular.nitnem.models.NitnemUiState
 import org.audiocular.nitnem.viewmodel.NitnemViewModel
 import org.audiocular.nitnem.app.ui.components.MascotBani
 import org.audiocular.nitnem.app.ui.components.MascotState
+import org.audiocular.nitnem.app.ui.components.RollingNumberText
 import org.audiocular.nitnem.models.QuizQuestion
 import org.audiocular.nitnem.models.QuizSession
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.animation.core.*
+import androidx.compose.ui.draw.scale
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import org.audiocular.nitnem.app.ui.theme.AppTheme
+import org.audiocular.nitnem.app.ui.theme.ThemeMode
+import org.audiocular.nitnem.app.ui.theme.Gold
+import org.audiocular.nitnem.app.ui.theme.Accent
 
 /*
  * ─────────────────────────────────────────────────────────────
@@ -456,6 +470,7 @@ fun AiGurbaniQuizTab(
     }
 
     var showContinueQuizDialog by remember { mutableStateOf(false) }
+    var showScoreOverlay by remember { mutableStateOf(false) }
     var continueNoHeartsMode by rememberSaveable(bani.id, restartTrigger) {
         mutableStateOf(initialNoHearts)
     }
@@ -552,380 +567,416 @@ fun AiGurbaniQuizTab(
         }
     }
 
-    /*
-     * SHARED COLORS
-     */
+    var quizStarted by rememberSaveable(bani.id) {
+        mutableStateOf(false)
+    }
 
-    val glassCard =
+    val isLight = AppTheme.themeMode == ThemeMode.Light
+
+    val glassCard = if (isLight) {
+        Color.White.copy(alpha = 0.88f)
+    } else {
         colors.card.copy(alpha = 0.38f)
+    }
 
-    val subtleBorder =
+    val subtleBorder = if (isLight) {
+        colors.accent.copy(alpha = 0.18f)
+    } else {
         colors.textSecondary.copy(alpha = 0.08f)
+    }
 
-    val optionColor =
+    val optionColor = if (isLight) {
+        Color.White.copy(alpha = 0.70f)
+    } else {
         colors.cardSecondary.copy(alpha = 0.32f)
+    }
 
-    /*
-     * RESULT SCREEN
-     */
-
-    if (quizFinished) {
-
-        LazyColumn(
-
-            modifier = Modifier.fillMaxSize(),
-
-            contentPadding = PaddingValues(
-                start = 18.dp,
-                end = 18.dp,
-                top = 12.dp,
-                bottom = 80.dp
-            ),
-
-            verticalArrangement =
-                Arrangement.spacedBy(10.dp)
-        ) {
-
-            item {
-
-    val xpEarned =
-        score * 10 +
-                if (score == questions.size && hearts == 5) 50 else 0
-
-    Surface(
-
-        modifier = Modifier.fillMaxWidth(),
-
-        shape = RoundedCornerShape(28.dp),
-
-        color = glassCard,
-
-        border = BorderStroke(
-            1.dp,
-            subtleBorder
-        )
-    ) {
-
-        Column(
-
-            modifier = Modifier.padding(18.dp)
-        ) {
-
-            Row(
-
-                modifier = Modifier.fillMaxWidth(),
-
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-
-                MascotBani(
-
-                    state = when {
-
-                        hearts <= 0 ->
-                            MascotState.Oops
-
-                        score == questions.size ->
-                            MascotState.Celebrating
-
-                        else ->
-                            MascotState.Happy
-                    },
-
-                    modifier = Modifier.size(64.dp)
-                )
-
-                Spacer(
-                    Modifier.width(12.dp)
-                )
-
-                Column(
-                    modifier = Modifier.weight(1f)
-                ) {
-
-                    Text(
-
-                        text = when {
-
-                            hearts <= 0 ->
-                                "Out of Lives!"
-                                    .translate(displayLanguage)
-
-                            score == questions.size ->
-                                "Perfect Score!"
-                                    .translate(displayLanguage)
-
-                            else ->
-                                "Quiz Complete"
-                                    .translate(displayLanguage)
-                        },
-
-                        color = colors.textPrimary,
-
-                        fontSize = 22.sp,
-
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    Spacer(
-                        Modifier.height(2.dp)
-                    )
-
-                   Row(
-    horizontalArrangement = Arrangement.spacedBy(8.dp)
+    // START SCREEN / WELCOME GATE
+    if (!quizStarted && !quizFinished) {
+        val hasActiveProgress = activeSession != null && activeSession.baniId == bani.id && activeSession.questionIndex > 0 && !activeSession.quizFinished
+Box(
+    modifier = Modifier
+        .fillMaxSize()
+        .padding(20.dp),
+    contentAlignment = Alignment.Center
 ) {
-
-    Surface(
-        shape = RoundedCornerShape(100.dp),
-        color = colors.accent.copy(alpha = 0.15f)
+       Card(
+        modifier = Modifier.fillMaxSize(),
+        shape = RoundedCornerShape(36.dp),
+        colors = CardDefaults.cardColors(containerColor = glassCard),
+        border = BorderStroke(1.5.dp, if (isLight) Accent.copy(alpha = 0.25f) else Accent.copy(alpha = 0.2f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isLight) 3.dp else 8.dp)
     ) {
-
-        Text(
-            text = "${score}/${questions.size}"
-                .translateDigits(displayLanguage),
-
-            modifier = Modifier.padding(
-                horizontal = 10.dp,
-                vertical = 4.dp
-            ),
-
-            color = colors.accent,
-
-            fontSize = 12.sp,
-
-            fontWeight = FontWeight.Bold
-        )
-    }
-
-    Surface(
-        shape = RoundedCornerShape(100.dp),
-        color = colors.success.copy(alpha = 0.15f)
-    ) {
-
-        Text(
-            text = "+$xpEarned XP"
-                .translateDigits(displayLanguage),
-
-            modifier = Modifier.padding(
-                horizontal = 10.dp,
-                vertical = 4.dp
-            ),
-
-            color = colors.success,
-
-            fontSize = 12.sp,
-
-            fontWeight = FontWeight.Bold
-        )
-    }
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(
+                            Accent.copy(alpha = 0.08f),
+                            Color.Transparent
+                        ),
+                        radius = 800f
+                    )
+                )
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+              // Glow Container for Mascot
+     Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(140.dp)
+                        .clip(CircleShape)
+                        // FIX: Ensure your imports are added to resolve the border modifier call
+                        .border(
+                            border = BorderStroke(width = 1.dp, color = Accent.copy(alpha = 0.15f)),
+                            shape = CircleShape
+                        )
+                ) {
+    MascotBani(
+        state = MascotState.Happy,
+        modifier = Modifier.size(105.dp)
+    )
 }
+
+                Spacer(Modifier.height(24.dp))
+
+                // Question count pill badge
+                Surface(
+                    shape = RoundedCornerShape(20.dp),
+                    color = Accent.copy(alpha = 0.12f),
+                    border = BorderStroke(1.dp, Accent.copy(alpha = 0.25f))
+                ) {
+                    Text(
+                        text = "${questions.size} " + "Questions".translate(displayLanguage),
+                        color = Accent,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
+                    )
                 }
-            }
 
-            Spacer(
-                Modifier.height(14.dp)
-            )
-
-            Row(
-
-                modifier = Modifier.fillMaxWidth(),
-
-                horizontalArrangement =
-                    Arrangement.spacedBy(10.dp)
-            ) {
-
-                PremiumResultStat(
-
-                    modifier = Modifier.weight(1f),
-
-                    title =
-                        "Correct"
-                            .translate(displayLanguage),
-
-                    value =
-                        "$score"
-                            .translateDigits(displayLanguage),
-
-                    accent =
-                        colors.success,
-
-                    colors = colors
-                )
-
-                PremiumResultStat(
-
-                    modifier = Modifier.weight(1f),
-
-                    title =
-                        "Mistakes"
-                            .translate(displayLanguage),
-
-                    value =
-                        "$mistakes"
-                            .translateDigits(displayLanguage),
-
-                    accent =
-                        colors.error,
-
-                    colors = colors
-                )
-            }
-
-            Spacer(
-                Modifier.height(14.dp)
-            )
-
-            Button(
-
-                modifier =
-                    Modifier.fillMaxWidth(),
-
-                shape =
-                    RoundedCornerShape(18.dp),
-
-                colors =
-                    ButtonDefaults.buttonColors(
-                        containerColor =
-                            colors.accent
-                    ),
-
-                onClick = {
-
-                    restartTrigger++
-
-                    questionIndex = 0
-
-                    score = 0
-
-                    mistakes = 0
-
-                    hearts = 5
-
-                    continueNoHeartsMode = false
-
-                    quizFinished = false
-
-                    wrongAnswers = emptyList()
-                }
-            ) {
+                Spacer(Modifier.height(16.dp))
 
                 Text(
-
-                    text =
-                        "Restart Quiz"
-                            .translate(displayLanguage),
-
-                    color = Color.White,
-
-                    fontWeight = FontWeight.Bold
+                    text = "Gurbani Quiz".translate(displayLanguage),
+                    color = Gold,
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    textAlign = TextAlign.Center
                 )
+
+                Spacer(Modifier.height(8.dp))
+
+                Text(
+                    text = bani.title.translate(displayLanguage),
+                    color = colors.textPrimary,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(Modifier.height(10.dp))
+
+                Text(
+                    text = "Ready to test your knowledge about Gurbani?".translate(displayLanguage),
+                    color = colors.textSecondary.copy(alpha = 0.85f),
+                    fontSize = 14.sp,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(horizontal = 12.dp)
+                )
+
+                Spacer(Modifier.height(40.dp))
+
+                // Action Buttons with Enhanced Elevation
+                if (hasActiveProgress) {
+                    Button(
+                        onClick = { quizStarted = true },
+                        modifier = Modifier
+                            .fillMaxWidth(0.92f)
+                            .height(54.dp),
+                        shape = RoundedCornerShape(27.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Accent),
+                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
+                    ) {
+                        Text(
+                            text = "Continue Quiz".translate(displayLanguage) + " (${activeSession!!.questionIndex + 1}/${questions.size})",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp
+                        )
+                    }
+
+           OutlinedButton(
+    onClick = {
+        restartTrigger++
+        questionIndex = 0
+        score = 0
+        mistakes = 0
+        hearts = 5
+        continueNoHeartsMode = false
+        quizFinished = false
+        wrongAnswers = emptyList()
+        quizStarted = true
+    },
+    modifier = Modifier
+        .fillMaxWidth(0.92f)
+        .height(54.dp),
+    shape = RoundedCornerShape(27.dp),
+    // FIX: Changed 1.5f to 1.5.dp to provide the correct Dp type parameters
+    border = BorderStroke(1.5.dp, Accent.copy(alpha = 0.6f))
+) {
+                        Text(
+                            text = "Start New Quiz".translate(displayLanguage),
+                            color = Accent,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp
+                        )
+                    }
+                } else {
+                    Button(
+                        onClick = { quizStarted = true },
+                        modifier = Modifier
+                            .fillMaxWidth(0.92f)
+                            .height(54.dp),
+                        shape = RoundedCornerShape(27.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Accent),
+                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
+                    ) {
+                        Text(
+                            text = "Start Quiz".translate(displayLanguage),
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp
+                        )
+                    }
+                }
             }
         }
     }
 }
+        return
+    }
 
-            /*
-             * WRONG ANSWERS
-             */
+    // RESULT SCREEN (INLINE IN TAB)
+    if (quizFinished) {
+        val xpEarned = score * 10 + (if (score == questions.size && hearts == 5) 50 else 0)
+        val isPerfect = score == questions.size && score > 0
+
+        val animatedXp by animateIntAsState(
+            targetValue = xpEarned,
+            animationSpec = tween(durationMillis = 1200, easing = FastOutSlowInEasing),
+            label = "animated_quiz_xp"
+        )
+        val animatedScore by animateIntAsState(
+            targetValue = score,
+            animationSpec = tween(durationMillis = 1000, easing = FastOutSlowInEasing),
+            label = "animated_quiz_score"
+        )
+        val animatedMistakes by animateIntAsState(
+            targetValue = mistakes,
+            animationSpec = tween(durationMillis = 1000, easing = FastOutSlowInEasing),
+            label = "animated_quiz_mistakes"
+        )
+
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 16.dp, bottom = 60.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(28.dp),
+                    colors = CardDefaults.cardColors(containerColor = glassCard),
+                    border = BorderStroke(1.dp, subtleBorder)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(20.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        MascotBani(
+                            state = when {
+                                hearts <= 0 -> MascotState.Oops
+                                isPerfect -> MascotState.Celebrating
+                                score > 0 -> MascotState.Happy
+                                else -> MascotState.Oops
+                            },
+                            modifier = Modifier.size(100.dp)
+                        )
+
+                        Spacer(Modifier.height(12.dp))
+
+                        Text(
+                            text = when {
+                                hearts <= 0 -> "Out of Lives!".translate(displayLanguage)
+                                isPerfect -> "Perfect Score!".translate(displayLanguage)
+                                else -> "Quiz Complete!".translate(displayLanguage)
+                            },
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Gold,
+                            textAlign = TextAlign.Center
+                        )
+
+                        Spacer(Modifier.height(8.dp))
+
+                        Surface(
+                            shape = RoundedCornerShape(100.dp),
+                            color = Accent.copy(alpha = 0.15f),
+                            border = BorderStroke(1.dp, Accent.copy(alpha = 0.3f))
+                        ) {
+                            Box(modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)) {
+                                RollingNumberText(
+                                    value = animatedXp,
+                                    prefix = "+",
+                                    suffix = " XP",
+                                    color = Accent,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+
+                        Spacer(Modifier.height(16.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Surface(
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(18.dp),
+                                color = Color(0xFF4CAF50).copy(alpha = 0.12f),
+                                border = BorderStroke(1.dp, Color(0xFF4CAF50).copy(alpha = 0.3f))
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(12.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        text = "$animatedScore / ${questions.size}".translateDigits(displayLanguage),
+                                        color = Color(0xFF4CAF50),
+                                        fontSize = 20.sp,
+                                        fontWeight = FontWeight.ExtraBold
+                                    )
+                                    Spacer(Modifier.height(2.dp))
+                                    Text(
+                                        text = "Correct".translate(displayLanguage),
+                                        color = Color(0xFF4CAF50),
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
+
+                            Surface(
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(18.dp),
+                                color = Color(0xFFE53935).copy(alpha = 0.12f),
+                                border = BorderStroke(1.dp, Color(0xFFE53935).copy(alpha = 0.3f))
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(12.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        text = "$animatedMistakes".translateDigits(displayLanguage),
+                                        color = Color(0xFFE53935),
+                                        fontSize = 20.sp,
+                                        fontWeight = FontWeight.ExtraBold
+                                    )
+                                    Spacer(Modifier.height(2.dp))
+                                    Text(
+                                        text = "Mistakes".translate(displayLanguage),
+                                        color = Color(0xFFE53935),
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(Modifier.height(16.dp))
+
+                        Button(
+                            onClick = {
+                                restartTrigger++
+                                questionIndex = 0
+                                score = 0
+                                mistakes = 0
+                                hearts = 5
+                                continueNoHeartsMode = false
+                                quizFinished = false
+                                wrongAnswers = emptyList()
+                                quizStarted = true
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp),
+                            shape = RoundedCornerShape(24.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Accent)
+                        ) {
+                            Text(
+                                text = "Restart Quiz".translate(displayLanguage),
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                fontSize = 15.sp
+                            )
+                        }
+                    }
+                }
+            }
 
             if (wrongAnswers.isNotEmpty()) {
-
                 item {
-
-             Row(
-    verticalAlignment = Alignment.CenterVertically
-) {
-
- 
-
-    Text(
-
-        text = "Review Mistakes"
-            .translate(displayLanguage),
-
-        color = colors.error,
-
-        fontSize = 22.sp,
-
-        fontWeight = FontWeight.Bold
-    )
-}
+                    Text(
+                        text = "Review Mistakes".translate(displayLanguage),
+                        color = Color(0xFFE53935),
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
 
                 itemsIndexed(wrongAnswers) { _, entry ->
                     val parts = entry.split(":::")
-                    val questionText = parts.getOrNull(0).orEmpty()
-                    val correctAnswerText = parts.getOrNull(1).orEmpty()
+                    val qText = parts.getOrNull(0).orEmpty()
+                    val aText = parts.getOrNull(1).orEmpty()
 
                     Surface(
-    modifier = Modifier.fillMaxWidth(),
-    shape = RoundedCornerShape(20.dp),
-    color = glassCard,
-    border = BorderStroke(1.dp, subtleBorder)
-) {
-
-    Column(
-        modifier = Modifier.padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-
-        // Question Row
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.Top
-        ) {
-
-            Text(
-                text = "Q: ".translate(displayLanguage),
-                color = colors.error,
-                fontWeight = FontWeight.Bold,
-                fontSize = 13.sp
-            )
-
-            Text(
-                text = questionText,
-                modifier = Modifier.weight(1f),
-                color = colors.textPrimary,
-                fontSize = 14.sp,
-                lineHeight = 20.sp,
-                fontWeight = FontWeight.Medium
-            )
-        }
-
-        HorizontalDivider(
-            color = colors.textSecondary.copy(alpha = 0.1f)
-        )
-
-        // Answer Row
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.Top
-        ) {
-
-            Text(
-                text = "A: ".translate(displayLanguage),
-                color = colors.success,
-                fontWeight = FontWeight.Bold,
-                fontSize = 13.sp
-            )
-
-            Text(
-                text = correctAnswerText,
-                modifier = Modifier.weight(1f),
-                color = colors.textPrimary,
-                fontSize = 14.sp,
-                lineHeight = 20.sp,
-                fontWeight = FontWeight.SemiBold
-            )
-        }
-    }
-}
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(18.dp),
+                        color = glassCard,
+                        border = BorderStroke(1.dp, subtleBorder)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(14.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+                                Text("Q: ", color = Color(0xFFE53935), fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                Text(qText, color = colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                            }
+                            HorizontalDivider(color = colors.textSecondary.copy(alpha = 0.1f))
+                            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+                                Text("A: ", color = Color(0xFF4CAF50), fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                Text(aText, color = colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                            }
+                        }
+                    }
                 }
             }
         }
-
         return
     }
 
@@ -1169,9 +1220,9 @@ fun AiGurbaniQuizTab(
 
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(28.dp),
-                        color = colors.cardSecondary.copy(alpha = 0.22f),
-                        border = BorderStroke(1.dp, colors.textSecondary.copy(alpha = 0.10f))
+                        shape = RoundedCornerShape(24.dp),
+                        color = if (isLight) Color(0xFFF9F6F0) else colors.cardSecondary.copy(alpha = 0.22f),
+                        border = BorderStroke(1.dp, if (isLight) colors.accent.copy(alpha = 0.15f) else colors.textSecondary.copy(alpha = 0.10f))
                     ) {
                         Column(
                             modifier = Modifier.padding(20.dp)
@@ -1217,17 +1268,36 @@ fun AiGurbaniQuizTab(
                                         lineHeight = 22.sp
                                     )
                                     Spacer(Modifier.height(16.dp))
-                                    Text(
-                                        text = if (selectedWords.isEmpty()) {
-                                            "Tap words below to arrange...".translate(displayLanguage)
-                                        } else {
-                                            selectedWords.joinToString(" ")
-                                        },
-                                        color = colors.textPrimary,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 18.sp,
-                                        lineHeight = 28.sp
-                                    )
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Text(
+                                            text = if (selectedWords.isEmpty()) {
+                                                "Tap words below to arrange...".translate(displayLanguage)
+                                            } else {
+                                                selectedWords.joinToString(" ")
+                                            },
+                                            color = colors.textPrimary,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 18.sp,
+                                            lineHeight = 28.sp,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        
+                                        if (selectedWords.isNotEmpty() && !answered) {
+                                            IconButton(
+                                                onClick = { selectedWords = emptyList() }
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Refresh,
+                                                    contentDescription = "Reset Sequence",
+                                                    tint = colors.accent
+                                                )
+                                            }
+                                        }
+                                    }
                                 }
 
                                 is QuizQuestion.WordMeaning -> {
@@ -1736,6 +1806,7 @@ wrongAnswers =
                     onClick = {
                         showContinueQuizDialog = false
                         quizFinished = true
+                        showScoreOverlay = true
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = colors.accent)
                 ) {
@@ -1751,6 +1822,7 @@ wrongAnswers =
                             questionIndex++
                         } else {
                             quizFinished = true
+                            showScoreOverlay = true
                         }
                     }
                 ) {
@@ -1761,298 +1833,31 @@ wrongAnswers =
             containerColor = colors.card
         )
     }
-}
 
-/*
- * ─────────────────────────────────────────────────────────────
- * REUSABLE COMPONENTS
- * ─────────────────────────────────────────────────────────────
- */
-
-@Composable
-private fun QuizSectionLabel(
-    title: String,
-    color: Color
-) {
-
-    Text(
-
-        text = title,
-
-        color = color,
-
-        fontSize = 13.sp,
-
-        fontWeight = FontWeight.Bold
-    )
-}
-
-@Composable
-private fun QuizChoiceChip(
-    text: String,
-    selected: Boolean,
-    answered: Boolean,
-    correct: Boolean,
-    enabled: Boolean,
-    colors: PracticeColors,
-    onClick: () -> Unit
-) {
-
-    val background = when {
-
-        answered && correct -> {
-            colors.success.copy(alpha = 0.24f)
-        }
-
-        answered && selected && !correct -> {
-            colors.error.copy(alpha = 0.24f)
-        }
-
-        else -> {
-
-            colors.cardSecondary.copy(
-                alpha = 0.34f
-            )
-        }
-    }
-
-    Surface(
-
-        shape =
-            RoundedCornerShape(22.dp),
-
-        color = background,
-
-        border = BorderStroke(
-            1.dp,
-            colors.textSecondary.copy(
-                alpha = 0.08f
-            )
-        ),
-
-        modifier =
-            Modifier.clickable(
-                enabled = enabled,
-                onClick = onClick
-            )
-    ) {
-
-        Text(
-
-            text = text,
-
-            color =
-                colors.textPrimary,
-
-            fontWeight =
-                FontWeight.SemiBold,
-
-            modifier =
-                Modifier.padding(
-                    horizontal = 18.dp,
-                    vertical = 14.dp
-                )
+    if (showScoreOverlay || quizFinished) {
+        val xpEarned = score * 10 + (if (score == questions.size && hearts == 5) 50 else 0)
+        QuizScoreOverlay(
+            score = score,
+            totalQuestions = questions.size,
+            mistakes = mistakes,
+            xpEarned = xpEarned,
+            hearts = hearts,
+            wrongAnswers = wrongAnswers,
+            displayLanguage = displayLanguage,
+            onRestart = {
+                showScoreOverlay = false
+                restartTrigger++
+                questionIndex = 0
+                score = 0
+                mistakes = 0
+                hearts = 5
+                continueNoHeartsMode = false
+                quizFinished = false
+                wrongAnswers = emptyList()
+            },
+            onDismiss = {
+                showScoreOverlay = false
+            }
         )
-    }
-}
-
-@Composable
-private fun QuizOptionCard(
-    text: String,
-    selected: Boolean,
-    answered: Boolean,
-    correct: Boolean,
-    colors: PracticeColors,
-    onClick: () -> Unit
-) {
-
-    val background = when {
-
-        answered && correct -> {
-            colors.success.copy(alpha = 0.24f)
-        }
-
-        answered && selected && !correct -> {
-            colors.error.copy(alpha = 0.24f)
-        }
-
-        else -> {
-
-            colors.cardSecondary.copy(
-                alpha = 0.32f
-            )
-        }
-    }
-
-    Surface(
-
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(
-                enabled = !answered,
-                onClick = onClick
-            ),
-
-        shape =
-            RoundedCornerShape(28.dp),
-
-        color = background,
-
-        border = BorderStroke(
-            1.dp,
-            colors.textSecondary.copy(
-                alpha = 0.08f
-            )
-        )
-    ) {
-
-        Text(
-
-            text = text,
-
-            color =
-                colors.textPrimary,
-
-            fontSize = 16.sp,
-
-            lineHeight = 26.sp,
-
-            fontWeight =
-                FontWeight.Medium,
-
-            modifier =
-                Modifier.padding(20.dp)
-        )
-    }
-}
-
-@Composable
-private fun QuizBinaryButton(
-    modifier: Modifier = Modifier,
-    text: String,
-    selected: Boolean,
-    answered: Boolean,
-    correct: Boolean,
-    colors: PracticeColors,
-    onClick: () -> Unit
-) {
-
-    val background = when {
-
-        answered && correct -> {
-            colors.success.copy(alpha = 0.24f)
-        }
-
-        answered && selected && !correct -> {
-            colors.error.copy(alpha = 0.24f)
-        }
-
-        else -> {
-
-            colors.cardSecondary.copy(
-                alpha = 0.32f
-            )
-        }
-    }
-
-    Surface(
-
-        modifier = modifier
-            .clickable(
-                enabled = !answered,
-                onClick = onClick
-            ),
-
-        shape =
-            RoundedCornerShape(26.dp),
-
-        color = background,
-
-        border = BorderStroke(
-            1.dp,
-            colors.textSecondary.copy(
-                alpha = 0.08f
-            )
-        )
-    ) {
-
-        Text(
-
-            text = text,
-
-            color =
-                colors.textPrimary,
-
-            textAlign =
-                TextAlign.Center,
-
-            fontWeight =
-                FontWeight.Bold,
-
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(
-                        vertical = 18.dp
-                    )
-        )
-    }
-}
-
-@Composable
-private fun PremiumResultStat(
-    modifier: Modifier = Modifier,
-    title: String,
-    value: String,
-    accent: Color,
-    colors: PracticeColors
-) {
-
-    Surface(
-
-        modifier = modifier,
-
-        shape =
-            RoundedCornerShape(24.dp),
-
-        color =
-            accent.copy(alpha = 0.12f)
-    ) {
-
-        Column(
-
-            modifier =
-                Modifier.padding(18.dp),
-
-            horizontalAlignment =
-                Alignment.CenterHorizontally
-        ) {
-
-            Text(
-
-                text = value,
-
-                color = accent,
-
-                fontSize = 28.sp,
-
-                fontWeight =
-                    FontWeight.ExtraBold
-            )
-
-            Spacer(
-                Modifier.height(4.dp)
-            )
-
-            Text(
-
-                text = title,
-
-                color =
-                    colors.textSecondary,
-
-                fontSize = 12.sp
-            )
-        }
     }
 }

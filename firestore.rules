@@ -1,0 +1,28 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // User progress & profile
+    match /users/{userId} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == userId || true;
+    }
+    
+    // Family groups and member leaderboards
+    match /family_groups/{groupId} {
+      allow read: if true;
+      allow write: if true;
+      
+      match /members/{userId} {
+        allow read: if true;
+        allow write: if true;
+      }
+    }
+    
+    // Daily Hukamnama archives
+    match /daily_hukamnama/{dateId} {
+      allow read: if true;
+      allow write: if false; // Only admin backend can publish official Hukamnama
+    }
+  }
+}

@@ -50,23 +50,17 @@ fun ThinMiniPlayer(
     totalLines: Int = 0,
 
     visible: Boolean = true,
-
-    repeatEnabled: Boolean = false,
-
+    repeatMode: String = "OFF",
     bookmarked: Boolean = false,
-
     displayLanguage: DisplayLanguage = DisplayLanguage.English,
-
     onPlayPause: () -> Unit,
-
     onSeekForward: () -> Unit,
-
     onSeekBack: () -> Unit,
-
-    onRepeatLine: () -> Unit,
-
+    onRepeatToggle: () -> Unit = {},
+    onSpeedToggle: () -> Unit = {},
     onBookmark: () -> Unit = {},
-
+    isMuted: Boolean = false,
+    onMuteToggle: () -> Unit = {},
     onOpenPlayer: () -> Unit
 ) {
 
@@ -731,43 +725,46 @@ fun ThinMiniPlayer(
                      */
 
                     Row(
-
-                        horizontalArrangement =
-                            Arrangement.spacedBy(3.dp),
-
-                        verticalAlignment =
-                            Alignment.CenterVertically
+                        horizontalArrangement = Arrangement.spacedBy(3.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
+                        // Playback Speed Toggle Button (e.g. 1.0x -> 1.25x -> 1.5x -> 2.0x -> 0.75x)
+                        val speedText = if (playback.speed == 1f) "1x" else if (playback.speed == 1.25f) "1.2x" else if (playback.speed == 1.5f) "1.5x" else if (playback.speed == 2f) "2x" else "${playback.speed}x"
+                        Surface(
+                            modifier = Modifier.size(28.dp),
+                            onClick = onSpeedToggle,
+                            shape = CircleShape,
+                            color = if (playback.speed != 1.0f) Accent.copy(alpha = 0.16f) else buttonBg,
+                            border = BorderStroke(
+                                1.dp,
+                                if (AppTheme.themeMode == ThemeMode.Light) Color(0xFFECE2D4) else Color.White.copy(alpha = 0.05f)
+                            )
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = speedText,
+                                    color = if (playback.speed != 1.0f) Accent else titleColor.copy(alpha = 0.75f),
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
 
+                        // Repeat Mode Cycle Button (OFF -> ONE -> ALL -> OFF)
+                        val isRepeatActive = repeatMode != "OFF"
+                        val repeatIcon = when (repeatMode) {
+                            "ONE" -> Icons.Default.RepeatOne
+                            "ALL" -> Icons.Default.Repeat
+                            else -> Icons.Outlined.Repeat
+                        }
                         MiniPlayerIconButton(
-
-                            icon =
-
-                                if (repeatEnabled)
-                                    Icons.Default.Repeat
-                                else
-                                    Icons.Outlined.Repeat,
-
-                            containerColor =
-
-                                if (repeatEnabled)
-                                    Accent.copy(alpha = 0.14f)
-                                else
-                                    buttonBg,
-
-                            iconTint =
-
-                                if (repeatEnabled)
-                                    Accent
-                                else
-                                    titleColor.copy(alpha = 0.72f),
-
-                            contentDescription =
-                                "Repeat",
-
-                            onClick =
-                                onRepeatLine
+                            icon = repeatIcon,
+                            containerColor = if (isRepeatActive) Accent.copy(alpha = 0.14f) else buttonBg,
+                            iconTint = if (isRepeatActive) Accent else titleColor.copy(alpha = 0.72f),
+                            contentDescription = "Repeat: $repeatMode",
+                            onClick = onRepeatToggle
                         )
+
                         MiniPlayerIconButton(
                             icon = Icons.Default.Replay10,
                             containerColor = buttonBg,
@@ -787,33 +784,19 @@ fun ThinMiniPlayer(
                         )
 
                         MiniPlayerIconButton(
+                            icon = if (bookmarked) Icons.Default.Bookmark else Icons.Outlined.BookmarkBorder,
+                            containerColor = if (bookmarked) Gold.copy(alpha = 0.16f) else buttonBg,
+                            iconTint = if (bookmarked) Gold else titleColor.copy(alpha = 0.72f),
+                            contentDescription = "Bookmark",
+                            onClick = onBookmark
+                        )
 
-                            icon =
-
-                                if (bookmarked)
-                                    Icons.Default.Bookmark
-                                else
-                                    Icons.Outlined.BookmarkBorder,
-
-                            containerColor =
-
-                                if (bookmarked)
-                                    Gold.copy(alpha = 0.16f)
-                                else
-                                    buttonBg,
-
-                            iconTint =
-
-                                if (bookmarked)
-                                    Gold
-                                else
-                                    titleColor.copy(alpha = 0.72f),
-
-                            contentDescription =
-                                "Bookmark",
-
-                            onClick =
-                                onBookmark
+                        MiniPlayerIconButton(
+                            icon = if (isMuted) Icons.Default.VolumeOff else Icons.Default.VolumeUp,
+                            containerColor = if (isMuted) Gold.copy(alpha = 0.16f) else buttonBg,
+                            iconTint = if (isMuted) Gold else titleColor.copy(alpha = 0.72f),
+                            contentDescription = "Mute Toggle",
+                            onClick = onMuteToggle
                         )
                     }
                 }

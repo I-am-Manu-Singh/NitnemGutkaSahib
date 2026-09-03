@@ -159,34 +159,53 @@ suspend fun addListeningMinutes(
             )
     }
 }
+    suspend fun recordDailyAppOpen() {
+        val today = LocalDate.now().toString()
+        context.analyticsDataStore.edit { prefs ->
+            val current = prefs[ANALYTICS_KEY]
+            val state = if (current == null) {
+                AnalyticsState()
+            } else {
+                runCatching {
+                    json.decodeFromString<AnalyticsState>(current)
+                }.getOrDefault(AnalyticsState())
+            }
+
+            val existing = state.history.firstOrNull { it.date == today }
+            if (existing == null) {
+                val updatedDay = DailyProgress(
+                    date = today,
+                    completedBanis = emptySet(),
+                    readingMinutes = 0,
+                    listeningMinutes = 0
+                )
+                val updatedHistory = state.history.filterNot { it.date == today } + updatedDay
+                prefs[ANALYTICS_KEY] = json.encodeToString(
+                    AnalyticsState(history = updatedHistory)
+                )
+            }
+        }
+    }
+
     suspend fun markCompleted(
-
         baniId: String,
-
         readingMinutes: Int
     ) {
-
         val today =
             LocalDate.now().toString()
 
         context.analyticsDataStore.edit { prefs ->
-
             val current =
                 prefs[ANALYTICS_KEY]
 
             val state =
                 if (current == null) {
-
                     AnalyticsState()
-
                 } else {
-
                     runCatching {
-
                         json.decodeFromString<
                             AnalyticsState
                         >(current)
-
                     }.getOrDefault(
                         AnalyticsState()
                     )
@@ -198,29 +217,20 @@ suspend fun addListeningMinutes(
                 }
 
             val updatedDay =
-
                 if (existing != null) {
-
                     existing.copy(
-
                         completedBanis =
                             existing.completedBanis +
                                 baniId,
-
                         readingMinutes =
                             existing.readingMinutes +
                                 readingMinutes
                     )
-
                 } else {
-
                     DailyProgress(
-
                         date = today,
-
                         completedBanis =
                             setOf(baniId),
-
                         readingMinutes =
                             readingMinutes
                     )
@@ -233,9 +243,7 @@ suspend fun addListeningMinutes(
                     } + updatedDay
 
             prefs[ANALYTICS_KEY] =
-
                 json.encodeToString(
-
                     AnalyticsState(
                         history =
                             updatedHistory
@@ -247,31 +255,26 @@ suspend fun addListeningMinutes(
     fun calculateCurrentStreak(
         history: List<DailyProgress>
     ): Int {
-
         val sortedDates =
             history.map {
                 LocalDate.parse(it.date)
-            }.sortedDescending()
+            }.distinct().sortedDescending()
 
         if (sortedDates.isEmpty()) {
             return 0
         }
 
         var streak = 0
-        var expected =
-            LocalDate.now()
+        val today = LocalDate.now()
+        
+        // If today is in the records, count starting from today; otherwise starting from yesterday
+        var expected = if (sortedDates.contains(today)) today else today.minusDays(1)
 
         for (date in sortedDates) {
-
             if (date == expected) {
-
                 streak++
-
-                expected =
-                    expected.minusDays(1)
-
-            } else {
-
+                expected = expected.minusDays(1)
+            } else if (date.isBefore(expected)) {
                 break
             }
         }
@@ -293,6 +296,20 @@ suspend fun addListeningMinutes(
 
             date.month == now.month &&
                 date.year == now.year
+        }
+    }
+
+    fun weeklyCompletedDays(
+        history: List<DailyProgress>
+    ): Int {
+        val now = LocalDate.now()
+        val dayOfWeek = now.dayOfWeek.value
+        val monday = now.minusDays((dayOfWeek - 1).toLong())
+        return history.count { progress ->
+            runCatching {
+                val date = LocalDate.parse(progress.date)
+                (date == monday || date.isAfter(monday)) && (date == now || date.isBefore(now)) && progress.completedBanis.isNotEmpty()
+            }.getOrDefault(false)
         }
     }
 

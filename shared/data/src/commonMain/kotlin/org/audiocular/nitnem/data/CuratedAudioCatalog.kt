@@ -413,15 +413,38 @@ object CuratedAudioCatalog {
             )
         ),
 
-        /*
+       /*
          * ─────────────────────────────────────────
-         * EMPTY
+         * DAKHNI OONKAR
          * ─────────────────────────────────────────
          */
-
-        "dakhni-oankar" to emptyList(),
-
-        "sidha-gosht" to emptyList(),
+"dakhni-oankar" to listOf(
+    AudioTrack(
+        id = "curated_dakhni_pishora",
+        title = "Dakhni Oankar",
+        artist = "Pishora Singh",
+        durationMs = 1868530L,
+        license = "Public Domain",
+        attribution = "Bundled Asset",
+        remoteUrl = "raw/dakhni_oankar_pishora_singh"
+    )
+),
+   /*
+         * ─────────────────────────────────────────
+         * SIDHA GOSHT
+         * ─────────────────────────────────────────
+         */
+"sidha-gosht" to listOf(
+    AudioTrack(
+        id = "curated_sidha_pishora",
+        title = "Sidha Gosht",
+        artist = "Pishora Singh",
+        durationMs = 1876920L,
+        license = "Public Domain",
+        attribution = "Bundled Asset",
+        remoteUrl = "raw/sidha_gosht_pishora_singh"
+    )
+),
 
         /*
          * ─────────────────────────────────────────
