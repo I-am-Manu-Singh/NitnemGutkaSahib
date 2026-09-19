@@ -40,6 +40,21 @@ class SettingsRepository(
                 "accent_style"
             )
 
+        private val GURMUKHI_FONT =
+            stringPreferencesKey(
+                "gurmukhi_font"
+            )
+
+        private val ROMAN_FONT =
+            stringPreferencesKey(
+                "roman_font"
+            )
+
+        private val DEVANAGARI_FONT =
+            stringPreferencesKey(
+                "devanagari_font"
+            )
+
         /*
          * READING
          */
@@ -244,14 +259,7 @@ class SettingsRepository(
                 "display_language"
             )
 
-        /*
-         * ACCESSIBILITY
-         */
-
-        private val ELDER_MODE =
-            booleanPreferencesKey(
-                "elder_mode"
-            )
+      
 
         /*
          * COLORS
@@ -347,13 +355,21 @@ class SettingsRepository(
                     prefs[AMOLED_MODE]
                         ?: false,
 
-                elderMode =
-                    prefs[ELDER_MODE]
-                        ?: false,
-
                 accentStyle =
                     prefs[ACCENT_STYLE]
                         ?: AccentStyle.Emerald.name,
+
+                gurmukhiFont =
+                    prefs[GURMUKHI_FONT]
+                        ?: "Default",
+
+                romanFont =
+                    prefs[ROMAN_FONT]
+                        ?: "Default",
+
+                devanagariFont =
+                    prefs[DEVANAGARI_FONT]
+                        ?: "Default",
 
                 /*
                  * READING
@@ -630,6 +646,24 @@ class SettingsRepository(
                     AccentStyle.Emerald
                 )
             }
+    }
+
+    suspend fun setGurmukhiFont(font: String) {
+        context.settingsDataStore.edit {
+            it[GURMUKHI_FONT] = font
+        }
+    }
+
+    suspend fun setRomanFont(font: String) {
+        context.settingsDataStore.edit {
+            it[ROMAN_FONT] = font
+        }
+    }
+
+    suspend fun setDevanagariFont(font: String) {
+        context.settingsDataStore.edit {
+            it[DEVANAGARI_FONT] = font
+        }
     }
 
     /*
@@ -955,17 +989,7 @@ class SettingsRepository(
         }
     }
 
-    /*
-     * ACCESSIBILITY
-     */
 
-    suspend fun setElderMode(enabled: Boolean) {
-
-        context.settingsDataStore.edit {
-
-            it[ELDER_MODE] = enabled
-        }
-    }
 
     /*
      * COLORS

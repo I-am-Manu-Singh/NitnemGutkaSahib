@@ -257,6 +257,24 @@ class AndroidNotificationBridge(
                 "Listen",
                 listenPendingIntent
             )
+
+            // 15-Minute Snooze Alarm Action
+            val snoozeIntent = Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                putExtra("action", "SNOOZE_15")
+                putExtra("bani_id", baniId)
+            }
+            val snoozePendingIntent = PendingIntent.getActivity(
+                context,
+                "snooze_${baniId}".hashCode(),
+                snoozeIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            builder.addAction(
+                com.creativeblisslabs.nitnemguktasteek.R.drawable.ic_notification,
+                "Snooze (15m)",
+                snoozePendingIntent
+            )
         }
 
         notificationManager.notify(

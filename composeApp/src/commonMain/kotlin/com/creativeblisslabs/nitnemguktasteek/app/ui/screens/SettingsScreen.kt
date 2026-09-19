@@ -42,6 +42,11 @@ import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.foundation.Image
+import androidx.compose.material.icons.filled.Lock
+import nitnemguktasteek.composeapp.generated.resources.Res
+import nitnemguktasteek.composeapp.generated.resources.ic_creative_bliss_labs_logo
+import org.jetbrains.compose.resources.painterResource
 import com.creativeblisslabs.nitnemguktasteek.data.CuratedAudioCatalog
 import com.creativeblisslabs.nitnemguktasteek.app.sync.TimingLoader
 import com.creativeblisslabs.nitnemguktasteek.utils.timingKey
@@ -198,11 +203,14 @@ var selectedReminder by remember {
     )
 
     var selectedCategory by remember(initialCategory) {
-
         mutableStateOf(
             initialCategory
         )
     }
+
+    val billingManager = remember { com.creativeblisslabs.nitnemguktasteek.domain.billing.PremiumBillingManager.instance }
+    val billingState by billingManager.billingState.collectAsState()
+    var showSevaModal by remember { mutableStateOf(false) }
 
     var readingSubTab by remember { mutableStateOf(0) }
 
@@ -601,7 +609,7 @@ if (selectedCategory == SettingsCategory.Reading) {
     item {
         PrimaryTabRow(
             selectedTabIndex = readingSubTab,
-            modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
+            modifier = Modifier.fillMaxWidth().padding(bottom = 2.dp),
             containerColor = Color.Transparent
         ) {
             subTabs.forEachIndexed { index, title ->
@@ -642,6 +650,18 @@ if (selectedCategory == SettingsCategory.Reading) {
 
                     Spacer(Modifier.height(20.dp))
 
+                    TierAwareFontSelector(
+                        title = "Gurmukhi Script Calligraphy".translate(uiState.displayLanguage),
+                        options = com.creativeblisslabs.nitnemguktasteek.app.ui.theme.GurmukhiFontFamily.values().map {
+                            Triple(it.name, it.title, it.requiredTier)
+                        },
+                        selectedKey = uiState.gurmukhiFont,
+                        onSelect = { viewModel.setGurmukhiFont(it) },
+                        onLockedClicked = { showSevaModal = true }
+                    )
+
+                    Spacer(Modifier.height(20.dp))
+
                     SettingsToggleGroup(
                         title = "Style".translate(uiState.displayLanguage),
                         items = readingStyleItems
@@ -673,6 +693,30 @@ if (selectedCategory == SettingsCategory.Reading) {
                     ) {
                         viewModel.setRomanTransliterationFontSize(it)
                     }
+
+                    Spacer(Modifier.height(16.dp))
+
+                    TierAwareFontSelector(
+                        title = "Roman Transliteration Font".translate(uiState.displayLanguage),
+                        options = com.creativeblisslabs.nitnemguktasteek.app.ui.theme.RomanFontFamily.values().map {
+                            Triple(it.name, it.title, it.requiredTier)
+                        },
+                        selectedKey = uiState.romanFont,
+                        onSelect = { viewModel.setRomanFont(it) },
+                        onLockedClicked = { showSevaModal = true }
+                    )
+
+                    Spacer(Modifier.height(16.dp))
+
+                    TierAwareFontSelector(
+                        title = "Devanagari (Hindi) Font".translate(uiState.displayLanguage),
+                        options = com.creativeblisslabs.nitnemguktasteek.app.ui.theme.DevanagariFontFamily.values().map {
+                            Triple(it.name, it.title, it.requiredTier)
+                        },
+                        selectedKey = uiState.devanagariFont,
+                        onSelect = { viewModel.setDevanagariFont(it) },
+                        onLockedClicked = { showSevaModal = true }
+                    )
 
                     Spacer(Modifier.height(16.dp))
 
@@ -904,23 +948,39 @@ if (selectedCategory == SettingsCategory.Reading) {
                             }
                         }
                     }
+                     val isPremiumOrTrial = billingState.isPremium || billingState.isLifetimePatron || billingState.isTrialActive
+
                      Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable {
-                                viewModel.setFullScreenReadingMode(!uiState.fullScreenReadingMode)
+                                if (isPremiumOrTrial) {
+                                    viewModel.setFullScreenReadingMode(!uiState.fullScreenReadingMode)
+                                } else {
+                                    showSevaModal = true
+                                }
                             }
                             .padding(horizontal = 4.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Full-Screen Reading Mode".translate(uiState.displayLanguage),
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 14.sp,
-                                color = TextPrimary
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text(
+                                    text = "Full-Screen Reading Mode".translate(uiState.displayLanguage),
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 14.sp,
+                                    color = TextPrimary
+                                )
+                                if (!isPremiumOrTrial) {
+                                    Icon(
+                                        imageVector = Icons.Default.Lock,
+                                        contentDescription = null,
+                                        tint = Gold,
+                                        modifier = Modifier.size(13.dp)
+                                    )
+                                }
+                            }
                             Text(
                                 text = "Auto-hides top header & bottom bar after 4s in Gurbani & Meditation views. Tap screen to restore.".translate(uiState.displayLanguage),
                                 fontSize = 12.sp,
@@ -931,8 +991,14 @@ if (selectedCategory == SettingsCategory.Reading) {
                         }
                         Spacer(Modifier.width(8.dp))
                         Switch(
-                            checked = uiState.fullScreenReadingMode,
-                            onCheckedChange = { viewModel.setFullScreenReadingMode(it) },
+                            checked = uiState.fullScreenReadingMode && isPremiumOrTrial,
+                            onCheckedChange = {
+                                if (isPremiumOrTrial) {
+                                    viewModel.setFullScreenReadingMode(it)
+                                } else {
+                                    showSevaModal = true
+                                }
+                            },
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = Accent,
                                 checkedTrackColor = Accent.copy(alpha = 0.3f)
@@ -949,19 +1015,33 @@ if (selectedCategory == SettingsCategory.Reading) {
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable {
-                                viewModel.setBlackAndWhiteAodMode(!uiState.blackAndWhiteAodMode)
+                                if (isPremiumOrTrial) {
+                                    viewModel.setBlackAndWhiteAodMode(!uiState.blackAndWhiteAodMode)
+                                } else {
+                                    showSevaModal = true
+                                }
                             }
                             .padding(horizontal = 4.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Black & White AOD Mode".translate(uiState.displayLanguage),
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 14.sp,
-                                color = TextPrimary
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text(
+                                    text = "Black & White AOD Mode".translate(uiState.displayLanguage),
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 14.sp,
+                                    color = TextPrimary
+                                )
+                                if (!isPremiumOrTrial) {
+                                    Icon(
+                                        imageVector = Icons.Default.Lock,
+                                        contentDescription = null,
+                                        tint = Gold,
+                                        modifier = Modifier.size(13.dp)
+                                    )
+                                }
+                            }
                             Text(
                                 text = "Ultra-minimalist AOD mode: pure black background, crisp white text, and only essential elements on screen in Reading & Meditation views.".translate(uiState.displayLanguage),
                                 fontSize = 12.sp,
@@ -972,8 +1052,14 @@ if (selectedCategory == SettingsCategory.Reading) {
                         }
                         Spacer(Modifier.width(8.dp))
                         Switch(
-                            checked = uiState.blackAndWhiteAodMode,
-                            onCheckedChange = { viewModel.setBlackAndWhiteAodMode(it) },
+                            checked = uiState.blackAndWhiteAodMode && isPremiumOrTrial,
+                            onCheckedChange = {
+                                if (isPremiumOrTrial) {
+                                    viewModel.setBlackAndWhiteAodMode(it)
+                                } else {
+                                    showSevaModal = true
+                                }
+                            },
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = Accent,
                                 checkedTrackColor = Accent.copy(alpha = 0.3f)
@@ -1038,17 +1124,6 @@ if (selectedCategory == SettingsCategory.Reading) {
                         }
                     }
 
-                    SettingsSwitchRow(
-
-                        title =
-                            "Elder Mode".translate(uiState.displayLanguage),
-
-                        checked =
-                            uiState.elderMode
-                    ) {
-
-                        viewModel.setElderMode(it)
-                    }
                 }
             }
 
@@ -1064,16 +1139,14 @@ if (selectedCategory == SettingsCategory.Reading) {
                 ) {
 
                   AccentThemeSelector(
-
-    displayLanguage = uiState.displayLanguage,
-
-    onAccentSelected = { style ->
-
+                        displayLanguage = uiState.displayLanguage,
+                        onAccentSelected = { style ->
                             scope.launch {
-
-                                repository
-                                    .setAccentStyle(style)
+                                repository.setAccentStyle(style)
                             }
+                        },
+                        onLockedThemeClicked = {
+                            showSevaModal = true
                         }
                     )
                 }
@@ -1217,11 +1290,14 @@ if (
     selectedCategory ==
     SettingsCategory.Reminders
 ) {
- item {
+
+
+            item {
                 SettingsSectionCard(
-                    title = "Account & Sync".translate(uiState.displayLanguage),
-                    icon = Icons.Default.CheckCircle
+                    title = "Privacy & Data Management".translate(uiState.displayLanguage),
+                    icon = Icons.Default.Warning
                 ) {
+
                      val user = authLauncher.currentUser
                      Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                          if (user != null) {
@@ -1270,30 +1346,12 @@ if (
                                  color = MaterialTheme.colorScheme.onSurfaceVariant
                              )
 
-                             // Google Sign-in Card
-                             Surface(
-                                 shape = RoundedCornerShape(16.dp),
-                                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                 border = BorderStroke(1.dp, Gold.copy(alpha = 0.4f)),
-                                 modifier = Modifier.fillMaxWidth()
-                             ) {
+                         
                                  Row(
                                      modifier = Modifier.padding(16.dp),
                                      verticalAlignment = Alignment.CenterVertically,
-                                     horizontalArrangement = Arrangement.SpaceBetween
+                                     horizontalArrangement = Arrangement.Center
                                  ) {
-                                     Column(modifier = Modifier.weight(1f)) {
-                                         Text(
-                                             text = "Cloud Sync & Leaderboards".translate(uiState.displayLanguage),
-                                             fontWeight = FontWeight.Bold,
-                                             fontSize = 14.sp
-                                         )
-                                         Text(
-                                             text = "Sign in to backup streaks and join family groups.".translate(uiState.displayLanguage),
-                                             fontSize = 12.sp,
-                                             color = MaterialTheme.colorScheme.onSurfaceVariant
-                                         )
-                                     }
 
                                      Button(
                                          onClick = {
@@ -1307,17 +1365,8 @@ if (
                                          Text("Sign In".translate(uiState.displayLanguage), fontWeight = FontWeight.Bold, fontSize = 13.sp)
                                      }
                                  }
-                             }
                          }
                      }
-                }
-            }
-
-            item {
-                SettingsSectionCard(
-                    title = "Privacy & Data Management".translate(uiState.displayLanguage),
-                    icon = Icons.Default.Warning
-                ) {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         // Clear app cache & data
                         OutlinedButton(
@@ -1439,6 +1488,125 @@ if (
     }
 }
 
+        if (
+            selectedCategory ==
+            SettingsCategory.Supporter
+        ) {
+            item {
+                Surface(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 14.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    color = Gold.copy(alpha = 0.12f),
+                    border = BorderStroke(1.dp, Gold.copy(alpha = 0.35f))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = Gold.copy(alpha = 0.22f),
+                            modifier = Modifier.size(48.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text("ੴ", color = Gold, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = if (billingState.isLifetimePatron) "Lifetime Founding Patron 🪯".translate(uiState.displayLanguage)
+                                else if (billingState.isPremium) "Gurbani Premium Active ⭐".translate(uiState.displayLanguage)
+                                else if (billingState.isSupporter) "Seva Supporter ❤️".translate(uiState.displayLanguage)
+                                else if (billingState.isTrialActive) "Free Preview Active (${billingState.trialDaysRemaining}d left)".translate(uiState.displayLanguage)
+                                else "Free & Ad-Free Forever".translate(uiState.displayLanguage),
+                                fontWeight = FontWeight.ExtraBold,
+                                fontSize = 15.sp,
+                                color = Gold
+                            )
+                            Text(
+                                text = "All Banis, Steek & Audio streams are 100% free. Voluntary tiers support hosting and continuous development.".translate(uiState.displayLanguage),
+                                fontSize = 12.sp,
+                                color = TextPrimary.copy(alpha = 0.85f),
+                                lineHeight = 16.sp
+                            )
+                        }
+                    }
+                }
+            }
+
+            items(billingState.availablePlans) { plan ->
+                val isUnlocked = (plan.id == "supporter_49" && billingState.isSupporter) ||
+                        (plan.entitlement == "premium" && billingState.isPremium) ||
+                        (plan.id == "lifetime_199" && billingState.isLifetimePatron)
+
+                Surface(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp),
+                    shape = RoundedCornerShape(18.dp),
+                    color = if (isUnlocked) Gold.copy(alpha = 0.15f) else SurfaceColor,
+                    border = BorderStroke(1.dp, if (isUnlocked) Gold else Accent.copy(alpha = 0.15f))
+                ) {
+                    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Text(text = plan.title, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = TextPrimary)
+                                    if (plan.badge != null) {
+                                        Surface(
+                                            shape = RoundedCornerShape(6.dp),
+                                            color = Gold.copy(alpha = 0.2f),
+                                            border = BorderStroke(0.5.dp, Gold)
+                                        ) {
+                                            Text(text = plan.badge, fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = Gold, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                                        }
+                                    }
+                                }
+                                Text(text = plan.description, fontSize = 11.5.sp, color = TextPrimary.copy(alpha = 0.7f))
+                            }
+
+                            Text(
+                                text = "${plan.formattedPriceInr} / ${plan.formattedPriceUsd}",
+                                fontWeight = FontWeight.Black,
+                                fontSize = 15.sp,
+                                color = Gold
+                            )
+                        }
+
+                        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            plan.features.forEach { feat ->
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null, tint = Gold, modifier = Modifier.size(13.dp))
+                                    Text(text = feat, fontSize = 11.5.sp, color = TextPrimary.copy(alpha = 0.85f))
+                                }
+                            }
+                        }
+
+                        Button(
+                            onClick = {
+                                billingManager.simulatePurchase(plan)
+                                Toast.makeText(context, "${plan.title} Unlocked!".translate(uiState.displayLanguage), Toast.LENGTH_SHORT).show()
+                            },
+                            enabled = !isUnlocked,
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Color.Black),
+                            modifier = Modifier.fillMaxWidth().height(42.dp)
+                        ) {
+                            Text(
+                                text = if (isUnlocked) "Active / Unlocked".translate(uiState.displayLanguage) else "Support with ${plan.formattedPriceInr}",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
       
         if (
             selectedCategory ==
@@ -1470,21 +1638,159 @@ if (
                     }
 
                     /*
-                     * SELECT BANI
+                     * SELECT BANI & DOWNLOAD ALL
                      */
-                    Text(
-                        text = "Select Bani"
-                            .translate(
-                                uiState.displayLanguage
-                            ),
-                        color = Accent,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
-                        modifier = Modifier.padding(
-                            top = 4.dp,
-                            bottom = 6.dp
+                    var isDownloadingAllCatalog by remember { mutableStateOf(false) }
+                    var downloadAllProgress by remember { mutableStateOf(0f) }
+                    var downloadAllCurrentTitle by remember { mutableStateOf("") }
+                    var downloadAllCompletedCount by remember { mutableStateOf(0) }
+                    var downloadAllTotalCount by remember { mutableStateOf(0) }
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 4.dp, bottom = 6.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Select Bani"
+                                .translate(
+                                    uiState.displayLanguage
+                                ),
+                            color = Accent,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
                         )
-                    )
+
+                        // Download ALL audios and timings across all banis button
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = Accent.copy(alpha = if (isDownloadingAllCatalog) 0.25f else 0.12f),
+                            border = BorderStroke(1.dp, Accent.copy(alpha = 0.35f)),
+                            onClick = {
+                                if (!isDownloadingAllCatalog && !isMultiDownloading) {
+                                    isDownloadingAllCatalog = true
+                                    scope.launch {
+                                        val allAssets = com.creativeblisslabs.nitnemguktasteek.data.RemoteAssetCatalog.ALL_REMOTE_ASSETS
+                                        downloadAllTotalCount = allAssets.size
+                                        downloadAllCompletedCount = 0
+                                        allAssets.forEachIndexed { index, asset ->
+                                            downloadAllCurrentTitle = "${asset.baniTitle} (${asset.artist})"
+                                            downloadAllProgress = index.toFloat() / allAssets.size.coerceAtLeast(1)
+                                            try {
+                                                val audioUrl = asset.rawAudioUrl()
+                                                audioController.downloadAudio(
+                                                    baniId = asset.baniId,
+                                                    remoteUrl = audioUrl,
+                                                    trackId = asset.id
+                                                )
+                                                val tKey = asset.toAudioTrack().timingKey()
+                                                if (tKey.isNotBlank()) {
+                                                    TimingLoader.downloadTimingFile(
+                                                        context = context,
+                                                        timingKey = tKey
+                                                    )
+                                                }
+                                            } catch (e: Exception) {
+                                                e.printStackTrace()
+                                            }
+                                            downloadAllCompletedCount = index + 1
+                                            downloadAllProgress = (index + 1).toFloat() / allAssets.size.coerceAtLeast(1)
+                                            tracksRefreshTrigger++
+                                        }
+                                        isDownloadingAllCatalog = false
+                                        Toast.makeText(context, "All Audios & Timings Downloaded!".translate(uiState.displayLanguage), Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(5.dp)
+                            ) {
+                                if (isDownloadingAllCatalog) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(12.dp),
+                                        color = Accent,
+                                        strokeWidth = 1.5.dp
+                                    )
+                                } else {
+                                    Icon(
+                                        imageVector = Icons.Default.Download,
+                                        contentDescription = null,
+                                        tint = Accent,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                }
+                                Text(
+                                    text = if (isDownloadingAllCatalog) "Downloading All...".translate(uiState.displayLanguage) else "Download Everything".translate(uiState.displayLanguage),
+                                    color = Accent,
+                                    fontSize = 11.5.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+
+                    // Download Everything Sequential Progress Bar
+                    if (isDownloadingAllCatalog) {
+                        Surface(
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            color = Accent.copy(alpha = 0.12f),
+                            border = BorderStroke(1.dp, Accent.copy(alpha = 0.25f))
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                        modifier = Modifier.weight(1f, fill = false)
+                                    ) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(12.dp),
+                                            color = Accent,
+                                            strokeWidth = 1.5.dp
+                                        )
+                                        Text(
+                                            text = "Downloading ($downloadAllCompletedCount/$downloadAllTotalCount): $downloadAllCurrentTitle",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = TextPrimary,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                    Text(
+                                        text = "${(downloadAllProgress * 100).toInt()}%",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Accent,
+                                        modifier = Modifier.padding(start = 6.dp)
+                                    )
+                                }
+
+                                LinearProgressIndicator(
+                                    progress = { downloadAllProgress },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(3.5.dp)
+                                        .clip(RoundedCornerShape(2.dp)),
+                                    color = Accent,
+                                    trackColor = Accent.copy(alpha = 0.2f)
+                                )
+                            }
+                        }
+                    }
 
                     Box(
                         modifier = Modifier.fillMaxWidth()
@@ -1587,25 +1893,13 @@ if (
                         }
                     }
 
-                    HorizontalDivider(
-                        modifier = Modifier.padding(
-                            vertical = 14.dp
-                        ),
-                        color = Accent.copy(
-                            alpha = 0.08f
-                        )
-                    )
+            
 
                     /*
                      * MULTISELECT DOWNLOAD ACTION CARD
                      */
                     if (undownloadedTracks.isNotEmpty()) {
-                        Surface(
-                            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
-                            shape = RoundedCornerShape(14.dp),
-                            color = Accent.copy(alpha = 0.08f),
-                            border = BorderStroke(1.dp, Accent.copy(alpha = 0.2f))
-                        ) {
+                    
                             Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
@@ -1753,7 +2047,6 @@ if (
                                         }
                                     }
                                 }
-                            }
                         }
                     }
 
@@ -1946,6 +2239,186 @@ if (
                                 }
                             } else null
                         )
+                    }
+                }
+            }
+        }
+
+        if (
+            selectedCategory ==
+            SettingsCategory.About
+        ) {
+            item {
+                SettingsSectionCard(
+                    title = "About Nitnem & Creative Bliss Labs".translate(uiState.displayLanguage),
+                    icon = Icons.Default.CheckCircle
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(20.dp),
+                            color = SurfaceColor,
+                            border = BorderStroke(1.dp, Gold.copy(alpha = 0.35f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(18.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = if (AppTheme.themeMode == ThemeMode.Light) Color.White else SurfaceColor,
+                                    shadowElevation = if (AppTheme.themeMode == ThemeMode.Light) 2.dp else 0.dp,
+                                    border = BorderStroke(1.dp, Gold.copy(alpha = 0.35f)),
+                                    modifier = Modifier.size(96.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                                        Image(
+                                            painter = painterResource(Res.drawable.ic_creative_bliss_labs_logo),
+                                            contentDescription = "Creative Bliss Labs Logo",
+                                            modifier = Modifier.size(80.dp).clip(CircleShape)
+                                        )
+                                    }
+                                }
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        text = "Nitnem Gutka Steek",
+                                        fontWeight = FontWeight.ExtraBold,
+                                        fontSize = 18.sp,
+                                        color = TextPrimary
+                                    )
+                                    Text(
+                                        text = "Developed with Seva by Creative Bliss Labs",
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = Accent
+                                    )
+                                    Text(
+                                        text = "Ideas • Products • A Better Everyday",
+                                        fontSize = 11.5.sp,
+                                        color = TextSecondary,
+                                        modifier = Modifier.padding(top = 2.dp)
+                                    )
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = Gold.copy(alpha = 0.15f),
+                                        border = BorderStroke(0.5.dp, Gold),
+                                        modifier = Modifier.padding(top = 6.dp)
+                                    ) {
+                                        Text(
+                                            text = "Version 1.0.0 • 100% Free & Ad-Free Forever".translate(uiState.displayLanguage),
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Gold,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        Text(
+                            text = "Our mission is to deliver an ad-free, high-quality, authentic Gurbani recitation and learning experience to the global Sikh Sangat with accurate Gurmukhi, Steek translations, Roman transliterations, and synchronized audio recitations.",
+                            fontSize = 12.5.sp,
+                            color = TextPrimary.copy(alpha = 0.85f),
+                            lineHeight = 18.sp
+                        )
+                    }
+                }
+            }
+
+            item {
+                SettingsSectionCard(
+                    title = "Support, Feedback & Reporting".translate(uiState.displayLanguage),
+                    icon = Icons.Default.Share
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        // Report Mistake in Gurbani
+                        OutlinedButton(
+                            onClick = {
+                                val intent = android.content.Intent(android.content.Intent.ACTION_SENDTO).apply {
+                                    data = android.net.Uri.parse("mailto:support@creativeblisslabs.com")
+                                    putExtra(android.content.Intent.EXTRA_SUBJECT, "Gurbani Text/Steek Correction Report - Nitnem App")
+                                    putExtra(android.content.Intent.EXTRA_TEXT, "Bani Name:\nLine / Ang:\nObserved Text:\nSuggested Correction:\nSource Reference:\n")
+                                }
+                                try {
+                                    context.startActivity(intent)
+                                } catch (e: Exception) {
+                                    Toast.makeText(context, "Email: support@creativeblisslabs.com", Toast.LENGTH_LONG).show()
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Gold),
+                            border = BorderStroke(1.dp, Gold.copy(alpha = 0.4f))
+                        ) {
+                            Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Report Mistake in Gurbani / Steek".translate(uiState.displayLanguage), fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                        }
+
+                        // Request New Feature
+                        OutlinedButton(
+                            onClick = {
+                                val intent = android.content.Intent(android.content.Intent.ACTION_SENDTO).apply {
+                                    data = android.net.Uri.parse("mailto:contact@creativeblisslabs.com")
+                                    putExtra(android.content.Intent.EXTRA_SUBJECT, "Feature Request - Nitnem Gutka Steek")
+                                    putExtra(android.content.Intent.EXTRA_TEXT, "Hello Creative Bliss Labs team,\n\nI would love to suggest the following feature or idea for Nitnem App:\n\n")
+                                }
+                                try {
+                                    context.startActivity(intent)
+                                } catch (e: Exception) {
+                                    Toast.makeText(context, "Email: contact@creativeblisslabs.com", Toast.LENGTH_LONG).show()
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp)
+                        ) {
+                            Icon(Icons.Default.Code, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Suggest New Feature / Audio Track".translate(uiState.displayLanguage), fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                        }
+
+                        // Visit Website / Developer Contact
+                        OutlinedButton(
+                            onClick = {
+                                val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://creativeblisslabs.com"))
+                                try {
+                                    context.startActivity(intent)
+                                } catch (e: Exception) {
+                                    Toast.makeText(context, "Visit: https://creativeblisslabs.com", Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp)
+                        ) {
+                            Text("🌐 Visit Website: creativeblisslabs.com", fontWeight = FontWeight.Medium, fontSize = 13.sp)
+                        }
+
+                        // Share App with Sangat
+                        Button(
+                            onClick = {
+                                val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                    type = "text/plain"
+                                    putExtra(android.content.Intent.EXTRA_SUBJECT, "Nitnem Gutka Steek App")
+                                    putExtra(android.content.Intent.EXTRA_TEXT, "Waheguru Ji Ka Khalsa, Waheguru Ji Ki Fateh! 🙏\n\nRead and listen to Nitnem Gurbani with translations, audio sync and beautiful themes: https://play.google.com/store/apps/details?id=com.creativeblisslabs.nitnemguktasteek")
+                                }
+                                context.startActivity(android.content.Intent.createChooser(shareIntent, "Share Nitnem App with Sangat"))
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Color.Black)
+                        ) {
+                            Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Share App with Family & Friends".translate(uiState.displayLanguage), fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        }
                     }
                 }
             }
@@ -2207,6 +2680,13 @@ if (
             audioController = audioController,
             displayLanguage = uiState.displayLanguage,
             onDismiss = { showAssetDownloaderDialog = false }
+        )
+    }
+
+    if (showSevaModal) {
+        com.creativeblisslabs.nitnemguktasteek.app.ui.components.SevaSupporterModalSheet(
+            displayLanguage = uiState.displayLanguage,
+            onDismiss = { showSevaModal = false }
         )
     }
     }

@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Warning
 import com.creativeblisslabs.nitnemguktasteek.data.CuratedAudioCatalog
@@ -82,9 +83,13 @@ enum class SettingsCategory(
 
     Appearance("Appearance"),
 
-    Reminders("Reminders"),
+    Reminders("Account & Data"),
 
     Audio("Manage Audio"),
+
+    Supporter("Seva & Tiers"),
+
+    About("About & Feedback"),
 }
 
 @Composable
@@ -653,158 +658,131 @@ fun ReminderRow(
 }
 
 /*
- * ACCENT SELECTOR
+ * ACCENT SELECTOR (TIER-AWARE)
  */
 
 @Composable
 fun AccentThemeSelector(
-
     displayLanguage: DisplayLanguage,
-
-    onAccentSelected:
-        (AccentStyle) -> Unit
-){
+    onAccentSelected: (AccentStyle) -> Unit,
+    onLockedThemeClicked: () -> Unit = {}
+) {
+    val billingManager = remember { com.creativeblisslabs.nitnemguktasteek.domain.billing.PremiumBillingManager.instance }
+    val billingState by billingManager.billingState.collectAsState()
 
     val accentOptions = remember {
-
         listOf(
-
-            AccentStyle.Emerald  to "Emerald",
-
+            // Free Tiers
+            AccentStyle.Emerald to "Emerald",
             AccentStyle.Sapphire to "Sapphire",
+            AccentStyle.Royal to "Royal",
+            AccentStyle.Sunset to "Sunset",
 
-            AccentStyle.Royal    to "Royal",
+            // Supporter Tiers
+            AccentStyle.GoldenAnand to "Golden Anand",
+            AccentStyle.SimranRose to "Simran Rose",
 
-            AccentStyle.Sunset   to "Sunset"
+            // Premium Tiers
+            AccentStyle.CosmicIndigo to "Cosmic Indigo",
+            AccentStyle.MidnightGold to "Midnight Gold",
+            AccentStyle.ForestSilence to "Forest Silence",
+            AccentStyle.SaffronSunset to "Saffron Sunset",
+            AccentStyle.CelestialViolet to "Celestial Violet",
+            AccentStyle.SlateMinimal to "Slate Minimal"
         )
     }
 
     val previewColors = remember {
-
         mapOf(
-
-            AccentStyle.Emerald
-                    to Color(0xFF44D7B6),
-
-            AccentStyle.Sapphire
-                    to Color(0xFF5DAEFF),
-
-            AccentStyle.Royal
-                    to Color(0xFF9B7CFF),
-
-            AccentStyle.Sunset
-                    to Color(0xFFFF9E57)
+            AccentStyle.Emerald to Color(0xFF44D7B6),
+            AccentStyle.Sapphire to Color(0xFF5DAEFF),
+            AccentStyle.Royal to Color(0xFF9B7CFF),
+            AccentStyle.Sunset to Color(0xFFFF9E57),
+            AccentStyle.GoldenAnand to Color(0xFFFFD700),
+            AccentStyle.SimranRose to Color(0xFFFF7597),
+            AccentStyle.CosmicIndigo to Color(0xFF818CF8),
+            AccentStyle.MidnightGold to Color(0xFFFFDF73),
+            AccentStyle.ForestSilence to Color(0xFF34D399),
+            AccentStyle.SaffronSunset to Color(0xFFFB923C),
+            AccentStyle.CelestialViolet to Color(0xFFA78BFA),
+            AccentStyle.SlateMinimal to Color(0xFF94A3B8)
         )
     }
 
     LazyRow(
-
-        horizontalArrangement =
-            Arrangement.spacedBy(14.dp)
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp)
     ) {
-
         items(accentOptions) { (style, label) ->
+            val selected = AppTheme.accentStyle == style
+            val color = previewColors[style] ?: Accent
 
-            val selected =
-                AppTheme.accentStyle == style
-
-            val color =
-                previewColors[style]
-                    ?: Accent
+            val isUnlocked = when (style.requiredTier) {
+                "supporter" -> billingState.isSupporter || billingState.isPremium || billingState.isLifetimePatron || billingState.isTrialActive
+                "premium" -> billingState.isPremium || billingState.isLifetimePatron || billingState.isTrialActive
+                else -> true
+            }
 
             Column(
-
-                horizontalAlignment =
-                    Alignment.CenterHorizontally
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-
                 Surface(
-
-                    modifier =
-                        Modifier.size(
-
-                            if (selected)
-                                56.dp
-                            else
-                                46.dp
-                        ),
-
+                    modifier = Modifier.size(if (selected) 56.dp else 46.dp),
                     shape = CircleShape,
-
                     color = color,
-
                     border = BorderStroke(
-
-                        if (selected)
-                            3.dp
-                        else
-                            1.dp,
-
-                        if (selected)
-                            color.copy(alpha = 0.5f)
-                        else
-                            Color.Transparent
+                        if (selected) 3.dp else 1.dp,
+                        if (selected) color.copy(alpha = 0.6f) else Color.Transparent
                     ),
-
                     onClick = {
-
-                        onAccentSelected(style)
+                        if (isUnlocked) {
+                            onAccentSelected(style)
+                        } else {
+                            onLockedThemeClicked()
+                        }
                     }
                 ) {
-
-                    AnimatedVisibility(
-                        visible = selected
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier.fillMaxSize()
                     ) {
-
-                        Box(
-                            contentAlignment =
-                                Alignment.Center
-                        ) {
-
+                        if (!isUnlocked) {
                             Icon(
-
-                                imageVector =
-                                    Icons.Default.Check,
-
-                                contentDescription =
-                                    null,
-
+                                imageVector = Icons.Default.Lock,
+                                contentDescription = "Locked",
+                                tint = Color.White.copy(alpha = 0.9f),
+                                modifier = Modifier.size(16.dp)
+                            )
+                        } else if (selected) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = "Selected",
                                 tint = Color.White,
-
-                                modifier =
-                                    Modifier.size(20.dp)
+                                modifier = Modifier.size(20.dp)
                             )
                         }
                     }
                 }
 
-                Spacer(
-                    modifier =
-                        Modifier.height(8.dp)
-                )
+                Spacer(Modifier.height(6.dp))
 
-                Text(
-
-                    text = label.translate(displayLanguage),
-
-                    fontSize = 11.sp,
-
-                    color =
-
-                        if (selected)
-                            color
-                        else
-                            TextPrimary.copy(
-                                alpha = 0.5f
-                            ),
-
-                    fontWeight =
-
-                        if (selected)
-                            FontWeight.Bold
-                        else
-                            FontWeight.Normal
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    Text(
+                        text = label.translate(displayLanguage),
+                        fontSize = 11.sp,
+                        color = if (selected) color else TextPrimary.copy(alpha = if (isUnlocked) 0.8f else 0.45f),
+                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
+                    )
+                    if (style.requiredTier != "free") {
+                        Text(
+                            text = if (style.requiredTier == "supporter") "❤️" else "⭐",
+                            fontSize = 8.sp
+                        )
+                    }
+                }
             }
         }
     }
@@ -1066,6 +1044,29 @@ fun AudioTrackRow(
                     horizontalArrangement = Arrangement.spacedBy(5.dp),
                     modifier = Modifier.padding(top = 1.dp)
                 ) {
+                    if (showDelete) {
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = Color(0xFF4CAF50).copy(alpha = 0.14f),
+                            border = BorderStroke(0.6.dp, Color(0xFF4CAF50).copy(alpha = 0.4f))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(3.dp)
+                            ) {
+                                Icon(Icons.Default.CheckCircle, contentDescription = "Downloaded", tint = Color(0xFF4CAF50), modifier = Modifier.size(11.dp))
+                                Text(
+                                    text = "Downloaded",
+                                    fontSize = 9.5.sp,
+                                    color = Color(0xFF4CAF50),
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1
+                                )
+                            }
+                        }
+                    }
+
                     if (!audioFileName.isNullOrBlank()) {
                         val audioLabel = when {
                             audioFileName.endsWith(".opus", ignoreCase = true) -> "Opus Audio"
@@ -1220,3 +1221,87 @@ data class Quintuple<A, B, C, D, E>(
     val fourth: D,
     val fifth: E
 )
+
+/*
+ * TIER-AWARE FONT SELECTOR
+ */
+@Composable
+fun TierAwareFontSelector(
+    title: String,
+    options: List<Triple<String, String, String>>, // (Key/Id, Display Title, Required Tier)
+    selectedKey: String,
+    onSelect: (String) -> Unit,
+    onLockedClicked: () -> Unit
+) {
+    val billingManager = remember { com.creativeblisslabs.nitnemguktasteek.domain.billing.PremiumBillingManager.instance }
+    val billingState by billingManager.billingState.collectAsState()
+
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = Primary,
+            modifier = Modifier.padding(bottom = 10.dp)
+        )
+
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            contentPadding = PaddingValues(horizontal = 2.dp, vertical = 4.dp)
+        ) {
+            items(options) { (key, name, tier) ->
+                val selected = selectedKey.equals(key, ignoreCase = true)
+                val isUnlocked = when (tier) {
+                    "supporter" -> billingState.isSupporter || billingState.isPremium || billingState.isLifetimePatron || billingState.isTrialActive
+                    "premium" -> billingState.isPremium || billingState.isLifetimePatron || billingState.isTrialActive
+                    else -> true
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = if (selected) Accent.copy(alpha = 0.16f) else MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.4f),
+                    border = BorderStroke(
+                        if (selected) 1.5.dp else 0.8.dp,
+                        if (selected) Accent else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f)
+                    ),
+                    modifier = Modifier.clickable {
+                        if (isUnlocked) {
+                            onSelect(key)
+                        } else {
+                            onLockedClicked()
+                        }
+                    }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = name,
+                            fontSize = 13.sp,
+                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                            color = if (selected) Accent else Primary
+                        )
+
+                        if (!isUnlocked) {
+                            Icon(
+                                imageVector = Icons.Default.Lock,
+                                contentDescription = "Locked",
+                                tint = Gold,
+                                modifier = Modifier.size(13.dp)
+                            )
+                        } else if (selected) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = "Selected",
+                                tint = Accent,
+                                modifier = Modifier.size(13.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

@@ -120,15 +120,26 @@ fun BaniCompletionMascotOverlay(
     val isLight = AppTheme.themeMode == ThemeMode.Light
     val isStreakCelebration = streakDayCount != null
 
-    // Determine highest completed step index (0 to 7)
-    val completedStepsCount = remember(completedBaniIds, completedTodayCount) {
-        val matchingInDaily = DAILY_NITNEM_STEPS.count { it.id in completedBaniIds }
+    // Helper function to check if a step is completed
+    fun isStepCompleted(stepId: String): Boolean {
+        return stepId in completedBaniIds ||
+                stepId.replace("-", "_") in completedBaniIds ||
+                stepId.replace("_", "-") in completedBaniIds ||
+                (stepId == "benti-chaupai-sahib" && ("chaupai-sahib" in completedBaniIds || "chaupai_sahib" in completedBaniIds)) ||
+                (stepId == "anand-sahib" && ("anand_sahib" in completedBaniIds || "anand_sahib_short" in completedBaniIds))
+    }
+
+    // Total actual completed banis
+    val actualCompletedCount = remember(completedBaniIds, completedTodayCount) {
+        val matchingInDaily = DAILY_NITNEM_STEPS.count { isStepCompleted(it.id) }
         if (matchingInDaily > 0) matchingInDaily else completedTodayCount.coerceIn(0, 7)
     }
 
+    // Determine target index for flying mascot (0 = start, 7 = finished)
+    val completedStepsCount = actualCompletedCount
     val isAllNitnemDone = completedStepsCount >= 7
 
-    // Animate mascot step position smoothly along track
+    // Animate mascot step position smoothly along track (0.0 to 7.0)
     val animatedMascotStep by animateFloatAsState(
         targetValue = completedStepsCount.toFloat(),
         animationSpec = spring(
@@ -345,7 +356,7 @@ fun BaniCompletionMascotOverlay(
                 Spacer(Modifier.height(8.dp))
 
                 // ── 3. FULL-SCREEN SNAKE & LADDER SPIRITUAL PROGRESS BOARD ──
-                Box(
+                BoxWithConstraints(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxWidth()
@@ -363,6 +374,9 @@ fun BaniCompletionMascotOverlay(
                         )
                         .padding(horizontal = 14.dp, vertical = 10.dp)
                 ) {
+                    val boardWidth = maxWidth
+                    val boardHeight = maxHeight
+
                     // Custom Canvas connecting path curves with ladders & gold particles
                     Canvas(modifier = Modifier.fillMaxSize()) {
                         val w = size.width
@@ -371,7 +385,7 @@ fun BaniCompletionMascotOverlay(
 
                         // Draw connecting curved tracks between stations (Step 1 at bottom to Step 7 at top)
                         for (i in 0 until 6) {
-                            val isStepDone = i < completedStepsCount
+                            val isStepDone = isStepCompleted(DAILY_NITNEM_STEPS[i].id)
                             val y1 = h - (i + 0.5f) * stepHeight
                             val y2 = h - (i + 1.5f) * stepHeight
 
@@ -387,14 +401,14 @@ fun BaniCompletionMascotOverlay(
                                 )
                             }
 
-                            // Track stroke
+                            // Track stroke (dotted/dashed for remaining, solid glow for completed)
                             drawPath(
                                 path = path,
-                                color = if (isStepDone) Gold.copy(alpha = 0.55f) else Color.Gray.copy(alpha = 0.18f),
+                                color = if (isStepDone) Gold.copy(alpha = 0.55f) else Color.Gray.copy(alpha = 0.22f),
                                 style = Stroke(
                                     width = 7.dp.toPx(),
                                     cap = StrokeCap.Round,
-                                    pathEffect = if (!isStepDone) PathEffect.dashPathEffect(floatArrayOf(16f, 16f), 0f) else null
+                                    pathEffect = if (!isStepDone) PathEffect.dashPathEffect(floatArrayOf(14f, 14f), 0f) else null
                                 )
                             )
 
@@ -403,7 +417,7 @@ fun BaniCompletionMascotOverlay(
                                     path = path,
                                     color = Accent,
                                     style = Stroke(
-                                        width = 3.dp.toPx(),
+                                        width = 3.5.dp.toPx(),
                                         cap = StrokeCap.Round
                                     )
                                 )
@@ -420,9 +434,9 @@ fun BaniCompletionMascotOverlay(
                     ) {
                         DAILY_NITNEM_STEPS.reversed().forEach { step ->
                             val stepIdx = step.targetIndex
-                            val isDone = step.id in completedBaniIds
+                            val isDone = isStepCompleted(step.id)
                             // Current target is the first incomplete step
-                            val nextTargetStep = DAILY_NITNEM_STEPS.firstOrNull { it.id !in completedBaniIds }
+                            val nextTargetStep = DAILY_NITNEM_STEPS.firstOrNull { !isStepCompleted(it.id) }
                             val isCurrentTarget = nextTargetStep?.id == step.id
                             val isAlignRight = (stepIdx % 2 == 0)
 
@@ -441,6 +455,53 @@ fun BaniCompletionMascotOverlay(
                                     displayLanguage = displayLanguage
                                 )
                             }
+                        }
+                    }
+
+                    // ── FLYING BANI MASCOT TRAVERSING THE DOTTED PATH ──
+                    if (boardHeight > 0.dp && boardWidth > 0.dp) {
+                        val currentStepProgress = animatedMascotStep.coerceIn(0f, 6.99f)
+                        val lowerIndex = currentStepProgress.toInt()
+                        val segmentT = (currentStepProgress - lowerIndex).coerceIn(0f, 1f)
+
+                        // Calculate mascot coordinates along the Bezier curve
+                        val stepHeightVal = boardHeight.value / 7f
+                        val y1 = boardHeight.value - (lowerIndex + 0.5f) * stepHeightVal
+                        val y2 = boardHeight.value - (lowerIndex + 1.5f) * stepHeightVal
+                        val x1 = if (lowerIndex % 2 == 0) boardWidth.value * 0.22f else boardWidth.value * 0.78f
+                        val x2 = if (lowerIndex % 2 == 0) boardWidth.value * 0.78f else boardWidth.value * 0.22f
+
+                        // Cubic Bezier calculation for smooth position along track
+                        val t = segmentT
+                        val oneMinusT = 1f - t
+                        val cy1 = y1 - (stepHeightVal * 0.45f)
+                        val cy2 = y2 + (stepHeightVal * 0.45f)
+
+                        val mascotX = (oneMinusT * oneMinusT * oneMinusT * x1) +
+                                (3 * oneMinusT * oneMinusT * t * x1) +
+                                (3 * oneMinusT * t * t * x2) +
+                                (t * t * t * x2)
+                        val mascotY = (oneMinusT * oneMinusT * oneMinusT * y1) +
+                                (3 * oneMinusT * oneMinusT * t * cy1) +
+                                (3 * oneMinusT * t * t * cy2) +
+                                (t * t * t * y2)
+
+                        Box(
+                            modifier = Modifier
+                                .offset(
+                                    x = (mascotX - 22).dp,
+                                    y = (mascotY - 22 + mascotFloatY).dp
+                                )
+                                .size(44.dp)
+                                .clip(CircleShape)
+                                .background(Gold.copy(alpha = 0.20f))
+                                .border(1.5.dp, Gold, CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            MascotBani(
+                                state = if (isAllNitnemDone) MascotState.Celebrating else MascotState.Walking,
+                                modifier = Modifier.size(38.dp)
+                            )
                         }
                     }
                 }

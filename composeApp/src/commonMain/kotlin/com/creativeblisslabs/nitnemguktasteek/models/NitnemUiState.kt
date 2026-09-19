@@ -161,11 +161,17 @@ val totalListeningMinutes: Int = 0,
     val amoledMode: Boolean =
         false,
 
-    val elderMode: Boolean =
-        false,
-
     val accentStyle: String =
         "Emerald",
+
+    val gurmukhiFont: String =
+        "Default",
+
+    val romanFont: String =
+        "Default",
+
+    val devanagariFont: String =
+        "Default",
 
     val gurmukhiColorMode: String =
         "default",

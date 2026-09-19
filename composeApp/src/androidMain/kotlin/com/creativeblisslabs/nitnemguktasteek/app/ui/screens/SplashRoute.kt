@@ -41,13 +41,15 @@ fun SplashRoute(
     onOpenHome: () -> Unit,
     onOpenOnboarding: () -> Unit
 ) {
-
     val context = LocalContext.current
+    var isFadingOut by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         val prefs = AppPreferences(context)
         val completed = prefs.onboardingCompleted.first()
-
+        delay(1600) // Allow graceful Ek Onkar glow & aura animation
+        isFadingOut = true
+        delay(300) // Smooth 300ms alpha fade-out transition
         if (completed) {
             onOpenHome()
         } else {
@@ -55,7 +57,15 @@ fun SplashRoute(
         }
     }
 
-    SplashScreen(displayLanguage)
+    val alphaAnim by animateFloatAsState(
+        targetValue = if (isFadingOut) 0f else 1f,
+        animationSpec = tween(durationMillis = 300, easing = LinearOutSlowInEasing),
+        label = "SplashFadeOut"
+    )
+
+    Box(modifier = Modifier.fillMaxSize().graphicsLayer { alpha = alphaAnim }) {
+        SplashScreen(displayLanguage)
+    }
 }
 
 @Composable

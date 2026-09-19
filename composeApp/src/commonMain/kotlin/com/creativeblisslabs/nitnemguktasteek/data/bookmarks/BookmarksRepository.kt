@@ -61,6 +61,12 @@ class BookmarksRepository(
         }
     }
 
+    suspend fun setBookmarks(bookmarks: Set<String>) {
+        context.bookmarksDataStore.edit {
+            it[BOOKMARKS] = bookmarks
+        }
+    }
+
     suspend fun clearBookmarks() {
 
         context.bookmarksDataStore.edit {

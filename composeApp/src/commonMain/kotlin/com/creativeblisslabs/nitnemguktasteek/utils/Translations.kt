@@ -807,10 +807,7 @@ object Translations {
             DisplayLanguage.Hindi to "डाउनलोड / आयातित ऑडियो फाइलें",
             DisplayLanguage.Punjabi to "ਡਾਊਨਲੋਡ / ਇੰਪੋਰਟ ਕੀਤੀਆਂ ਆਡੀਓ ਫਾਈਲਾਂ"
         ),
-        "Elder Mode" to mapOf(
-            DisplayLanguage.Hindi to "बुजुर्ग मोड",
-            DisplayLanguage.Punjabi to "ਬਜ਼ੁਰਗ ਮੋਡ"
-        ),
+      
         "Enable Notifications" to mapOf(
             DisplayLanguage.Hindi to "सूचनाएं सक्षम करें",
             DisplayLanguage.Punjabi to "ਨੋਟੀਫਿਕੇਸ਼ਨ ਚਾਲੂ ਕਰੋ"
@@ -1743,10 +1740,10 @@ object Translations {
     DisplayLanguage.Punjabi to "ਦਿੱਖ"
 ),
 
-"Reminders" to mapOf(
-    DisplayLanguage.English to "Reminders",
-    DisplayLanguage.Hindi to "रिमाइंडर",
-    DisplayLanguage.Punjabi to "ਯਾਦ ਦਿਹਾਣੀਆਂ"
+"Account & Data" to mapOf(
+    DisplayLanguage.English to "Account & Data",
+    DisplayLanguage.Hindi to "अकाउंट और डेटा",
+    DisplayLanguage.Punjabi to "ਅਕਾਊਂਟ ਅਤੇ ਡਾਟਾ"
 ),
 
 "Manage Audio" to mapOf(

@@ -23,6 +23,8 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
@@ -71,6 +73,8 @@ import androidx.compose.runtime.LaunchedEffect
 import com.creativeblisslabs.nitnemguktasteek.data.HukamnamaProvider
 import com.creativeblisslabs.nitnemguktasteek.audio.StreamAudioController
 import androidx.compose.ui.draw.scale
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -101,12 +105,20 @@ val context = LocalContext.current
 
     var showWeeklyStreakDialog by remember { mutableStateOf(false) }
     var showLeaderboardDialog by remember { mutableStateOf(false) }
-    var streakToDisplay by remember { mutableStateOf(0) }
+    var showSevaSheet by remember { mutableStateOf(false) }
+    var streakToDisplay by remember { mutableStateOf(state.streakDays) }
     val lastStreak = remember { mutableStateOf(state.streakDays) }
+    val scope = rememberCoroutineScope()
+    val localPrefs = remember { com.creativeblisslabs.nitnemguktasteek.data.preferences.LocalPreferences(context) }
 
+    // Check on first app open each day (or after onboarding) to present streak overview
     LaunchedEffect(state.streakDays) {
-        if (state.streakDays > lastStreak.value && state.streakDays > 0 && state.streakDays % 7 == 0) {
-            streakToDisplay = state.streakDays
+        streakToDisplay = state.streakDays
+        val hasShownToday = localPrefs.hasShownDailyStreakToday()
+        if (!hasShownToday) {
+            showWeeklyStreakDialog = true
+            localPrefs.markDailyStreakShownToday()
+        } else if (state.streakDays > lastStreak.value && state.streakDays > 0 && state.streakDays % 7 == 0) {
             showWeeklyStreakDialog = true
         }
         lastStreak.value = state.streakDays
@@ -283,7 +295,7 @@ Surface(
                 .padding(
                     start = 12.dp,
                     end = 12.dp,
-                    top = 4.dp,
+                    top = 12.dp,
                     bottom = 4.dp
                 ),
             verticalAlignment = Alignment.CenterVertically
@@ -333,7 +345,7 @@ Surface(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 modifier = Modifier
                     .clip(RoundedCornerShape(50))
-                    .background(Accent.copy(alpha = 0.08f))
+                    // .background(Accent.copy(alpha = 0.08f))
                     .padding(horizontal = 8.dp, vertical = 5.dp)
             ) {
                 // XP (Opens Real Sangat Leaderboard & Group Standings)
@@ -433,6 +445,41 @@ Surface(
                             contentDescription = "Show Leaderboard",
                             tint = Accent.copy(alpha = 0.85f),
                             modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+                var sevaScale by remember { mutableStateOf(1f) }
+                val animatedSevaScale by animateFloatAsState(
+                    targetValue = sevaScale,
+                    animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+                    label = "SevaScaleBounce"
+                )
+
+                Surface(
+                    onClick = {
+                        scope.launch {
+                            sevaScale = 0.82f
+                            delay(120)
+                            sevaScale = 1f
+                            showSevaSheet = true
+                        }
+                    },
+                    shape = CircleShape,
+                    color = Gold.copy(alpha = 0.16f),
+                    border = BorderStroke(1.dp, Gold.copy(alpha = 0.35f)),
+                    modifier = Modifier.scale(animatedSevaScale)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .semantics { contentDescription = "Seva & Patronage Tiers" },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "ੴ",
+                            color = Gold,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 }
@@ -1705,6 +1752,13 @@ showInfoSheet = false
             uiState = state,
             displayLanguage = state.displayLanguage,
             onDismiss = { showLeaderboardDialog = false }
+        )
+    }
+
+    if (showSevaSheet) {
+        com.creativeblisslabs.nitnemguktasteek.app.ui.components.SevaSupporterModalSheet(
+            displayLanguage = state.displayLanguage,
+            onDismiss = { showSevaSheet = false }
         )
     }
 }

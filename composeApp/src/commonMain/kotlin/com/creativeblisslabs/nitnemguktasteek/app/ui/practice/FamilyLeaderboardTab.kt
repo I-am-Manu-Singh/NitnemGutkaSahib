@@ -80,12 +80,17 @@ fun FamilyLeaderboardTab(
         )
     }
 
+    val dynamicDefaultCode = remember(authUser?.uid) {
+        val seed = authUser?.uid?.take(4)?.uppercase() ?: "SANGAT"
+        "SG-$seed"
+    }
+
     var currentGroup by remember {
         mutableStateOf(
             FamilyGroup(
                 groupId = "family_group_main",
                 groupName = "Family & Friends Sangat",
-                inviteCode = "NITNEM84",
+                inviteCode = dynamicDefaultCode,
                 groupTotalStreak = uiState.streakDays,
                 groupTotalXp = uiState.totalXp,
                 members = listOf(currentMember)

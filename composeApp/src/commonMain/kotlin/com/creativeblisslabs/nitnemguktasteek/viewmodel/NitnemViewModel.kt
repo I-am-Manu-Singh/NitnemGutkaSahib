@@ -345,9 +345,15 @@ sohilaTime =
                             amoledMode =
                                 settings.amoledMode,
 
-                            elderMode =
-                                settings.elderMode,
+                            gurmukhiFont =
+                                settings.gurmukhiFont,
 
+                            romanFont =
+                                settings.romanFont,
+
+                            devanagariFont =
+                                settings.devanagariFont,
+                         
                             /*
                              * PLAYBACK
                              */
@@ -1553,6 +1559,33 @@ fun setSohilaTime(time: String) {
         }
     }
 
+    fun setGurmukhiFont(font: String) {
+        _uiState.update {
+            it.copy(gurmukhiFont = font)
+        }
+        viewModelScope.launch {
+            settingsRepository.setGurmukhiFont(font)
+        }
+    }
+
+    fun setRomanFont(font: String) {
+        _uiState.update {
+            it.copy(romanFont = font)
+        }
+        viewModelScope.launch {
+            settingsRepository.setRomanFont(font)
+        }
+    }
+
+    fun setDevanagariFont(font: String) {
+        _uiState.update {
+            it.copy(devanagariFont = font)
+        }
+        viewModelScope.launch {
+            settingsRepository.setDevanagariFont(font)
+        }
+    }
+
     fun setWidgetTheme(
         theme: String
     ) {
@@ -1587,26 +1620,7 @@ fun setSohilaTime(time: String) {
         }
     }
 
-    fun setElderMode(
-        enabled: Boolean
-    ) {
-
-        _uiState.update {
-
-            it.copy(
-                elderMode =
-                    enabled
-            )
-        }
-
-        viewModelScope.launch {
-
-            settingsRepository
-                .setElderMode(
-                    enabled
-                )
-        }
-    }
+   
 
     /*
      * REMINDERS

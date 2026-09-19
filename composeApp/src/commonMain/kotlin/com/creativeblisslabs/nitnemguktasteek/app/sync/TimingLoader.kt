@@ -92,7 +92,9 @@ object TimingLoader {
             if (remoteAssetTrack?.timingFileName != null) {
                 remoteUrls.add(remoteAssetTrack.rawTimingUrl() ?: "")
             }
-            remoteUrls.add("https://raw.githubusercontent.com/I-am-Manu-Singh/NitnemGutkaSahib/main/composeApp/src/androidMain/assets/timing/${timingKey}_timing.json")
+            val timingBase = com.creativeblisslabs.nitnemguktasteek.data.RemoteAssetCatalog.GITHUB_RAW_TIMING_BASE
+            remoteUrls.add("${timingBase}${timingKey}_timing.json")
+            remoteUrls.add("${timingBase}${timingKey}.json")
 
             for (remoteTimingUrl in remoteUrls.filter { it.isNotBlank() }.distinct()) {
                 try {
@@ -185,7 +187,9 @@ object TimingLoader {
                 if (remoteAssetTrack?.timingFileName != null) {
                     remoteAssetTrack.rawTimingUrl()?.let { remoteUrls.add(it) }
                 }
-                remoteUrls.add("https://raw.githubusercontent.com/I-am-Manu-Singh/NitnemGutkaSahib/main/composeApp/src/androidMain/assets/timing/${timingKey}_timing.json")
+                val timingBase = com.creativeblisslabs.nitnemguktasteek.data.RemoteAssetCatalog.GITHUB_RAW_TIMING_BASE
+                remoteUrls.add("${timingBase}${timingKey}_timing.json")
+                remoteUrls.add("${timingBase}${timingKey}.json")
 
                 for (urlStr in remoteUrls.filter { it.isNotBlank() }.distinct()) {
                     try {

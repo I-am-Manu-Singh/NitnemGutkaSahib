@@ -6,11 +6,13 @@ import androidx.compose.animation.core.animateDpAsState
 import com.creativeblisslabs.nitnemguktasteek.app.models.ExperienceTab
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.*
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.*
@@ -32,6 +34,7 @@ import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.PlayCircleFilled
 import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -92,6 +95,10 @@ import androidx.compose.ui.input.pointer.pointerInput
 
         var selectedMeaningLine by remember {
             mutableStateOf<BaniLine?>(null)
+        }
+
+        var showSearchModal by remember {
+            mutableStateOf(false)
         }
 
         val uiState by
@@ -264,31 +271,16 @@ import androidx.compose.ui.input.pointer.pointerInput
                         "timingKey=$timingKey, " +
                         "hasTimingFile=$hasTimingFile"
             )
-            val timings =
-                if (hasTimingFile) {
+            val timings = TimingLoader.loadTimings(
+                context,
+                timingKey
+            )
 
-                    val loaded =
-                        TimingLoader.loadTimings(
-                            context,
-                            timingKey
-                        )
-
-                    println(
-                        "TIMING LOAD -> " +
-                                "timingKey=$timingKey, " +
-                                "count=${loaded.size}"
-                    )
-
-                    loaded
-
-                } else {
-
-                    println(
-                        "TIMING LOAD -> NO TIMING FILE"
-                    )
-
-                    emptyList()
-                }
+            println(
+                "TIMING LOAD -> " +
+                        "timingKey=$timingKey, " +
+                        "count=${timings.size}"
+            )
 
             timingLoadState = timings.isNotEmpty()
 
@@ -600,6 +592,21 @@ import androidx.compose.ui.input.pointer.pointerInput
                 blackAndWhiteAodMode =
                     uiState.blackAndWhiteAodMode,
 
+                gurmukhiFont =
+                    runCatching {
+                        com.creativeblisslabs.nitnemguktasteek.app.ui.theme.GurmukhiFontFamily.valueOf(uiState.gurmukhiFont)
+                    }.getOrDefault(com.creativeblisslabs.nitnemguktasteek.app.ui.theme.GurmukhiFontFamily.Default),
+
+                romanFont =
+                    runCatching {
+                        com.creativeblisslabs.nitnemguktasteek.app.ui.theme.RomanFontFamily.valueOf(uiState.romanFont)
+                    }.getOrDefault(com.creativeblisslabs.nitnemguktasteek.app.ui.theme.RomanFontFamily.Default),
+
+                devanagariFont =
+                    runCatching {
+                        com.creativeblisslabs.nitnemguktasteek.app.ui.theme.DevanagariFontFamily.valueOf(uiState.devanagariFont)
+                    }.getOrDefault(com.creativeblisslabs.nitnemguktasteek.app.ui.theme.DevanagariFontFamily.Default),
+
                 displayLanguage =
                     uiState.displayLanguage
             )
@@ -859,16 +866,39 @@ import androidx.compose.ui.input.pointer.pointerInput
         var showLocalChrome by remember { mutableStateOf(true) }
         var localInteractionTick by remember { mutableStateOf(0) }
         val isImmersiveMode = uiState.fullScreenReadingMode || uiState.blackAndWhiteAodMode
+        val isScrolling by remember { derivedStateOf { lazyListState.isScrollInProgress } }
 
-        LaunchedEffect(isImmersiveMode, localInteractionTick) {
+        LaunchedEffect(isImmersiveMode, localInteractionTick, isScrolling) {
             if (isImmersiveMode) {
                 showLocalChrome = true
-                delay(4_000L)
-                showLocalChrome = false
+                if (!isScrolling) {
+                    delay(3_500L)
+                    showLocalChrome = false
+                }
             } else {
                 showLocalChrome = true
             }
         }
+
+        val infiniteTransition = rememberInfiniteTransition(label = "exp_particles_ambient")
+        val particlePulse by infiniteTransition.animateFloat(
+            initialValue = 0.8f,
+            targetValue = 1.25f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(3600, easing = EaseInOutSine),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "pulse_anim"
+        )
+        val particleFloatOffset by infiniteTransition.animateFloat(
+            initialValue = -12f,
+            targetValue = 12f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(4500, easing = EaseInOutSine),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "float_anim"
+        )
 
         Scaffold(
 
@@ -884,6 +914,40 @@ import androidx.compose.ui.input.pointer.pointerInput
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
+            // Dynamic subtle floating spiritual particles in background
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val w = size.width
+                val h = size.height
+                val particleColor = Gold.copy(alpha = if (uiState.blackAndWhiteAodMode) 0.04f else 0.12f)
+                val glowColor = Gold.copy(alpha = if (uiState.blackAndWhiteAodMode) 0.02f else 0.06f)
+
+                val points = listOf(
+                    Offset(w * 0.15f, h * 0.20f + particleFloatOffset),
+                    Offset(w * 0.85f, h * 0.25f - particleFloatOffset),
+                    Offset(w * 0.25f, h * 0.50f + particleFloatOffset * 0.7f),
+                    Offset(w * 0.75f, h * 0.60f - particleFloatOffset * 0.7f),
+                    Offset(w * 0.10f, h * 0.80f + particleFloatOffset),
+                    Offset(w * 0.90f, h * 0.85f - particleFloatOffset),
+                    Offset(w * 0.50f, h * 0.35f + particleFloatOffset * 0.5f),
+                    Offset(w * 0.50f, h * 0.70f - particleFloatOffset * 0.5f)
+                )
+
+                val glowRadius = 18.dp.toPx() * particlePulse
+                val coreRadius = 2.5.dp.toPx()
+
+                for (pt in points) {
+                    drawCircle(
+                        color = glowColor,
+                        radius = glowRadius,
+                        center = pt
+                    )
+                    drawCircle(
+                        color = particleColor,
+                        radius = coreRadius,
+                        center = pt
+                    )
+                }
+            }
 
         /*
          * MAIN LAYOUT
@@ -964,39 +1028,43 @@ import androidx.compose.ui.input.pointer.pointerInput
                                 maxLines = 1
                             )
 
-                            Surface(
-
-                                shape = CircleShape,
-
-                                color =
-                                    Gold.copy(alpha = 0.12f)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-
-                                Box(
-
-                                    modifier = Modifier
-                                        .size(34.dp),
-
-                                    contentAlignment =
-                                        Alignment.Center
+                                Surface(
+                                    shape = CircleShape,
+                                    color = Gold.copy(alpha = 0.12f),
+                                    onClick = { showSearchModal = true }
                                 ) {
+                                    Box(
+                                        modifier = Modifier.size(34.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Search,
+                                            contentDescription = "Search",
+                                            tint = Gold,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                }
 
-                                    Icon(
-
-                                        imageVector =
-
-                                            if (compactHeader)
-                                                Icons.Default.KeyboardArrowDown
-                                            else
-                                                Icons.Default.KeyboardArrowUp,
-
-                                        contentDescription = null,
-
-                                        tint = Gold,
-
-                                        modifier =
-                                            Modifier.size(20.dp)
-                                    )
+                                Surface(
+                                    shape = CircleShape,
+                                    color = Gold.copy(alpha = 0.12f)
+                                ) {
+                                    Box(
+                                        modifier = Modifier.size(34.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = if (compactHeader) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp,
+                                            contentDescription = null,
+                                            tint = Gold,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -1607,6 +1675,26 @@ import androidx.compose.ui.input.pointer.pointerInput
             onToggleLarivaar = {
                 viewModel.setLarivaarMode(it)
             }
+        )
+    }
+
+    if (showSearchModal && bani != null) {
+        com.creativeblisslabs.nitnemguktasteek.app.ui.components.AdvancedGurbaniSearchModal(
+            lines = syncedLines.ifEmpty { bani.lines },
+            baniTitle = bani.title,
+            displayLanguage = uiState.displayLanguage,
+            onLineSelected = { line, index ->
+                pauseReadAutoScroll = true
+                if (hasTimings && line.endsAtMs > line.startsAtMs) {
+                    onSeekToLine(line)
+                }
+                scope.launch {
+                    lazyListState.animateScrollToItem(index, scrollOffset = scrollOffsetPx)
+                    delay(1200)
+                    pauseReadAutoScroll = false
+                }
+            },
+            onDismiss = { showSearchModal = false }
         )
     }
 }

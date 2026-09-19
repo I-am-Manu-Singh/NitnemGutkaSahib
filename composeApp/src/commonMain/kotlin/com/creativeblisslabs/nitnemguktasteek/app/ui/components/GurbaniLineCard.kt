@@ -109,6 +109,12 @@ data class GurbaniLineUiConfig(
 
     val blackAndWhiteAodMode: Boolean = false,
 
+    val gurmukhiFont: com.creativeblisslabs.nitnemguktasteek.app.ui.theme.GurmukhiFontFamily = com.creativeblisslabs.nitnemguktasteek.app.ui.theme.GurmukhiFontFamily.Default,
+
+    val romanFont: com.creativeblisslabs.nitnemguktasteek.app.ui.theme.RomanFontFamily = com.creativeblisslabs.nitnemguktasteek.app.ui.theme.RomanFontFamily.Default,
+
+    val devanagariFont: com.creativeblisslabs.nitnemguktasteek.app.ui.theme.DevanagariFontFamily = com.creativeblisslabs.nitnemguktasteek.app.ui.theme.DevanagariFontFamily.Default,
+
     val displayLanguage: com.creativeblisslabs.nitnemguktasteek.app.models.DisplayLanguage = com.creativeblisslabs.nitnemguktasteek.app.models.DisplayLanguage.English
 )
 
@@ -495,6 +501,7 @@ fun GurbaniLineCard(
                                     fontSize = config.gurmukhiFontSize.sp,
                                     lineHeight = config.lineSpacing.sp,
                                     fontWeight = if (config.boldGurmukhi) FontWeight.Bold else FontWeight.Medium,
+                                    fontFamily = com.creativeblisslabs.nitnemguktasteek.app.ui.theme.resolveGurmukhiFont(config.gurmukhiFont),
                                     modifier = Modifier
                                         .clickable(enabled = hasMeaning) {
                                             activePopupWordIndex = if (activePopupWordIndex == wordIndex) null else wordIndex
@@ -537,7 +544,8 @@ fun GurbaniLineCard(
                                                     text = rawWord,
                                                     color = colors.primary,
                                                     fontWeight = FontWeight.Bold,
-                                                    fontSize = (config.gurmukhiFontSize * 0.75f).sp
+                                                    fontSize = (config.gurmukhiFontSize * 0.75f).sp,
+                                                    fontFamily = com.creativeblisslabs.nitnemguktasteek.app.ui.theme.resolveGurmukhiFont(config.gurmukhiFont)
                                                 )
                                                 Spacer(Modifier.height(4.dp))
                                                 Text(
@@ -585,6 +593,9 @@ fun GurbaniLineCard(
                         lineSpacing =
                             config.lineSpacing,
 
+                        fontFamily =
+                            com.creativeblisslabs.nitnemguktasteek.app.ui.theme.resolveRomanFont(config.romanFont),
+
                         italic =
                             config
                                 .italicRomanTransliteration
@@ -618,7 +629,10 @@ fun GurbaniLineCard(
                             config.romanTransliterationFontSize,
 
                         lineSpacing =
-                            config.lineSpacing
+                            config.lineSpacing,
+
+                        fontFamily =
+                            com.creativeblisslabs.nitnemguktasteek.app.ui.theme.resolveDevanagariFont(config.devanagariFont)
                     )
 
                     // Hindi Teeka (Translation/Meaning)
@@ -636,7 +650,8 @@ fun GurbaniLineCard(
                             text = hindiTeeka,
                             color = devanagariTransliterationColor.copy(alpha = 0.85f),
                             fontSize = config.translationFontSize,
-                            lineSpacing = config.lineSpacing
+                            lineSpacing = config.lineSpacing,
+                            fontFamily = com.creativeblisslabs.nitnemguktasteek.app.ui.theme.resolveDevanagariFont(config.devanagariFont)
                         )
                     }
                 }
@@ -766,6 +781,8 @@ private fun MinimalTranslationSection(
 
     lineSpacing: Float,
 
+    fontFamily: androidx.compose.ui.text.font.FontFamily = androidx.compose.ui.text.font.FontFamily.Default,
+
     italic: Boolean = false
 ) {
 
@@ -804,6 +821,8 @@ private fun MinimalTranslationSection(
             fontSize = fontSize.sp,
 
             lineHeight = lineSpacing.sp,
+
+            fontFamily = fontFamily,
 
             fontStyle =
 

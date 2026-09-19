@@ -897,30 +897,10 @@ private fun createUri(
                     "EXO STATE -> ENDED"
                 )
 
-                stopPollingProgress()
-
-                /*
-                 * IGNORE TRANSIENT ENDED
-                 * DURING PREPARE
-                 */
-
-                if (
-                    player.playbackState ==
-                    Player.STATE_BUFFERING
-                ) {
-                    return
-                }
-                if (player.duration <= 0L) {
-                    return
-                }
-                _playback.update {
-
-                    it.copy(
-                        isLoading = false,
-                        isPlaying = false,
-                        isEnded = true
-                    )
-                }
+                // When user clicks Play in ENDED state, restart playback smoothly
+                player.seekTo(0L)
+                player.play()
+                startBackgroundPlayback()
             }
             else -> {
 
@@ -1008,13 +988,20 @@ private fun createUri(
         sleepTimerEndTimestamp = System.currentTimeMillis() + durationMs
 
         sleepTimerJob = scope.launch {
+            val initialVolume = player.volume.takeIf { it > 0f } ?: 1.0f
             while (isActive) {
                 val remaining = (sleepTimerEndTimestamp ?: break) - System.currentTimeMillis()
                 if (remaining <= 0L) {
                     _playback.update { it.copy(sleepTimerRemainingMs = 0L) }
                     pause()
+                    player.volume = initialVolume
                     sleepTimerEndTimestamp = null
                     break
+                }
+                // Gentle 30-second volume fade-out curve before sleep timer expiration
+                if (remaining in 1L..30000L) {
+                    val fadeRatio = (remaining.toFloat() / 30000f).coerceIn(0f, 1f)
+                    player.volume = initialVolume * fadeRatio
                 }
                 _playback.update { it.copy(sleepTimerRemainingMs = remaining) }
                 delay(1000L)

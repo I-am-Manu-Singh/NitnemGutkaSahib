@@ -63,14 +63,13 @@ class PrayerReminderWorker(
                         .getDailyHukamnama(applicationContext)
 
                 val textLines = hukamnama.lines
-                    .take(5)
                     .map { it.gurmukhi }
                     .filter { it.isNotBlank() }
                     .joinToString("\n")
                 val displayMsg = if (textLines.isNotBlank()) textLines else "Start your morning with Gurbani."
 
                 bridge.sendReminderNotification(
-                    "Daily Hukamnama 🌅",
+                    "Daily Hukamnama Sahib 🌅",
                     displayMsg
                 )
 

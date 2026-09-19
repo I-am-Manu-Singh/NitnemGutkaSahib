@@ -2,6 +2,8 @@ package com.creativeblisslabs.nitnemguktasteek.app.ui.components
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -65,19 +67,20 @@ fun WeeklyStreakDialog(
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        containerColor = Color(0xFF1A1A1A),
-        dragHandle = { BottomSheetDefaults.DragHandle() }
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .padding(horizontal = 24.dp, vertical = 12.dp)
+        ModalBottomSheet(
+            onDismissRequest = onDismiss,
+            sheetState = sheetState,
+            containerColor = Color(0xFF1A1A1A),
+            dragHandle = { BottomSheetDefaults.DragHandle(color = Color.Gray) }
         ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Bottom,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 24.dp, vertical = 12.dp)
+            ) {
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier.size(160.dp)
@@ -101,7 +104,7 @@ fun WeeklyStreakDialog(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = "Weekly Streak!".translate(displayLanguage),
+                    text = if (streakDays >= 7) "Weekly Streak!".translate(displayLanguage) else "Daily Nitnem Streak".translate(displayLanguage),
                     color = Gold,
                     fontSize = 26.sp,
                     fontWeight = FontWeight.ExtraBold,
@@ -111,7 +114,7 @@ fun WeeklyStreakDialog(
                 Spacer(modifier = Modifier.height(6.dp))
 
                 Text(
-                    text = "You've stayed consistent for".translate(displayLanguage),
+                    text = if (streakDays > 0) "You've stayed consistent for".translate(displayLanguage) else "Start your spiritual streak today!".translate(displayLanguage),
                     color = Color.White.copy(alpha = 0.7f),
                     fontSize = 15.sp,
                     textAlign = TextAlign.Center

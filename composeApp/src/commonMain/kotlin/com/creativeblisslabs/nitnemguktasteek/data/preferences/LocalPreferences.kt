@@ -167,6 +167,25 @@ class LocalPreferences(
         }
 
     /*
+     * DAILY STREAK DISPLAY
+     */
+
+    suspend fun hasShownDailyStreakToday(): Boolean {
+        clearIfNewDay()
+        val streakShownKey = booleanPreferencesKey("daily_streak_shown")
+        return context.localDataStore.data.map {
+            it[streakShownKey] ?: false
+        }.first()
+    }
+
+    suspend fun markDailyStreakShownToday() {
+        val streakShownKey = booleanPreferencesKey("daily_streak_shown")
+        context.localDataStore.edit {
+            it[streakShownKey] = true
+        }
+    }
+
+    /*
      * RESET EACH DAY
      */
 
@@ -204,6 +223,12 @@ class LocalPreferences(
             it[WIDGET_COMPLETED] = 0
 
             it[WIDGET_TOTAL] = 7
+
+            /*
+             * RESET DAILY STREAK SHOWN
+             */
+            val streakShownKey = booleanPreferencesKey("daily_streak_shown")
+            it.remove(streakShownKey)
 
             /*
              * SAVE DATE

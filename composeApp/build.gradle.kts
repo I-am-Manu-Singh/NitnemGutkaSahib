@@ -115,12 +115,24 @@ android {
         }
     }
 
+    val envFile = rootProject.file(".env")
+    val envProps = Properties()
+    if (envFile.exists()) {
+        envFile.inputStream().use { envProps.load(it) }
+    }
+    val revenueCatApiKey = envProps.getProperty("REVENUECAT_GOOGLE_API_KEY") ?: ""
+
+    buildFeatures {
+        buildConfig = true
+    }
+
     defaultConfig {
         applicationId = "com.creativeblisslabs.nitnemguktasteek"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
         versionName = "0.1.0"
+        buildConfigField("String", "REVENUECAT_GOOGLE_API_KEY", "\"$revenueCatApiKey\"")
     }
 
     splits {
@@ -174,7 +186,7 @@ compose.desktop {
             packageName = "Nitnem Gutka Steek"
             packageVersion = "1.0.0"
             description = "A peaceful Nitnem companion for daily reading and listening."
-            vendor = "Audiocular"
+            vendor = "creativeblisslabs"
         }
     }
 }

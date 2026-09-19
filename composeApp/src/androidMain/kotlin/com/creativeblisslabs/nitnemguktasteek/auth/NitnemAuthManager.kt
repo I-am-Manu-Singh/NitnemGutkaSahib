@@ -249,6 +249,55 @@ object NitnemAuthManager {
         }
     }
 
+    /**
+     * Performs a bidirectional union-merge between local bookmarks and Firestore cloud bookmarks.
+     * Guarantees zero bookmark loss upon signing in on multiple devices.
+     */
+    suspend fun mergeAndSyncBookmarks(userId: String, localBookmarks: Set<String>): Set<String> = withContext(Dispatchers.IO) {
+        try {
+            val cloudBookmarks = fetchCloudBookmarks(userId) ?: emptySet()
+            val mergedBookmarks = localBookmarks + cloudBookmarks
+            if (mergedBookmarks != cloudBookmarks) {
+                val map = hashMapOf(
+                    "bookmarkedLineIds" to mergedBookmarks.toList(),
+                    "lastUpdatedTimestamp" to System.currentTimeMillis()
+                )
+                firestore.collection("users").document(userId).set(map, SetOptions.merge()).await()
+            }
+            mergedBookmarks
+        } catch (e: Exception) {
+            e.printStackTrace()
+            localBookmarks
+        }
+    }
+
+    suspend fun syncBookmarks(userId: String, bookmarkLineIds: Set<String>): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val map = hashMapOf(
+                "bookmarkedLineIds" to bookmarkLineIds.toList(),
+                "lastUpdatedTimestamp" to System.currentTimeMillis()
+            )
+            firestore.collection("users").document(userId).set(map, SetOptions.merge()).await()
+            true
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
+    }
+
+    suspend fun fetchCloudBookmarks(userId: String): Set<String>? = withContext(Dispatchers.IO) {
+        try {
+            val doc = firestore.collection("users").document(userId).get().await()
+            if (doc.exists()) {
+                val list = doc.get("bookmarkedLineIds") as? List<*>
+                list?.mapNotNull { it?.toString() }?.toSet()
+            } else null
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
     fun signOut() {
         auth.signOut()
     }

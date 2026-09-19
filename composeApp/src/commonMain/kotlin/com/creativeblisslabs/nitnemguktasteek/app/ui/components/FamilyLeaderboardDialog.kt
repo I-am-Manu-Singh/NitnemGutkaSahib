@@ -67,7 +67,15 @@ fun FamilyLeaderboardDialog(
         ?: authUser?.email?.substringBefore('@')?.replace(".", " ")?.replace("_", " ")?.split(" ")?.joinToString(" ") { it.replaceFirstChar { c -> c.titlecase() } }
         ?: "You"
 
-    val currentMember = remember(uiState.totalXp, uiState.streakDays, uiState.quizHighscore, uiState.totalListeningMinutes, userDisplayName, authUser?.uid) {
+    val billingManager = remember { com.creativeblisslabs.nitnemguktasteek.domain.billing.PremiumBillingManager.instance }
+    val billingState by billingManager.billingState.collectAsState()
+
+    val currentMember = remember(uiState.totalXp, uiState.streakDays, uiState.quizHighscore, uiState.totalListeningMinutes, userDisplayName, authUser?.uid, billingState) {
+        val userBadges = mutableListOf<String>()
+        if (billingState.isLifetimePatron) userBadges.add("lifetime_patron")
+        else if (billingState.isPremium) userBadges.add("premium_supporter")
+        else if (billingState.isSupporter) userBadges.add("seva_supporter")
+
         FamilyMemberProgress(
             userId = authUser?.uid ?: "user_me",
             username = authUser?.email?.substringBefore('@') ?: "",
@@ -80,6 +88,7 @@ fun FamilyLeaderboardDialog(
             completedBanisCount = uiState.completedBanis.size,
             completedBanisToday = uiState.completedBanis.toList(),
             quizScore = uiState.quizHighscore,
+            badges = userBadges,
             avatarMascotState = ""
         )
     }
@@ -104,6 +113,8 @@ fun FamilyLeaderboardDialog(
     var allGroups by remember { mutableStateOf<List<FamilyGroup>>(emptyList()) }
     var isLoadingGroups by remember { mutableStateOf(false) }
 
+    var hasLoadedInitialData by remember { mutableStateOf(false) }
+
     // Load actual real group data from repository & auto-join/sync
     LaunchedEffect(currentMember.userId, authUser?.uid, repository) {
         if (repository != null) {
@@ -114,10 +125,14 @@ fun FamilyLeaderboardDialog(
 
                 val realGroup = repository.getFamilyGroup("family_group_main")
                 if (realGroup != null && realGroup.members.isNotEmpty()) {
+                    // Filter out any stale anonymous 'user_me' or duplicate matching UIDs
                     val filteredMembers = realGroup.members.filterNot { 
-                        it.userId == currentMember.userId || (authUser?.uid != null && it.userId == "user_me") 
+                        it.userId == currentMember.userId || 
+                        it.userId == "user_me" ||
+                        (authUser?.uid != null && it.userId == authUser.uid) ||
+                        (authUser == null && it.displayName.equals("You", ignoreCase = true))
                     } + currentMember
-                    val updatedMembers = filteredMembers.sortedByDescending { it.xp }
+                    val updatedMembers = filteredMembers.distinctBy { it.userId }.sortedByDescending { it.xp }
                     currentGroup = realGroup.copy(
                         members = updatedMembers,
                         groupTotalXp = updatedMembers.sumOf { it.xp },
@@ -130,7 +145,10 @@ fun FamilyLeaderboardDialog(
                 e.printStackTrace()
             } finally {
                 isLoadingRealData = false
+                hasLoadedInitialData = true
             }
+        } else {
+            hasLoadedInitialData = true
         }
     }
 
@@ -188,16 +206,40 @@ fun FamilyLeaderboardDialog(
                     )
                 }
             ) { padding ->
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding)
-                        .padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                    contentPadding = PaddingValues(bottom = 32.dp, top = 8.dp)
-                ) {
-                    // ── TOP TAB SWITCHER: Family Members vs Group Rankings ──
-                    item {
+                if (!hasLoadedInitialData && isLoadingRealData) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(padding),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            CircularProgressIndicator(
+                                color = Gold,
+                                strokeWidth = 3.dp,
+                                modifier = Modifier.size(36.dp)
+                            )
+                            Text(
+                                text = "Loading Sangat Standings...".translate(displayLanguage),
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(padding)
+                            .padding(horizontal = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        contentPadding = PaddingValues(bottom = 32.dp, top = 8.dp)
+                    ) {
+                        // ── TOP TAB SWITCHER: Family Members vs Group Rankings ──
+                        item {
                         Surface(
                             shape = RoundedCornerShape(16.dp),
                             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
@@ -458,6 +500,52 @@ fun FamilyLeaderboardDialog(
                                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                                 )
                                             }
+                                            if (member.badges.contains("lifetime_patron")) {
+                                                Spacer(Modifier.width(4.dp))
+                                                Surface(
+                                                    shape = RoundedCornerShape(100.dp),
+                                                    color = Color(0xFFFFD700).copy(alpha = 0.2f),
+                                                    border = BorderStroke(0.8.dp, Color(0xFFFFD700))
+                                                ) {
+                                                    Text(
+                                                        text = "🪯 Lifetime",
+                                                        fontSize = 9.sp,
+                                                        fontWeight = FontWeight.ExtraBold,
+                                                        color = Color(0xFFFFD700),
+                                                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.5.dp)
+                                                    )
+                                                }
+                                            } else if (member.badges.contains("premium_supporter")) {
+                                                Spacer(Modifier.width(4.dp))
+                                                Surface(
+                                                    shape = RoundedCornerShape(100.dp),
+                                                    color = Color(0xFF64B5F6).copy(alpha = 0.2f),
+                                                    border = BorderStroke(0.8.dp, Color(0xFF64B5F6))
+                                                ) {
+                                                    Text(
+                                                        text = "⭐ Premium",
+                                                        fontSize = 9.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = Color(0xFF64B5F6),
+                                                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.5.dp)
+                                                    )
+                                                }
+                                            } else if (member.badges.contains("seva_supporter")) {
+                                                Spacer(Modifier.width(4.dp))
+                                                Surface(
+                                                    shape = RoundedCornerShape(100.dp),
+                                                    color = Color(0xFFFF8A80).copy(alpha = 0.2f),
+                                                    border = BorderStroke(0.8.dp, Color(0xFFFF8A80))
+                                                ) {
+                                                    Text(
+                                                        text = "❤️ Seva",
+                                                        fontSize = 9.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = Color(0xFFFF8A80),
+                                                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.5.dp)
+                                                    )
+                                                }
+                                            }
                                         }
 
                                         if (member.username.isNotBlank()) {
@@ -665,6 +753,7 @@ fun FamilyLeaderboardDialog(
                 }
             }
         }
+    }
     }
 
     // ── EDIT GROUP NAME DIALOG ─────────────────────────────────────────

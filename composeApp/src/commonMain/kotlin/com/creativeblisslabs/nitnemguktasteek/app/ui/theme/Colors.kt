@@ -45,15 +45,30 @@ enum class ThemeMode {
 }
 
 /*
- * ACCENT STYLES
+ * ACCENT STYLES & TIERS
  */
 
-enum class AccentStyle {
+enum class AccentStyle(
+    val title: String,
+    val requiredTier: String = "free" // "free", "supporter", "premium"
+) {
+    // Free Tier Themes
+    Emerald("Emerald", "free"),
+    Sapphire("Sapphire", "free"),
+    Royal("Royal", "free"),
+    Sunset("Sunset", "free"),
 
-    Emerald,
-    Sapphire,
-    Royal,
-    Sunset
+    // Supporter Tier Themes (❤️ Seva Supporter)
+    GoldenAnand("Golden Anand", "supporter"),
+    SimranRose("Simran Rose", "supporter"),
+
+    // Premium Tier Themes (⭐ Gurbani Premium / 🪯 Lifetime)
+    CosmicIndigo("Cosmic Indigo", "premium"),
+    MidnightGold("Midnight Gold", "premium"),
+    ForestSilence("Forest Silence", "premium"),
+    SaffronSunset("Saffron Sunset", "premium"),
+    CelestialViolet("Celestial Violet", "premium"),
+    SlateMinimal("Slate Minimal", "premium")
 }
 
 /*
@@ -104,18 +119,18 @@ object LightThemeColors : ThemeColors {
 
     override val accent: Color
         get() = when (AppTheme.accentStyle) {
-
-            AccentStyle.Emerald ->
-                Color(0xFF2C6E62)
-
-            AccentStyle.Sapphire ->
-                Color(0xFF2F6BCE)
-
-            AccentStyle.Royal ->
-                Color(0xFF7856D8)
-
-            AccentStyle.Sunset ->
-                Color(0xFFE67E3D)
+            AccentStyle.Emerald -> Color(0xFF2C6E62)
+            AccentStyle.Sapphire -> Color(0xFF2F6BCE)
+            AccentStyle.Royal -> Color(0xFF7856D8)
+            AccentStyle.Sunset -> Color(0xFFE67E3D)
+            AccentStyle.GoldenAnand -> Color(0xFFC99424)
+            AccentStyle.SimranRose -> Color(0xFFD84A75)
+            AccentStyle.CosmicIndigo -> Color(0xFF4338CA)
+            AccentStyle.MidnightGold -> Color(0xFFB8860B)
+            AccentStyle.ForestSilence -> Color(0xFF1B4D3E)
+            AccentStyle.SaffronSunset -> Color(0xFFEA580C)
+            AccentStyle.CelestialViolet -> Color(0xFF7C3AED)
+            AccentStyle.SlateMinimal -> Color(0xFF475569)
         }
 
     override val gold =
@@ -151,18 +166,18 @@ object DarkThemeColors : ThemeColors {
 
     override val accent: Color
         get() = when (AppTheme.accentStyle) {
-
-            AccentStyle.Emerald ->
-                Color(0xFF57C7A5)
-
-            AccentStyle.Sapphire ->
-                Color(0xFF63A8FF)
-
-            AccentStyle.Royal ->
-                Color(0xFFAD8CFF)
-
-            AccentStyle.Sunset ->
-                Color(0xFFFFB067)
+            AccentStyle.Emerald -> Color(0xFF57C7A5)
+            AccentStyle.Sapphire -> Color(0xFF63A8FF)
+            AccentStyle.Royal -> Color(0xFFAD8CFF)
+            AccentStyle.Sunset -> Color(0xFFFFB067)
+            AccentStyle.GoldenAnand -> Color(0xFFFFD700)
+            AccentStyle.SimranRose -> Color(0xFFFF7597)
+            AccentStyle.CosmicIndigo -> Color(0xFF818CF8)
+            AccentStyle.MidnightGold -> Color(0xFFFFDF73)
+            AccentStyle.ForestSilence -> Color(0xFF34D399)
+            AccentStyle.SaffronSunset -> Color(0xFFFB923C)
+            AccentStyle.CelestialViolet -> Color(0xFFA78BFA)
+            AccentStyle.SlateMinimal -> Color(0xFF94A3B8)
         }
 
     override val gold =
@@ -198,18 +213,18 @@ object AmoledThemeColors : ThemeColors {
 
     override val accent: Color
         get() = when (AppTheme.accentStyle) {
-
-            AccentStyle.Emerald ->
-                Color(0xFF44D7B6)
-
-            AccentStyle.Sapphire ->
-                Color(0xFF5DAEFF)
-
-            AccentStyle.Royal ->
-                Color(0xFF9B7CFF)
-
-            AccentStyle.Sunset ->
-                Color(0xFFFF9E57)
+            AccentStyle.Emerald -> Color(0xFF44D7B6)
+            AccentStyle.Sapphire -> Color(0xFF5DAEFF)
+            AccentStyle.Royal -> Color(0xFF9B7CFF)
+            AccentStyle.Sunset -> Color(0xFFFF9E57)
+            AccentStyle.GoldenAnand -> Color(0xFFFFE066)
+            AccentStyle.SimranRose -> Color(0xFFFF6584)
+            AccentStyle.CosmicIndigo -> Color(0xFF93A2FE)
+            AccentStyle.MidnightGold -> Color(0xFFFFEA79)
+            AccentStyle.ForestSilence -> Color(0xFF4ADE80)
+            AccentStyle.SaffronSunset -> Color(0xFFFDBA74)
+            AccentStyle.CelestialViolet -> Color(0xFFC4B5FD)
+            AccentStyle.SlateMinimal -> Color(0xFFCBD5E1)
         }
 
     override val gold =

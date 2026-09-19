@@ -1,52 +1,158 @@
 package com.creativeblisslabs.nitnemguktasteek
 
 import android.app.Application
+import android.content.pm.ApplicationInfo
 import android.util.Log
+
 import com.google.firebase.FirebaseApp
 import com.google.firebase.appcheck.FirebaseAppCheck
 import com.google.firebase.appcheck.debug.DebugAppCheckProviderFactory
 import com.google.firebase.appcheck.playintegrity.PlayIntegrityAppCheckProviderFactory
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FirebaseFirestoreSettings
+import com.creativeblisslabs.nitnemguktasteek.domain.billing.RevenueCatBillingManager
 
 /**
  * Main Application class for Nitnem Gutka Sahib.
- * Configures Firebase, Play Integrity API, and Firebase App Check attestation.
+ *
+ * Initializes:
+ * - Firebase
+ * - Firebase App Check
+ * - Firestore offline persistence
+ * - RevenueCat KMP Billing
  */
 class NitnemApplication : Application() {
 
     override fun onCreate() {
+
         super.onCreate()
+
+        initFirebase()
+
         initFirebaseAppCheck()
+
+        initFirestore()
+
+        initRevenueCat()
     }
 
-    /**
-     * Initializes Firebase App Check with Google Play Integrity in production,
-     * and DebugAppCheckProviderFactory during local debugging.
-     */
-    private fun initFirebaseAppCheck() {
+    private fun initRevenueCat() {
         try {
-            FirebaseApp.initializeApp(this)
-            val firebaseAppCheck = FirebaseAppCheck.getInstance()
-
-            val isDebug = (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
-            if (isDebug) {
-                // Debug provider for local emulator and development testing
-                firebaseAppCheck.installAppCheckProviderFactory(
-                    DebugAppCheckProviderFactory.getInstance()
-                )
-                Log.d(TAG, "Firebase App Check initialized with DebugAppCheckProviderFactory")
-            } else {
-                // Google Play Integrity API for release and production distribution
-                firebaseAppCheck.installAppCheckProviderFactory(
-                    PlayIntegrityAppCheckProviderFactory.getInstance()
-                )
-                Log.d(TAG, "Firebase App Check initialized with PlayIntegrityAppCheckProviderFactory")
-            }
+            val isDebug = (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+            RevenueCatBillingManager().initialize(debug = isDebug)
+            Log.d(TAG, "RevenueCat initialized successfully")
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to initialize Firebase App Check: ${e.message}", e)
+            Log.e(TAG, "Failed to initialize RevenueCat: ${e.message}", e)
+        }
+    }
+
+    private fun initFirebase() {
+
+        try {
+
+            FirebaseApp.initializeApp(this)
+
+            Log.d(
+                TAG,
+                "Firebase initialized successfully"
+            )
+
+        } catch (e: Exception) {
+
+            Log.e(
+                TAG,
+                "Failed to initialize Firebase: ${e.message}",
+                e
+            )
+        }
+    }
+
+    private fun initFirestore() {
+
+        try {
+
+            val firestore =
+                FirebaseFirestore.getInstance()
+
+            val settings =
+                FirebaseFirestoreSettings.Builder()
+                    .setPersistenceEnabled(true)
+                    .setCacheSizeBytes(
+                        100L * 1024L * 1024L
+                    )
+                    .build()
+
+            firestore.firestoreSettings =
+                settings
+
+            Log.d(
+                TAG,
+                "Firestore initialized with 100MB offline cache"
+            )
+
+        } catch (e: Exception) {
+
+            Log.e(
+                TAG,
+                "Failed to initialize Firestore: ${e.message}",
+                e
+            )
+        }
+    }
+
+    private fun initFirebaseAppCheck() {
+
+        try {
+
+            val firebaseAppCheck =
+                FirebaseAppCheck.getInstance()
+
+            val isDebug =
+                (
+                    applicationInfo.flags and
+                        ApplicationInfo.FLAG_DEBUGGABLE
+                    ) != 0
+
+            if (isDebug) {
+
+                firebaseAppCheck
+                    .installAppCheckProviderFactory(
+                        DebugAppCheckProviderFactory
+                            .getInstance()
+                    )
+
+                Log.d(
+                    TAG,
+                    "Firebase App Check: DEBUG provider"
+                )
+
+            } else {
+
+                firebaseAppCheck
+                    .installAppCheckProviderFactory(
+                        PlayIntegrityAppCheckProviderFactory
+                            .getInstance()
+                    )
+
+                Log.d(
+                    TAG,
+                    "Firebase App Check: Play Integrity"
+                )
+            }
+
+        } catch (e: Exception) {
+
+            Log.e(
+                TAG,
+                "Failed to initialize Firebase App Check: ${e.message}",
+                e
+            )
         }
     }
 
     companion object {
-        private const val TAG = "NitnemApplication"
+
+        private const val TAG =
+            "NitnemApplication"
     }
 }

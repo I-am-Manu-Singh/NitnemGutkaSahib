@@ -237,9 +237,27 @@ fun SimranAbhyasTab(
 
     val mantra = when {
         !running -> "Practice".translate(displayLanguage)
-        mode == SimranMode.SaasSaas -> if (breathingIn) "ਵਾਹਿ" else "ਗੁਰੂ"
-        mode == SimranMode.Mala -> "ਵਾਹਿਗੁਰੂ"
-        else -> "ਅਨਹਦੁ"
+        mode == SimranMode.SaasSaas -> {
+            when (displayLanguage) {
+                DisplayLanguage.English -> if (breathingIn) "Wahe" else "Guru"
+                DisplayLanguage.Hindi -> if (breathingIn) "वाहि" else "गुरू"
+                DisplayLanguage.Punjabi -> if (breathingIn) "ਵਾਹਿ" else "ਗੁਰੂ"
+            }
+        }
+        mode == SimranMode.Mala -> {
+            when (displayLanguage) {
+                DisplayLanguage.English -> "Waheguru"
+                DisplayLanguage.Hindi -> "वाहेगुरू"
+                DisplayLanguage.Punjabi -> "ਵਾਹਿਗੁਰੂ"
+            }
+        }
+        else -> {
+            when (displayLanguage) {
+                DisplayLanguage.English -> "Anhad"
+                DisplayLanguage.Hindi -> "अनहद"
+                DisplayLanguage.Punjabi -> "ਅਨਹਦੁ"
+            }
+        }
     }
 
     val breathingText = when {

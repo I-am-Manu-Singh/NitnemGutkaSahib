@@ -106,10 +106,12 @@ private fun buildQuestions(
         val actualAng = bani.ang.translate(displayLanguage)
         val angNum = bani.ang.toIntOrNull()
         val distractors = if (angNum != null) {
-            listOf(angNum + 5, angNum - 4, angNum + 12)
-                .map { it.coerceAtLeast(1).toString().translate(displayLanguage) }
+            listOf((angNum + 8).coerceAtMost(1430), (angNum - 6).coerceAtLeast(1), (angNum + 24).coerceAtMost(1430))
+                .map { it.toString().translate(displayLanguage) }
         } else {
-            listOf("1", "110", "1429").map { it.translate(displayLanguage) }
+            // Realistic randomized Angs from Sri Guru Granth Sahib Ji (1 to 1430)
+            listOf((1..300).random(), (301..800).random(), (801..1430).random())
+                .map { it.toString().translate(displayLanguage) }
         }
 
         questions.add(

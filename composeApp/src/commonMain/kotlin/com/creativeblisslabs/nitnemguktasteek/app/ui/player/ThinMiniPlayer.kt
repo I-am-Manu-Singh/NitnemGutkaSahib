@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.VolumeOff
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.Repeat
@@ -792,7 +794,7 @@ fun ThinMiniPlayer(
                         )
 
                         MiniPlayerIconButton(
-                            icon = if (isMuted) Icons.Default.VolumeOff else Icons.Default.VolumeUp,
+                            icon = if (isMuted) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
                             containerColor = if (isMuted) Gold.copy(alpha = 0.16f) else buttonBg,
                             iconTint = if (isMuted) Gold else titleColor.copy(alpha = 0.72f),
                             contentDescription = "Mute Toggle",

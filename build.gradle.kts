@@ -10,6 +10,16 @@ plugins {
 }
 
 subprojects {
+    configurations.all {
+        resolutionStrategy {
+            force("org.jetbrains.kotlin:kotlin-stdlib:2.1.10")
+            force("org.jetbrains.kotlin:kotlin-stdlib-jdk8:2.1.10")
+            force("org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.1.10")
+            force("org.jetbrains.kotlin:kotlin-stdlib-common:2.1.10")
+            force("org.jetbrains.kotlin:kotlin-reflect:2.1.10")
+        }
+    }
+
     plugins.withId("com.android.library") {
         extensions.configure<com.android.build.gradle.LibraryExtension>("android") {
             compileOptions {
@@ -19,3 +29,4 @@ subprojects {
         }
     }
 }
+
