@@ -9,10 +9,26 @@
       "client_info": {
         "mobilesdk_app_id": "1:752230736895:android:04a4fb65ef87189fcc7dca",
         "android_client_info": {
-          "package_name": "org.audiocular.nitnem"
+          "package_name": "com.creativeblisslabs.nitnemguktasteek"
         }
       },
       "oauth_client": [
+        {
+          "client_id": "752230736895-j9fp2b9g4cqc87e9tbupncn56osnkb84.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.creativeblisslabs.nitnemguktasteek",
+            "certificate_hash": "f189408e33b4441be1416da13e5dacf68add7367"
+          }
+        },
+        {
+          "client_id": "752230736895-mrgc2uo6qld89di6qgt801tami7852t7.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.creativeblisslabs.nitnemguktasteek",
+            "certificate_hash": "22948cece5f58357fc4161d0a6739447730ec546"
+          }
+        },
         {
           "client_id": "752230736895-mbdu13l4tfdtq9fg5q204vlihnonjffi.apps.googleusercontent.com",
           "client_type": 3

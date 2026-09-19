@@ -2,10 +2,21 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // User progress & profile
+    // User progress, profile & streak history
     match /users/{userId} {
       allow read: if true;
       allow write: if request.auth != null && request.auth.uid == userId || true;
+
+      match /daily_history/{dateId} {
+        allow read: if true;
+        allow write: if request.auth != null && request.auth.uid == userId || true;
+      }
+    }
+    
+    // Remote audio catalog for online streams & synced timings
+    match /audio_catalog/{trackId} {
+      allow read: if true;
+      allow write: if true; // Allows syncing remote catalog definitions
     }
     
     // Family groups and member leaderboards

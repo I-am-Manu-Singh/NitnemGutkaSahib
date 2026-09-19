@@ -26,7 +26,7 @@ kotlin {
 }
 
 android {
-    namespace = "org.audiocular.nitnem.gamification"
+    namespace = "com.creativeblisslabs.nitnemguktasteek.gamification"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
     defaultConfig {
         minSdk = libs.versions.android.minSdk.get().toInt()

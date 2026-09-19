@@ -1,4 +1,4 @@
-package org.audiocular.nitnem.analytics
+package com.creativeblisslabs.nitnemguktasteek.analytics
 
 sealed class AnalyticsEvent {
 

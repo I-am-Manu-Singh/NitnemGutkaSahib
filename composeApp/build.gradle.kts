@@ -49,6 +49,9 @@ kotlin {
             implementation(libs.firebase.crashlytics)
             implementation(libs.firebase.firestore)
             implementation("com.google.firebase:firebase-auth-ktx")
+            implementation("com.google.firebase:firebase-appcheck-playintegrity")
+            implementation("com.google.firebase:firebase-appcheck-debug")
+            implementation("com.google.android.play:integrity:1.4.0")
             implementation("com.google.android.gms:play-services-auth:21.2.0")
         }
         commonMain.dependencies {
@@ -89,7 +92,7 @@ kotlin {
 }
 
 android {
-    namespace = "org.audiocular.nitnem"
+    namespace = "com.creativeblisslabs.nitnemguktasteek"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     val keystorePropertiesFile = rootProject.file("local.properties")
@@ -113,7 +116,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "org.audiocular.nitnem"
+        applicationId = "com.creativeblisslabs.nitnemguktasteek"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
@@ -164,7 +167,7 @@ dependencies {
 
 compose.desktop {
     application {
-        mainClass = "org.audiocular.nitnem.MainKt"
+        mainClass = "com.creativeblisslabs.nitnemguktasteek.MainKt"
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg)

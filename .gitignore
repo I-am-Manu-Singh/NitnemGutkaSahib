@@ -7,3 +7,16 @@ captures/
 .DS_Store
 .kotlin/
 node_modules/
+
+# Sensitive credentials, keys & environment files
+.env
+.env.*
+*.jks
+*.keystore
+key.properties
+
+# Additional binaries and services configs
+google-services.json
+GoogleService-Info.plist
+*.apk
+*.aab

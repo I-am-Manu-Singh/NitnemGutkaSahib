@@ -26,7 +26,7 @@ kotlin {
 }
 
 android {
-    namespace = "org.audiocular.nitnem.reminders"
+    namespace = "com.creativeblisslabs.nitnemguktasteek.reminders"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
     defaultConfig {
         minSdk = libs.versions.android.minSdk.get().toInt()

@@ -27,7 +27,7 @@ kotlin {
 }
 
 android {
-    namespace = "org.audiocular.nitnem.models"
+    namespace = "com.creativeblisslabs.nitnemguktasteek.models"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
     defaultConfig {
         minSdk = libs.versions.android.minSdk.get().toInt()
