@@ -145,6 +145,7 @@ val context = LocalContext.current
 
     val nitnemBaniIds = remember {
         setOf(
+            "morning-nitnem",
             "japji-sahib",
             "jaap-sahib",
             "tav-prasad-savaiye",

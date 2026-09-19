@@ -5,6 +5,7 @@ import com.creativeblisslabs.nitnemguktasteek.models.Bani
 object GeneratedBaniCatalog {
     val banis: List<Bani> by lazy {
         listOf(
+            generatedMorningNitnem(),
             generatedJapjiSahib(),
             generatedJaapSahib(),
             generatedTavPrasadSavaiye(),
