@@ -13,12 +13,19 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.ui.draw.shadow
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BusinessCenter
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.ReportProblem
+import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.StarRate
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material.icons.filled.ColorLens
@@ -44,6 +51,21 @@ import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.foundation.Image
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.Public
+import androidx.compose.material.icons.filled.Launch
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.WbSunny
+import androidx.compose.material.icons.filled.WbTwilight
+import androidx.compose.material.icons.filled.Bedtime
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Gavel
+import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Receipt
+import androidx.compose.material.icons.filled.ChevronRight
+import com.creativeblisslabs.nitnemguktasteek.app.ui.components.LegalDocumentDialog
 import nitnemguktasteek.composeapp.generated.resources.Res
 import nitnemguktasteek.composeapp.generated.resources.ic_creative_bliss_labs_logo
 import org.jetbrains.compose.resources.painterResource
@@ -142,6 +164,7 @@ var selectedReminder by remember {
     var artistNameInput by remember { mutableStateOf("") }
     var tracksRefreshTrigger by remember { mutableStateOf(0) }
     var selectedBaniFilter by remember { mutableStateOf<String?>(null) }
+    var activeLegalDoc by remember { mutableStateOf<String?>(null) }
 
     val activeTrackId = remember(selectedBaniForAudio?.id, tracksRefreshTrigger, uiState.activeTrackId) {
         selectedBaniForAudio?.id?.let { audioController.getActiveTrackId(it) } ?: "default"
@@ -210,6 +233,7 @@ var selectedReminder by remember {
 
     val billingManager = remember { com.creativeblisslabs.nitnemguktasteek.domain.billing.PremiumBillingManager.instance }
     val billingState by billingManager.billingState.collectAsState()
+    val isPremiumOrTrial = billingState.isPremium || billingState.isLifetimePatron || billingState.isTrialActive
     var showSevaModal by remember { mutableStateOf(false) }
 
     var readingSubTab by remember { mutableStateOf(0) }
@@ -571,59 +595,52 @@ var selectedReminder by remember {
 
         }
     }
+                        Spacer(Modifier.height(12.dp))
 
-
+ HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 4.dp),
+                        color = TextSecondary.copy(alpha = 0.08f)
+                    )
     LazyColumn(
-
         modifier = Modifier.fillMaxSize(),
-
         contentPadding = PaddingValues(
-
             start = 18.dp,
-
             end = 18.dp,
-
             top = 18.dp,
-
             bottom = 140.dp
-
         ),
-
-        verticalArrangement =
-
-            Arrangement.spacedBy(18.dp)
-
+        verticalArrangement = Arrangement.spacedBy(18.dp)
     ) {
         /*
          * READING
          */
-if (selectedCategory == SettingsCategory.Reading) {
-    // 1. Define the internal sub-tabs for the Reading category
-    val subTabs = listOf(
-        "Gurmukhi".translate(uiState.displayLanguage),
-        "Translations".translate(uiState.displayLanguage),
-        "Text Colors".translate(uiState.displayLanguage)
-    )
+        if (selectedCategory == SettingsCategory.Reading) {
+            // 1. Define the internal sub-tabs for the Reading category
+            val subTabs = listOf(
+                "Gurmukhi".translate(uiState.displayLanguage),
+                "Translations".translate(uiState.displayLanguage),
+                "Text Colors".translate(uiState.displayLanguage)
+            )
 
-    // 2. Render the Tab Switcher
-    item {
-        PrimaryTabRow(
-            selectedTabIndex = readingSubTab,
-            modifier = Modifier.fillMaxWidth().padding(bottom = 2.dp),
-            containerColor = Color.Transparent
-        ) {
-            subTabs.forEachIndexed { index, title ->
-                Tab(
-                    selected = readingSubTab == index,
-                    onClick = { readingSubTab = index },
-                    text = { Text(text = title, style = MaterialTheme.typography.titleSmall) }
-                )
+            // 2. Render the Tab Switcher
+            item {
+                PrimaryTabRow(
+                    selectedTabIndex = readingSubTab,
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 2.dp),
+                    containerColor = Color.Transparent
+                ) {
+                    subTabs.forEachIndexed { index, title ->
+                        Tab(
+                            selected = readingSubTab == index,
+                            onClick = { readingSubTab = index },
+                            text = { Text(text = title, style = MaterialTheme.typography.titleSmall) }
+                        )
+                    }
+                }
             }
-        }
-    }
 
-    // 3. Render Content dynamically based on the active tab switch
-    when (readingSubTab) {
+            // 3. Render Content dynamically based on the active tab switch
+            when (readingSubTab) {
         0 -> { // Gurmukhi Tab
             item {
                 SettingsSectionCard(
@@ -656,6 +673,8 @@ if (selectedCategory == SettingsCategory.Reading) {
                             Triple(it.name, it.title, it.requiredTier)
                         },
                         selectedKey = uiState.gurmukhiFont,
+                        sampleScriptType = "gurmukhi",
+                        resolveFontFamily = { key -> com.creativeblisslabs.nitnemguktasteek.app.ui.theme.resolveGurmukhiFontByKey(key) },
                         onSelect = { viewModel.setGurmukhiFont(it) },
                         onLockedClicked = { showSevaModal = true }
                     )
@@ -702,6 +721,8 @@ if (selectedCategory == SettingsCategory.Reading) {
                             Triple(it.name, it.title, it.requiredTier)
                         },
                         selectedKey = uiState.romanFont,
+                        sampleScriptType = "roman",
+                        resolveFontFamily = { key -> com.creativeblisslabs.nitnemguktasteek.app.ui.theme.resolveRomanFontByKey(key) },
                         onSelect = { viewModel.setRomanFont(it) },
                         onLockedClicked = { showSevaModal = true }
                     )
@@ -714,6 +735,8 @@ if (selectedCategory == SettingsCategory.Reading) {
                             Triple(it.name, it.title, it.requiredTier)
                         },
                         selectedKey = uiState.devanagariFont,
+                        sampleScriptType = "devanagari",
+                        resolveFontFamily = { key -> com.creativeblisslabs.nitnemguktasteek.app.ui.theme.resolveDevanagariFontByKey(key) },
                         onSelect = { viewModel.setDevanagariFont(it) },
                         onLockedClicked = { showSevaModal = true }
                     )
@@ -1152,6 +1175,106 @@ if (selectedCategory == SettingsCategory.Reading) {
                 }
             }
 
+            item {
+                SettingsSectionCard(
+                    title = "Ambient Spiritual Particles".translate(uiState.displayLanguage),
+                    icon = Icons.Default.AutoAwesome
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Text(
+                            text = "Choose the meditative particle aura displayed gently during Gurbani reading & meditation views.".translate(uiState.displayLanguage),
+                            fontSize = 12.sp,
+                            color = TextSecondary,
+                            lineHeight = 16.sp
+                        )
+
+                        val particleEffects = listOf(
+                            Triple("GoldenStardust", "Golden Stardust", "✨ Celestial golden sparks drifting upward"),
+                            Triple("DivineLotus", "Divine Lotus", "🌸 Gentle petal motes radiating warmth"),
+                            Triple("AmritRipples", "Amrit Ripples", "💧 Soothing crystalline ambient waves"),
+                            Triple("CosmicSparks", "Cosmic Sparks", "🌌 Multidimensional ethereal glow points"),
+                            Triple("FloatingEmbers", "Floating Embers", "🔥 Meditative warm sacred amber aura"),
+                            Triple("Disabled", "Disabled (Off)", "🚫 Clean distraction-free solid background")
+                        )
+
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            particleEffects.forEach { (effectKey, title, desc) ->
+                                val isSelected = uiState.ambientParticleEffect == effectKey
+                                val isLocked = effectKey != "GoldenStardust" && effectKey != "Disabled" && !isPremiumOrTrial
+
+                                Surface(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            if (isLocked) {
+                                                showSevaModal = true
+                                            } else {
+                                                viewModel.setAmbientParticleEffect(effectKey)
+                                            }
+                                        },
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = if (isSelected) Accent.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.35f),
+                                    border = BorderStroke(
+                                        if (isSelected) 1.5.dp else 0.8.dp,
+                                        if (isSelected) Accent else Color.White.copy(alpha = 0.10f)
+                                    )
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                    ) {
+                                        RadioButton(
+                                            selected = isSelected,
+                                            onClick = {
+                                                if (isLocked) showSevaModal = true
+                                                else viewModel.setAmbientParticleEffect(effectKey)
+                                            },
+                                            colors = RadioButtonDefaults.colors(
+                                                selectedColor = Accent,
+                                                unselectedColor = TextSecondary.copy(alpha = 0.6f)
+                                            ),
+                                            modifier = Modifier.size(20.dp)
+                                        )
+
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                            ) {
+                                                Text(
+                                                    text = title.translate(uiState.displayLanguage),
+                                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
+                                                    fontSize = 13.5.sp,
+                                                    color = if (isSelected) Accent else TextPrimary
+                                                )
+                                                if (isLocked) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.Lock,
+                                                        contentDescription = null,
+                                                        tint = Gold,
+                                                        modifier = Modifier.size(13.dp)
+                                                    )
+                                                }
+                                            }
+                                            Text(
+                                                text = desc.translate(uiState.displayLanguage),
+                                                fontSize = 11.5.sp,
+                                                color = TextSecondary,
+                                                lineHeight = 15.sp
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
                item {
 
                 SettingsSectionCard(
@@ -1302,14 +1425,16 @@ if (
                      Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                          if (user != null) {
                              // Logged in user profile card
-                             Surface(
-                                 shape = RoundedCornerShape(16.dp),
-                                 color = Gold.copy(alpha = 0.12f),
-                                 border = BorderStroke(1.2.dp, Gold.copy(alpha = 0.4f)),
-                                 modifier = Modifier.fillMaxWidth()
-                             ) {
+                            Surface(
+    shape = RoundedCornerShape(16.dp),
+    color = Gold.copy(alpha = 0.12f),
+    border = BorderStroke(1.2.dp, Gold.copy(alpha = 0.4f)),
+    modifier = Modifier
+        .fillMaxWidth()
+        .padding(bottom = 16.dp) 
+) {
                                  Row(
-                                     modifier = Modifier.padding(16.dp),
+                                     modifier = Modifier.padding(14.dp),
                                      verticalAlignment = Alignment.CenterVertically,
                                      horizontalArrangement = Arrangement.SpaceBetween
                                  ) {
@@ -1338,6 +1463,8 @@ if (
                                          Text("Sign Out".translate(uiState.displayLanguage), color = MaterialTheme.colorScheme.error, fontSize = 12.5.sp)
                                      }
                                  }
+                                 Spacer(Modifier.height(12.dp))
+
                              }
                          } else {
                              Text(
@@ -1346,25 +1473,34 @@ if (
                                  color = MaterialTheme.colorScheme.onSurfaceVariant
                              )
 
-                         
-                                 Row(
-                                     modifier = Modifier.padding(16.dp),
-                                     verticalAlignment = Alignment.CenterVertically,
-                                     horizontalArrangement = Arrangement.Center
-                                 ) {
-
-                                     Button(
-                                         onClick = {
-                                             authLauncher.signInWithGoogle()
-                                         },
-                                         colors = ButtonDefaults.buttonColors(containerColor = Gold),
-                                         shape = RoundedCornerShape(12.dp)
-                                     ) {
-                                         Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(16.dp))
-                                         Spacer(Modifier.width(6.dp))
-                                         Text("Sign In".translate(uiState.displayLanguage), fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                                     }
-                                 }
+                         Row(
+    modifier = Modifier.padding(16.dp),
+    verticalAlignment = Alignment.CenterVertically,
+    horizontalArrangement = Arrangement.Center
+) {
+    OutlinedButton(
+        onClick = {
+            authLauncher.signInWithGoogle()
+        },
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        colors = ButtonDefaults.outlinedButtonColors(
+            contentColor = MaterialTheme.colorScheme.onBackground // Changed from .error to normal text color
+        )
+    ) {
+        Icon(
+            imageVector = Icons.Default.CheckCircle, // Added explicit parameter name
+            contentDescription = null, 
+            modifier = Modifier.size(16.dp)
+        )
+        Spacer(modifier = Modifier.width(6.dp)) // Fixed lowercase modifier
+        Text(
+            text = "Sign In".translate(uiState.displayLanguage), // Fixed missing named argument if applicable
+            fontWeight = FontWeight.Bold, 
+            fontSize = 13.sp
+        )
+    }
+}
                          }
                      }
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -1433,18 +1569,12 @@ if (
             )
 
             ReminderEditableRow(
-
-                emoji = "🌅",
-
+                icon = Icons.Default.WbSunny,
                 title = "Amrit Vela".translate(uiState.displayLanguage),
-
                 time = amritTime,
-
                 onClick = {
-
                     selectedReminder =
                         "Amrit Vela"
-
                     showTimePicker = true
                 }
             )
@@ -1454,18 +1584,12 @@ if (
             )
 
             ReminderEditableRow(
-
-                emoji = "🌇",
-
+                icon = Icons.Default.WbTwilight,
                 title = "Rehras Sahib".translate(uiState.displayLanguage),
-
                 time = rehrasTime,
-
                 onClick = {
-
                     selectedReminder =
                         "Rehras Sahib"
-
                     showTimePicker = true
                 }
             )
@@ -1475,7 +1599,7 @@ if (
             )
 
             ReminderEditableRow(
-                emoji = "🌙",
+                icon = Icons.Default.Bedtime,
                 title = "Kirtan Sohila".translate(uiState.displayLanguage),
                 time = sohilaTime,
                 onClick = {
@@ -1487,123 +1611,18 @@ if (
         }
     }
 }
-
         if (
             selectedCategory ==
             SettingsCategory.Supporter
         ) {
             item {
-                Surface(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 14.dp),
-                    shape = RoundedCornerShape(20.dp),
-                    color = Gold.copy(alpha = 0.12f),
-                    border = BorderStroke(1.dp, Gold.copy(alpha = 0.35f))
-                ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(14.dp)
-                    ) {
-                        Surface(
-                            shape = CircleShape,
-                            color = Gold.copy(alpha = 0.22f),
-                            modifier = Modifier.size(48.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text("ੴ", color = Gold, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-                            }
-                        }
-
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = if (billingState.isLifetimePatron) "Lifetime Founding Patron 🪯".translate(uiState.displayLanguage)
-                                else if (billingState.isPremium) "Gurbani Premium Active ⭐".translate(uiState.displayLanguage)
-                                else if (billingState.isSupporter) "Seva Supporter ❤️".translate(uiState.displayLanguage)
-                                else if (billingState.isTrialActive) "Free Preview Active (${billingState.trialDaysRemaining}d left)".translate(uiState.displayLanguage)
-                                else "Free & Ad-Free Forever".translate(uiState.displayLanguage),
-                                fontWeight = FontWeight.ExtraBold,
-                                fontSize = 15.sp,
-                                color = Gold
-                            )
-                            Text(
-                                text = "All Banis, Steek & Audio streams are 100% free. Voluntary tiers support hosting and continuous development.".translate(uiState.displayLanguage),
-                                fontSize = 12.sp,
-                                color = TextPrimary.copy(alpha = 0.85f),
-                                lineHeight = 16.sp
-                            )
-                        }
-                    }
-                }
-            }
-
-            items(billingState.availablePlans) { plan ->
-                val isUnlocked = (plan.id == "supporter_49" && billingState.isSupporter) ||
-                        (plan.entitlement == "premium" && billingState.isPremium) ||
-                        (plan.id == "lifetime_199" && billingState.isLifetimePatron)
-
-                Surface(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp),
-                    shape = RoundedCornerShape(18.dp),
-                    color = if (isUnlocked) Gold.copy(alpha = 0.15f) else SurfaceColor,
-                    border = BorderStroke(1.dp, if (isUnlocked) Gold else Accent.copy(alpha = 0.15f))
-                ) {
-                    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column {
-                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    Text(text = plan.title, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = TextPrimary)
-                                    if (plan.badge != null) {
-                                        Surface(
-                                            shape = RoundedCornerShape(6.dp),
-                                            color = Gold.copy(alpha = 0.2f),
-                                            border = BorderStroke(0.5.dp, Gold)
-                                        ) {
-                                            Text(text = plan.badge, fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = Gold, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
-                                        }
-                                    }
-                                }
-                                Text(text = plan.description, fontSize = 11.5.sp, color = TextPrimary.copy(alpha = 0.7f))
-                            }
-
-                            Text(
-                                text = "${plan.formattedPriceInr} / ${plan.formattedPriceUsd}",
-                                fontWeight = FontWeight.Black,
-                                fontSize = 15.sp,
-                                color = Gold
-                            )
-                        }
-
-                        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                            plan.features.forEach { feat ->
-                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null, tint = Gold, modifier = Modifier.size(13.dp))
-                                    Text(text = feat, fontSize = 11.5.sp, color = TextPrimary.copy(alpha = 0.85f))
-                                }
-                            }
-                        }
-
-                        Button(
-                            onClick = {
-                                billingManager.simulatePurchase(plan)
-                                Toast.makeText(context, "${plan.title} Unlocked!".translate(uiState.displayLanguage), Toast.LENGTH_SHORT).show()
-                            },
-                            enabled = !isUnlocked,
-                            shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Color.Black),
-                            modifier = Modifier.fillMaxWidth().height(42.dp)
-                        ) {
-                            Text(
-                                text = if (isUnlocked) "Active / Unlocked".translate(uiState.displayLanguage) else "Support with ${plan.formattedPriceInr}",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 13.sp
-                            )
-                        }
-                    }
-                }
+                com.creativeblisslabs.nitnemguktasteek.app.ui.components.SevaTiersContent(
+                    displayLanguage = uiState.displayLanguage,
+                    onPurchasePlan = { plan ->
+                        Toast.makeText(context, "${plan.title} Unlocked!".translate(uiState.displayLanguage), Toast.LENGTH_SHORT).show()
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         }
 
@@ -1739,8 +1758,8 @@ if (
                         Surface(
                             modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
                             shape = RoundedCornerShape(8.dp),
-                            color = Accent.copy(alpha = 0.12f),
-                            border = BorderStroke(1.dp, Accent.copy(alpha = 0.25f))
+                            // color = Accent.copy(alpha = 0.12f),
+                            // border = BorderStroke(1.dp, Accent.copy(alpha = 0.25f))
                         ) {
                             Column(
                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
@@ -2248,176 +2267,454 @@ if (
             selectedCategory ==
             SettingsCategory.About
         ) {
-            item {
-                SettingsSectionCard(
-                    title = "About Nitnem & Creative Bliss Labs".translate(uiState.displayLanguage),
-                    icon = Icons.Default.CheckCircle
+           item {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // ── MAIN BRANDING & SEVA CONTAINER ──
+        Surface(
+            shape = RoundedCornerShape(24.dp),
+            color = if (AppTheme.themeMode == ThemeMode.Light) Color(0xFFFFFFFF) else SurfaceColor,
+            shadowElevation = if (AppTheme.themeMode == ThemeMode.Light) 6.dp else 0.dp,
+            border = BorderStroke(1.2.dp, Gold.copy(alpha = 0.35f)),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier.padding(22.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // ── LOGO WITH ATMOSPHERIC GLOW ──
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(92.dp)
+                        .shadow(elevation = 10.dp, shape = CircleShape, spotColor = Gold.copy(alpha = 0.35f))
+                        .clip(CircleShape)
+                        .background(
+                            Brush.linearGradient(
+                                colors = listOf(
+                                    Gold.copy(alpha = 0.22f),
+                                    Gold.copy(alpha = 0.05f)
+                                )
+                            )
+                        )
+                        .border(BorderStroke(1.5.dp, Gold.copy(alpha = 0.5f)), CircleShape)
                 ) {
+                    Image(
+                        painter = painterResource(Res.drawable.ic_creative_bliss_labs_logo),
+                        contentDescription = "Creative Bliss Labs Logo",
+                        modifier = Modifier
+                            .size(76.dp)
+                            .clip(CircleShape)
+                    )
+                }
+
+                // ── TITLES & TAGLINE ──
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(3.dp)
+                ) {
+                    Text(
+                        text = "Nitnem Gutka Steek",
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 20.sp,
+                        color = TextPrimary
+                    )
+                    Text(
+                        text = "Developed with Seva by Creative Bliss Labs",
+                        fontSize = 13.5.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Accent
+                    )
+                    Text(
+                        text = "Ideas • Products • A Better Everyday",
+                        fontSize = 12.sp,
+                        color = TextSecondary,
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                }
+
+                // ── VERSION BADGE ──
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = Gold.copy(alpha = 0.12f),
+                    border = BorderStroke(0.8.dp, Gold.copy(alpha = 0.6f)),
+                    modifier = Modifier.padding(top = 2.dp)
+                ) {
+                    Text(
+                        text = "Version 1.0.0 • 100% Free & Ad-Free Forever".translate(uiState.displayLanguage),
+                        fontSize = 11.5.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Gold,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                    )
+                }
+
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                    color = Gold.copy(alpha = 0.15f)
+                )
+
+                // ── SOCIAL LINKS (CIRCULAR BUTTONS GRID) ──
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text(
+                        text = "Connect with Creative Bliss Labs".translate(uiState.displayLanguage),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        color = Primary
+                    )
+
+                    val socialLinks = listOf(
+                        Triple("Website", "https://creativeblisslabs.com", Icons.Default.Public),
+                        Triple("X (Twitter)", "https://twitter.com/CreativeBlissL", Icons.Default.Share),
+                        Triple("LinkedIn", "https://linkedin.com/company/creativeblisslabs", Icons.Default.BusinessCenter),
+                        Triple("GitHub", "https://github.com/I-am-Manu-Singh", Icons.Default.Code),
+                        Triple("Instagram", "https://instagram.com/creativeblisslabs", Icons.Default.CameraAlt),
+                        Triple("YouTube", "https://youtube.com/@creativeblisslabs", Icons.Default.PlayCircle)
+                    )
+
                     Column(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Surface(
-                            shape = RoundedCornerShape(20.dp),
-                            color = SurfaceColor,
-                            border = BorderStroke(1.dp, Gold.copy(alpha = 0.35f)),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(18.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                        socialLinks.chunked(3).forEach { rowLinks ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceEvenly,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Surface(
-                                    shape = CircleShape,
-                                    color = if (AppTheme.themeMode == ThemeMode.Light) Color.White else SurfaceColor,
-                                    shadowElevation = if (AppTheme.themeMode == ThemeMode.Light) 2.dp else 0.dp,
-                                    border = BorderStroke(1.dp, Gold.copy(alpha = 0.35f)),
-                                    modifier = Modifier.size(96.dp)
-                                ) {
-                                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                                        Image(
-                                            painter = painterResource(Res.drawable.ic_creative_bliss_labs_logo),
-                                            contentDescription = "Creative Bliss Labs Logo",
-                                            modifier = Modifier.size(80.dp).clip(CircleShape)
-                                        )
-                                    }
-                                }
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text(
-                                        text = "Nitnem Gutka Steek",
-                                        fontWeight = FontWeight.ExtraBold,
-                                        fontSize = 18.sp,
-                                        color = TextPrimary
-                                    )
-                                    Text(
-                                        text = "Developed with Seva by Creative Bliss Labs",
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        color = Accent
-                                    )
-                                    Text(
-                                        text = "Ideas • Products • A Better Everyday",
-                                        fontSize = 11.5.sp,
-                                        color = TextSecondary,
-                                        modifier = Modifier.padding(top = 2.dp)
-                                    )
-                                    Surface(
-                                        shape = RoundedCornerShape(8.dp),
-                                        color = Gold.copy(alpha = 0.15f),
-                                        border = BorderStroke(0.5.dp, Gold),
-                                        modifier = Modifier.padding(top = 6.dp)
+                                rowLinks.forEach { (label, url, icon) ->
+                                    Column(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clickable {
+                                                val intent = android.content.Intent(
+                                                    android.content.Intent.ACTION_VIEW,
+                                                    android.net.Uri.parse(url)
+                                                )
+                                                try {
+                                                    context.startActivity(intent)
+                                                } catch (e: Exception) {
+                                                    Toast.makeText(context, url, Toast.LENGTH_SHORT).show()
+                                                }
+                                            },
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.spacedBy(5.dp)
                                     ) {
+                                        Surface(
+                                            shape = CircleShape,
+                                            color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.6f),
+                                            border = BorderStroke(1.dp, Gold.copy(alpha = 0.35f)),
+                                            modifier = Modifier.size(48.dp)
+                                        ) {
+                                            Box(
+                                                contentAlignment = Alignment.Center,
+                                                modifier = Modifier.fillMaxSize()
+                                            ) {
+                                                Icon(
+                                                    imageVector = icon,
+                                                    contentDescription = label,
+                                                    tint = Gold,
+                                                    modifier = Modifier.size(20.dp)
+                                                )
+                                            }
+                                        }
                                         Text(
-                                            text = "Version 1.0.0 • 100% Free & Ad-Free Forever".translate(uiState.displayLanguage),
+                                            text = label,
                                             fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = Gold,
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                            fontWeight = FontWeight.Medium,
+                                            color = TextSecondary,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
                                         )
                                     }
                                 }
                             }
                         }
+                    }
+                }
 
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                    color = Gold.copy(alpha = 0.15f)
+                )
+
+                // ── MISSION STATEMENT CARD / TEXT ──
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.6f),
+                    border = BorderStroke(0.8.dp, Gold.copy(alpha = 0.15f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "Our mission is to deliver a peaceful, 100% ad-free, authentic Gurbani recitation and learning experience to the global Sikh Sangat with accurate Gurmukhi, Steek translations, Roman transliterations, and synchronized audio recitations.",
+                        fontSize = 13.sp,
+                        color = TextPrimary.copy(alpha = 0.88f),
+                        lineHeight = 20.sp,
+                        modifier = Modifier.padding(14.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+item {
+    SettingsSectionCard(
+        title = "Support, Feedback & Reporting".translate(uiState.displayLanguage),
+        icon = Icons.Default.Favorite
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            // ── REPORT MISTAKE IN GURBANI ──
+            OutlinedButton(
+                onClick = {
+                    val intent = android.content.Intent(android.content.Intent.ACTION_SENDTO).apply {
+                        data = android.net.Uri.parse("mailto:support@creativeblisslabs.com")
+                        putExtra(android.content.Intent.EXTRA_SUBJECT, "Gurbani Text/Steek Correction Report - Nitnem App")
+                        putExtra(android.content.Intent.EXTRA_TEXT, "Bani Name:\nLine / Ang:\nObserved Text:\nSuggested Correction:\nSource Reference:\n")
+                    }
+                    try {
+                        context.startActivity(intent)
+                    } catch (e: Exception) {
+                        Toast.makeText(context, "Email: support@creativeblisslabs.com", Toast.LENGTH_LONG).show()
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = if (AppTheme.themeMode == ThemeMode.Light) Color(0xFF2B1D12) else Color.White
+                ),
+                border = BorderStroke(1.dp, Gold.copy(alpha = 0.4f))
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ReportProblem,
+                    contentDescription = null,
+                    tint = Gold,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    text = "Report Mistake in Gurbani / Steek".translate(uiState.displayLanguage),
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 13.5.sp,
+                    maxLines = 1
+                )
+            }
+
+            // ── REQUEST NEW FEATURE ──
+            OutlinedButton(
+                onClick = {
+                    val intent = android.content.Intent(android.content.Intent.ACTION_SENDTO).apply {
+                        data = android.net.Uri.parse("mailto:support@creativeblisslabs.com")
+                        putExtra(android.content.Intent.EXTRA_SUBJECT, "Feature Request - Nitnem Gutka Steek")
+                        putExtra(android.content.Intent.EXTRA_TEXT, "Hello Creative Bliss Labs team,\n\nI would love to suggest the following feature or idea for Nitnem App:\n\n")
+                    }
+                    try {
+                        context.startActivity(intent)
+                    } catch (e: Exception) {
+                        Toast.makeText(context, "Email: support@creativeblisslabs.com", Toast.LENGTH_LONG).show()
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = if (AppTheme.themeMode == ThemeMode.Light) Color(0xFF2B1D12) else Color.White
+                ),
+                border = BorderStroke(1.dp, Gold.copy(alpha = 0.3f))
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Lightbulb,
+                    contentDescription = null,
+                    tint = Gold,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    text = "Suggest New Feature / Audio Track".translate(uiState.displayLanguage),
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 13.5.sp,
+                    maxLines = 1
+                )
+            }
+
+            // ── RATE ON PLAY STORE ──
+            OutlinedButton(
+                onClick = {
+                    val intent = android.content.Intent(
+                        android.content.Intent.ACTION_VIEW,
+                        android.net.Uri.parse("https://play.google.com/store/apps/details?id=com.creativeblisslabs.nitnemguktasteek")
+                    )
+                    try {
+                        context.startActivity(intent)
+                    } catch (e: Exception) {
+                        Toast.makeText(context, "Visit Play Store to rate", Toast.LENGTH_SHORT).show()
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = if (AppTheme.themeMode == ThemeMode.Light) Color(0xFF2B1D12) else Color.White
+                ),
+                border = BorderStroke(1.dp, Gold.copy(alpha = 0.3f))
+            ) {
+                Icon(
+                    imageVector = Icons.Default.StarRate,
+                    contentDescription = null,
+                    tint = Gold,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    text = "Rate 5 Stars on Google Play Store".translate(uiState.displayLanguage),
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 13.5.sp,
+                    maxLines = 1
+                )
+            }
+
+            // ── SHARE APP WITH SANGAT (PRIMARY GRADIENT BUTTON) ──
+            Button(
+                onClick = {
+                    val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(android.content.Intent.EXTRA_SUBJECT, "Nitnem Gutka Steek App")
+                        putExtra(
+                            android.content.Intent.EXTRA_TEXT,
+                            "Waheguru Ji Ka Khalsa, Waheguru Ji Ki Fateh! 🙏\n\nRead and listen to Nitnem Gurbani with translations, audio sync and beautiful themes: https://play.google.com/store/apps/details?id=com.creativeblisslabs.nitnemguktasteek"
+                        )
+                    }
+                    context.startActivity(android.content.Intent.createChooser(shareIntent, "Share Nitnem App with Sangat"))
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp)
+                    .shadow(elevation = 4.dp, shape = RoundedCornerShape(14.dp), spotColor = Gold.copy(alpha = 0.4f)),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.Transparent,
+                    contentColor = Color.Black
+                ),
+                contentPadding = PaddingValues(0.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.horizontalGradient(
+                                colors = listOf(
+                                    Gold,
+                                    Gold.copy(alpha = 0.85f),
+                                    Gold.copy(alpha = 0.95f)
+                                )
+                            )
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Share,
+                            contentDescription = null,
+                            tint = Color.Black,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
                         Text(
-                            text = "Our mission is to deliver an ad-free, high-quality, authentic Gurbani recitation and learning experience to the global Sikh Sangat with accurate Gurmukhi, Steek translations, Roman transliterations, and synchronized audio recitations.",
-                            fontSize = 12.5.sp,
-                            color = TextPrimary.copy(alpha = 0.85f),
-                            lineHeight = 18.sp
+                            text = "Share App with Family & Friends".translate(uiState.displayLanguage),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            color = Color.Black,
+                            maxLines = 1
                         )
                     }
                 }
             }
+        }
+    }
+}
 
+            // ── LEGAL & PRIVACY COMPLIANCE ──
             item {
                 SettingsSectionCard(
-                    title = "Support, Feedback & Reporting".translate(uiState.displayLanguage),
-                    icon = Icons.Default.Share
+                    title = "Legal, Transparency & Compliance".translate(uiState.displayLanguage),
+                    icon = Icons.Default.Gavel
                 ) {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        // Report Mistake in Gurbani
-                        OutlinedButton(
-                            onClick = {
-                                val intent = android.content.Intent(android.content.Intent.ACTION_SENDTO).apply {
-                                    data = android.net.Uri.parse("mailto:support@creativeblisslabs.com")
-                                    putExtra(android.content.Intent.EXTRA_SUBJECT, "Gurbani Text/Steek Correction Report - Nitnem App")
-                                    putExtra(android.content.Intent.EXTRA_TEXT, "Bani Name:\nLine / Ang:\nObserved Text:\nSuggested Correction:\nSource Reference:\n")
-                                }
-                                try {
-                                    context.startActivity(intent)
-                                } catch (e: Exception) {
-                                    Toast.makeText(context, "Email: support@creativeblisslabs.com", Toast.LENGTH_LONG).show()
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(14.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Gold),
-                            border = BorderStroke(1.dp, Gold.copy(alpha = 0.4f))
-                        ) {
-                            Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text("Report Mistake in Gurbani / Steek".translate(uiState.displayLanguage), fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                        }
+                        Text(
+                            text = "We hold reverence for Sri Guru Granth Sahib Ji and transparency for the Sikh Sangat as our highest priorities. Review our honest terms, privacy commitments, and open-source attributions below.".translate(uiState.displayLanguage),
+                            fontSize = 12.sp,
+                            color = TextSecondary,
+                            lineHeight = 16.sp,
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        )
 
-                        // Request New Feature
-                        OutlinedButton(
-                            onClick = {
-                                val intent = android.content.Intent(android.content.Intent.ACTION_SENDTO).apply {
-                                    data = android.net.Uri.parse("mailto:contact@creativeblisslabs.com")
-                                    putExtra(android.content.Intent.EXTRA_SUBJECT, "Feature Request - Nitnem Gutka Steek")
-                                    putExtra(android.content.Intent.EXTRA_TEXT, "Hello Creative Bliss Labs team,\n\nI would love to suggest the following feature or idea for Nitnem App:\n\n")
-                                }
-                                try {
-                                    context.startActivity(intent)
-                                } catch (e: Exception) {
-                                    Toast.makeText(context, "Email: contact@creativeblisslabs.com", Toast.LENGTH_LONG).show()
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(14.dp)
-                        ) {
-                            Icon(Icons.Default.Code, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text("Suggest New Feature / Audio Track".translate(uiState.displayLanguage), fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                        }
+                        val legalDocs = listOf(
+                            Triple("Privacy Policy", Icons.Default.Security, "Privacy Policy"),
+                            Triple("Terms of Service & EULA", Icons.Default.Description, "Terms of Service"),
+                            Triple("Cancellation & Refund Policy", Icons.Default.Receipt, "Refund Policy"),
+                            Triple("Scripture & Open Source Attributions", Icons.Default.MenuBook, "Attributions")
+                        )
 
-                        // Visit Website / Developer Contact
-                        OutlinedButton(
-                            onClick = {
-                                val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://creativeblisslabs.com"))
-                                try {
-                                    context.startActivity(intent)
-                                } catch (e: Exception) {
-                                    Toast.makeText(context, "Visit: https://creativeblisslabs.com", Toast.LENGTH_SHORT).show()
+                        legalDocs.forEach { (title, icon, docType) ->
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        activeLegalDoc = docType
+                                    },
+                                shape = RoundedCornerShape(12.dp),
+                                color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.4f),
+                                border = BorderStroke(0.8.dp, Gold.copy(alpha = 0.25f))
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = icon,
+                                        contentDescription = null,
+                                        tint = Gold,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Text(
+                                        text = title.translate(uiState.displayLanguage),
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = TextPrimary,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    Icon(
+                                        imageVector = Icons.Default.ChevronRight,
+                                        contentDescription = null,
+                                        tint = TextSecondary,
+                                        modifier = Modifier.size(16.dp)
+                                    )
                                 }
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(14.dp)
-                        ) {
-                            Text("🌐 Visit Website: creativeblisslabs.com", fontWeight = FontWeight.Medium, fontSize = 13.sp)
-                        }
-
-                        // Share App with Sangat
-                        Button(
-                            onClick = {
-                                val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-                                    type = "text/plain"
-                                    putExtra(android.content.Intent.EXTRA_SUBJECT, "Nitnem Gutka Steek App")
-                                    putExtra(android.content.Intent.EXTRA_TEXT, "Waheguru Ji Ka Khalsa, Waheguru Ji Ki Fateh! 🙏\n\nRead and listen to Nitnem Gurbani with translations, audio sync and beautiful themes: https://play.google.com/store/apps/details?id=com.creativeblisslabs.nitnemguktasteek")
-                                }
-                                context.startActivity(android.content.Intent.createChooser(shareIntent, "Share Nitnem App with Sangat"))
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(14.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Color.Black)
-                        ) {
-                            Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text("Share App with Family & Friends".translate(uiState.displayLanguage), fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            }
                         }
                     }
                 }
@@ -2689,9 +2986,14 @@ if (
             onDismiss = { showSevaModal = false }
         )
     }
+
+    activeLegalDoc?.let { docType ->
+        LegalDocumentDialog(
+            docType = docType,
+            displayLanguage = uiState.displayLanguage,
+            onDismiss = { activeLegalDoc = null }
+        )
     }
 }
 }
-
-
-
+}

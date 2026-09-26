@@ -7,7 +7,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * Firestore Database Schema for Nitnem Gutka Sahib:
+ * Firestore Database Schema for Nitnem Gutka Steek:
  *
  * 1. Collection: "users" (Document ID: userId)
  *    Fields:
@@ -335,5 +335,59 @@ class FirestoreFamilyLeaderboardRepository(
     override suspend fun addMemberByUsername(groupId: String, username: String): Boolean = withContext(Dispatchers.IO) {
         val user = findUserByUsername(username) ?: return@withContext false
         joinFamilyGroup(groupId, user)
+    }
+
+    override suspend fun recordXpTransaction(item: XpHistoryItem): Boolean = withContext(Dispatchers.IO) {
+        try {
+            if (item.userId.isBlank()) return@withContext false
+            val docId = item.id.ifBlank { "xp_${System.currentTimeMillis()}_${(100..999).random()}" }
+            val map = hashMapOf(
+                "id" to docId,
+                "userId" to item.userId,
+                "title" to item.title,
+                "category" to item.category,
+                "xpAmount" to item.xpAmount,
+                "timestamp" to if (item.timestamp > 0) item.timestamp else System.currentTimeMillis(),
+                "formattedDate" to item.formattedDate
+            )
+            firestore.collection("users")
+                .document(item.userId)
+                .collection("xp_history")
+                .document(docId)
+                .set(map, SetOptions.merge())
+                .await()
+            true
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
+    }
+
+    override suspend fun getXpHistory(userId: String): List<XpHistoryItem> = withContext(Dispatchers.IO) {
+        try {
+            if (userId.isBlank()) return@withContext emptyList()
+            val snapshot = firestore.collection("users")
+                .document(userId)
+                .collection("xp_history")
+                .orderBy("timestamp", com.google.firebase.firestore.Query.Direction.DESCENDING)
+                .limit(50)
+                .get()
+                .await()
+
+            snapshot.documents.mapNotNull { doc ->
+                XpHistoryItem(
+                    id = doc.getString("id") ?: doc.id,
+                    userId = doc.getString("userId") ?: userId,
+                    title = doc.getString("title") ?: "Gurbani Paath",
+                    category = doc.getString("category") ?: "Bani",
+                    xpAmount = doc.getLong("xpAmount")?.toInt() ?: 0,
+                    timestamp = doc.getLong("timestamp") ?: 0L,
+                    formattedDate = doc.getString("formattedDate") ?: ""
+                )
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emptyList()
+        }
     }
 }

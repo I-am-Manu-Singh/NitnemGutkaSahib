@@ -1277,27 +1277,85 @@ private fun createUri(
                 }
                 tempFile.renameTo(destinationFile)
 
-                // If remote asset has timing file, also auto download timing file
-                if (remoteAssetTrack?.timingFileName != null) {
-                    try {
-                        val timingDest = File(audioDir, remoteAssetTrack.timingFileName)
-                        val timingUrl = remoteAssetTrack.rawTimingUrl()
-                        val timingConn = URL(timingUrl).openConnection() as HttpURLConnection
-                        timingConn.setRequestProperty("User-Agent", "Mozilla/5.0 (Android; NitnemGutka)")
-                        timingConn.connectTimeout = 10000
-                        timingConn.readTimeout = 10000
-                        if (timingConn.responseCode == HttpURLConnection.HTTP_OK) {
-                            timingConn.inputStream.use { tIn ->
-                                timingDest.outputStream().use { tOut ->
-                                    tIn.copyTo(tOut)
+                // ── COMPREHENSIVE TIMING FILE AUTO-DOWNLOAD ──
+                try {
+                    val cleanAudioBase = filename.substringBeforeLast(".")
+                    val cleanBaniId = baniId.replace("-", "_")
+                    val timingCandidates = mutableListOf<Pair<String, String>>() // (destFilename, url)
+
+                    val rawUrl = remoteAssetTrack?.rawTimingUrl()
+                    val timingFile = remoteAssetTrack?.timingFileName
+                    if (timingFile != null && rawUrl != null) {
+                        timingCandidates.add(timingFile to rawUrl)
+                    }
+
+                    val githubBase = com.creativeblisslabs.nitnemguktasteek.data.RemoteAssetCatalog.GITHUB_RAW_TIMING_BASE
+                    timingCandidates.add("${cleanAudioBase}_timing.json" to "${githubBase}${cleanAudioBase}_timing.json")
+                    timingCandidates.add("${cleanAudioBase}.json" to "${githubBase}${cleanAudioBase}.json")
+                    timingCandidates.add("${cleanBaniId}_timing.json" to "${githubBase}${cleanBaniId}_timing.json")
+                    timingCandidates.add("${cleanBaniId}.json" to "${githubBase}${cleanBaniId}.json")
+                    if (trackId != null && trackId != "default") {
+                        val cleanTrackId = trackId.replace("-", "_").removePrefix("curated_")
+                        timingCandidates.add("${cleanTrackId}_timing.json" to "${githubBase}${cleanTrackId}_timing.json")
+                        timingCandidates.add("${cleanTrackId}.json" to "${githubBase}${cleanTrackId}.json")
+                    }
+
+                    var timingDownloaded = false
+                    for ((timingName, timingUrl) in timingCandidates.distinctBy { it.second }) {
+                        try {
+                            val timingConn = URL(timingUrl).openConnection() as HttpURLConnection
+                            timingConn.setRequestProperty("User-Agent", "Mozilla/5.0 (Android; NitnemGutka)")
+                            timingConn.connectTimeout = 8000
+                            timingConn.readTimeout = 8000
+                            if (timingConn.responseCode == HttpURLConnection.HTTP_OK) {
+                                val timingContent = timingConn.inputStream.bufferedReader().use { it.readText() }
+                                if (timingContent.isNotBlank() && timingContent.trim().startsWith("[")) {
+                                    val timingDest = File(audioDir, timingName)
+                                    timingDest.writeText(timingContent)
+
+                                    // Also save alias keys so any lookup resolution finds it immediately
+                                    File(audioDir, "${cleanAudioBase}_timing.json").writeText(timingContent)
+                                    File(audioDir, "${cleanAudioBase}.json").writeText(timingContent)
+                                    if (trackId != null) {
+                                        File(audioDir, "${trackId}_timing.json").writeText(timingContent)
+                                        File(audioDir, "${trackId}.json").writeText(timingContent)
+                                    }
+                                    timingDownloaded = true
+                                    timingConn.disconnect()
+                                    break
                                 }
                             }
-                        }
-                        timingConn.disconnect()
-                    } catch (te: Exception) {
-                        te.printStackTrace()
+                            timingConn.disconnect()
+                        } catch (_: Exception) {}
                     }
+
+                    // Fallback: If no remote timing file found on GitHub, only generate baseline timing file for default primary track
+                    if (!timingDownloaded && (trackId == null || trackId == "default" || trackId == baniId)) {
+                        try {
+                            val baniObj = com.creativeblisslabs.nitnemguktasteek.data.generated.GeneratedBaniCatalog.banis.firstOrNull { it.id == baniId }
+                            if (baniObj != null && baniObj.lines.isNotEmpty() && baniObj.lines.any { it.startsAtMs > 0L || it.endsAtMs > 0L }) {
+                                val baselineTimings = baniObj.lines.map { line ->
+                                    com.creativeblisslabs.nitnemguktasteek.models.LineTiming(
+                                        id = line.id,
+                                        startsAtMs = line.startsAtMs,
+                                        endsAtMs = line.endsAtMs
+                                    )
+                                }
+                                val jsonStr = kotlinx.serialization.json.Json.encodeToString(
+                                    kotlinx.serialization.builtins.ListSerializer(com.creativeblisslabs.nitnemguktasteek.models.LineTiming.serializer()),
+                                    baselineTimings
+                                )
+                                File(audioDir, "${cleanAudioBase}_timing.json").writeText(jsonStr)
+                                File(audioDir, "${cleanAudioBase}.json").writeText(jsonStr)
+                            }
+                        } catch (genE: Exception) {
+                            genE.printStackTrace()
+                        }
+                    }
+                } catch (te: Exception) {
+                    te.printStackTrace()
                 }
+
                 true
             } else {
                 tempFile.delete()

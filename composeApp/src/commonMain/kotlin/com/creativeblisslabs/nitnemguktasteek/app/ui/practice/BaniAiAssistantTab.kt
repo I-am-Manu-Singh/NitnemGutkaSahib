@@ -61,14 +61,20 @@ private data class ChatMessage(
     val mascotState: MascotState = MascotState.Happy
 )
 
-private val suggestedQuestions = listOf(
-    "What does Japji Sahib teach?",
-    "What is the meaning of Waheguru?",
-    "What is the opening line of Jaap Sahib?",
-    "What is Amrit Vela?",
-    "Who composed Chaupai Sahib?",
-    "What does Rehras Sahib celebrate?"
-)
+private fun getSuggestedQuestionsForBani(bani: Bani): List<String> {
+    val dynamicQuestions = mutableListOf<String>()
+    dynamicQuestions.add("What does ${bani.title} teach?")
+    if (bani.author.isNotBlank()) {
+        dynamicQuestions.add("Who composed ${bani.title}?")
+    }
+    dynamicQuestions.add("What is the central theme of ${bani.title}?")
+    dynamicQuestions.add("What is the meaning of Waheguru?")
+    dynamicQuestions.add("What is Amrit Vela?")
+    if (bani.lines.isNotEmpty()) {
+        dynamicQuestions.add("Explain the first verse of ${bani.title}")
+    }
+    return dynamicQuestions.distinct().take(6)
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Theme-Linked Dynamic DB Response Engine
@@ -339,7 +345,7 @@ fun BaniAiAssistantTab(
             if (messages.size == 1 && !isTyping) {
                 item(key = "suggestions") {
                     SuggestionChips(
-                        suggestions = suggestedQuestions,
+                        suggestions = remember(bani.id, displayLanguage) { getSuggestedQuestionsForBani(bani) },
                         colors = colors,
                         displayLanguage = displayLanguage,
                         onSelect = sendMessage

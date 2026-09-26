@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -60,83 +61,101 @@ fun FamilyLeaderboardDialog(
 
     var showEditGroupNameDialog by remember { mutableStateOf(false) }
     var newGroupNameInput by remember { mutableStateOf("") }
+    var showCreateGroupDialog by remember { mutableStateOf(false) }
+    var createGroupNameInput by remember { mutableStateOf("") }
+    var isCreatingGroup by remember { mutableStateOf(false) }
+    var createGroupError by remember { mutableStateOf<String?>(null) }
 
-    val authLauncher = com.creativeblisslabs.nitnemguktasteek.utils.rememberAuthLauncher()
+    val authLauncher = com.creativeblisslabs.nitnemguktasteek.utils.rememberAuthLauncher(
+        onSignInSuccess = {
+            // Refreshes upon login
+        }
+    )
     val authUser = authLauncher.currentUser
+    val isLoggedIn = authUser != null && authUser.uid.isNotBlank()
+
     val userDisplayName = authUser?.displayName?.takeIf { it.isNotBlank() }
         ?: authUser?.email?.substringBefore('@')?.replace(".", " ")?.replace("_", " ")?.split(" ")?.joinToString(" ") { it.replaceFirstChar { c -> c.titlecase() } }
-        ?: "You"
+        ?: "Gurmukh"
 
     val billingManager = remember { com.creativeblisslabs.nitnemguktasteek.domain.billing.PremiumBillingManager.instance }
     val billingState by billingManager.billingState.collectAsState()
 
-    val currentMember = remember(uiState.totalXp, uiState.streakDays, uiState.quizHighscore, uiState.totalListeningMinutes, userDisplayName, authUser?.uid, billingState) {
-        val userBadges = mutableListOf<String>()
-        if (billingState.isLifetimePatron) userBadges.add("lifetime_patron")
-        else if (billingState.isPremium) userBadges.add("premium_supporter")
-        else if (billingState.isSupporter) userBadges.add("seva_supporter")
+    val currentMember = remember(uiState.totalXp, uiState.streakDays, uiState.quizHighscore, uiState.totalListeningMinutes, userDisplayName, authUser?.uid, billingState, isLoggedIn) {
+        if (!isLoggedIn) null
+        else {
+            val userBadges = mutableListOf<String>()
+            if (billingState.isLifetimePatron) userBadges.add("lifetime_patron")
+            else if (billingState.isPremium) userBadges.add("premium_supporter")
+            else if (billingState.isSupporter) userBadges.add("seva_supporter")
 
-        FamilyMemberProgress(
-            userId = authUser?.uid ?: "user_me",
-            username = authUser?.email?.substringBefore('@') ?: "",
-            displayName = userDisplayName,
-            xp = uiState.totalXp,
-            level = (uiState.totalXp / 500).coerceAtLeast(1),
-            currentStreak = uiState.streakDays,
-            bestStreak = uiState.streakDays.coerceAtLeast(1),
-            totalRecitationMinutes = uiState.totalListeningMinutes,
-            completedBanisCount = uiState.completedBanis.size,
-            completedBanisToday = uiState.completedBanis.toList(),
-            quizScore = uiState.quizHighscore,
-            badges = userBadges,
-            avatarMascotState = ""
-        )
+            FamilyMemberProgress(
+                userId = authUser!!.uid,
+                username = authUser.email?.substringBefore('@') ?: "",
+                displayName = userDisplayName,
+                xp = uiState.totalXp,
+                level = (uiState.totalXp / 500).coerceAtLeast(1),
+                currentStreak = uiState.streakDays,
+                bestStreak = uiState.streakDays.coerceAtLeast(1),
+                totalRecitationMinutes = uiState.totalListeningMinutes,
+                completedBanisCount = uiState.completedBanis.size,
+                completedBanisToday = uiState.completedBanis.toList(),
+                quizScore = uiState.quizHighscore,
+                badges = userBadges,
+                avatarMascotState = ""
+            )
+        }
     }
 
-    var currentGroup by remember {
+    val dynamicDefaultCode = remember(authUser?.uid) {
+        val seed = authUser?.uid?.take(4)?.uppercase() ?: "NK"
+        "${seed}${(1000..9999).random()}"
+    }
+
+    var currentGroup by remember(dynamicDefaultCode) {
         mutableStateOf(
             FamilyGroup(
                 groupId = "family_group_main",
                 groupName = "Family & Friends Sangat",
-                inviteCode = "NITNEM84",
+                inviteCode = dynamicDefaultCode,
                 groupTotalStreak = uiState.streakDays,
                 groupTotalXp = uiState.totalXp,
-                members = listOf(currentMember)
+                members = emptyList()
             )
         )
     }
 
-    val isAdmin = remember(currentGroup.adminUserId, authUser?.uid) {
-        currentGroup.adminUserId.isEmpty() || currentGroup.adminUserId == (authUser?.uid ?: "user_me")
+    val isAdmin = remember(currentGroup.adminUserId, authUser?.uid, isLoggedIn) {
+        isLoggedIn && (currentGroup.adminUserId.isEmpty() || currentGroup.adminUserId == authUser?.uid)
     }
 
     var allGroups by remember { mutableStateOf<List<FamilyGroup>>(emptyList()) }
     var isLoadingGroups by remember { mutableStateOf(false) }
-
     var hasLoadedInitialData by remember { mutableStateOf(false) }
 
-    // Load actual real group data from repository & auto-join/sync
-    LaunchedEffect(currentMember.userId, authUser?.uid, repository) {
+    // Load actual group data from repository
+    LaunchedEffect(authUser?.uid, isLoggedIn, repository) {
         if (repository != null) {
             isLoadingRealData = true
             try {
-                // Auto sync current member so they are registered in family_groups/family_group_main/members
-                repository.syncUserProgress("family_group_main", currentMember)
+                // If user is authenticated, sync progress
+                if (currentMember != null) {
+                    repository.syncUserProgress("family_group_main", currentMember)
+                }
 
                 val realGroup = repository.getFamilyGroup("family_group_main")
-                if (realGroup != null && realGroup.members.isNotEmpty()) {
-                    // Filter out any stale anonymous 'user_me' or duplicate matching UIDs
-                    val filteredMembers = realGroup.members.filterNot { 
-                        it.userId == currentMember.userId || 
-                        it.userId == "user_me" ||
-                        (authUser?.uid != null && it.userId == authUser.uid) ||
-                        (authUser == null && it.displayName.equals("You", ignoreCase = true))
-                    } + currentMember
-                    val updatedMembers = filteredMembers.distinctBy { it.userId }.sortedByDescending { it.xp }
+                if (realGroup != null) {
+                    val rawMembers = realGroup.members.filterNot { it.userId == "user_me" }
+                    val finalMembers = if (currentMember != null) {
+                        (rawMembers.filterNot { it.userId == currentMember.userId } + currentMember)
+                    } else {
+                        rawMembers
+                    }.distinctBy { it.userId }.sortedByDescending { it.xp }
+
                     currentGroup = realGroup.copy(
-                        members = updatedMembers,
-                        groupTotalXp = updatedMembers.sumOf { it.xp },
-                        groupTotalStreak = updatedMembers.maxOfOrNull { it.currentStreak } ?: uiState.streakDays
+                        members = finalMembers,
+                        groupTotalXp = finalMembers.sumOf { it.xp },
+                        groupTotalStreak = finalMembers.maxOfOrNull { it.currentStreak } ?: 0
                     )
                 }
 
@@ -172,7 +191,7 @@ fun FamilyLeaderboardDialog(
                         title = {
                             Column {
                                 Text(
-                                    text = "Family & Sangat Standings".translate(displayLanguage),
+                                    text = "Sangat Standings".translate(displayLanguage),
                                     fontSize = 18.sp,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -189,7 +208,14 @@ fun FamilyLeaderboardDialog(
                             }
                         },
                         actions = {
-                            if (viewMode == LeaderboardViewMode.FamilyMembers) {
+                            if (viewMode == LeaderboardViewMode.FamilyMembers && isLoggedIn) {
+                                IconButton(onClick = { 
+                                    createGroupNameInput = ""
+                                    createGroupError = null
+                                    showCreateGroupDialog = true 
+                                }) {
+                                    Icon(Icons.Default.AddCircleOutline, contentDescription = "Create Sangat Group", tint = Gold)
+                                }
                                 IconButton(onClick = { showJoinCodeDialog = true }) {
                                     Icon(Icons.Default.GroupAdd, contentDescription = "Join with Code", tint = Gold)
                                 }
@@ -235,515 +261,641 @@ fun FamilyLeaderboardDialog(
                             .fillMaxSize()
                             .padding(padding)
                             .padding(horizontal = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                        contentPadding = PaddingValues(bottom = 32.dp, top = 8.dp)
+                        verticalArrangement = Arrangement.spacedBy(14.dp),
+                        contentPadding = PaddingValues(bottom = 32.dp, top = 6.dp)
                     ) {
-                        // ── TOP TAB SWITCHER: Family Members vs Group Rankings ──
-                        item {
-                        Surface(
-                            shape = RoundedCornerShape(16.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(4.dp),
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
+                        // ── UNAUTHENTICATED SIGN-IN PROMPT BANNER ──
+                        if (!isLoggedIn) {
+                            item {
                                 Surface(
-                                    shape = RoundedCornerShape(12.dp),
-                                    color = if (viewMode == LeaderboardViewMode.FamilyMembers) Gold else Color.Transparent,
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .clickable { viewMode = LeaderboardViewMode.FamilyMembers }
+                                    shape = RoundedCornerShape(20.dp),
+                                    color = Gold.copy(alpha = 0.12f),
+                                    border = BorderStroke(1.2.dp, Gold.copy(alpha = 0.4f)),
+                                    modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    Box(
-                                        contentAlignment = Alignment.Center,
-                                        modifier = Modifier.padding(vertical = 10.dp)
+                                    Row(
+                                        modifier = Modifier.padding(16.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                                     ) {
-                                        Text(
-                                            text = "Family Members".translate(displayLanguage),
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 13.sp,
-                                            color = if (viewMode == LeaderboardViewMode.FamilyMembers) Color.Black else MaterialTheme.colorScheme.onSurface
-                                        )
-                                    }
-                                }
-
-                                Surface(
-                                    shape = RoundedCornerShape(12.dp),
-                                    color = if (viewMode == LeaderboardViewMode.AllGroups) Gold else Color.Transparent,
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .clickable {
-                                            viewMode = LeaderboardViewMode.AllGroups
-                                            if (repository != null) {
-                                                scope.launch {
-                                                    isLoadingGroups = true
-                                                    allGroups = repository.getAllFamilyGroups().ifEmpty { listOf(currentGroup) }
-                                                    isLoadingGroups = false
-                                                }
+                                        Surface(
+                                            shape = CircleShape,
+                                            color = Gold.copy(alpha = 0.2f),
+                                            modifier = Modifier.size(44.dp)
+                                        ) {
+                                            Box(contentAlignment = Alignment.Center) {
+                                                Icon(
+                                                    imageVector = Icons.Default.AccountCircle,
+                                                    contentDescription = null,
+                                                    tint = Gold,
+                                                    modifier = Modifier.size(26.dp)
+                                                )
                                             }
                                         }
-                                ) {
-                                    Box(
-                                        contentAlignment = Alignment.Center,
-                                        modifier = Modifier.padding(vertical = 10.dp)
-                                    ) {
-                                        Text(
-                                            text = "Group Rankings".translate(displayLanguage),
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 13.sp,
-                                            color = if (viewMode == LeaderboardViewMode.AllGroups) Color.Black else MaterialTheme.colorScheme.onSurface
-                                        )
+
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = "Sign in to join Standings".translate(displayLanguage),
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 14.5.sp,
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                            Text(
+                                                text = "Sync your daily Nitnem streaks, XP, and inspire the Sangat.".translate(displayLanguage),
+                                                fontSize = 11.5.sp,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                lineHeight = 15.sp
+                                            )
+                                        }
+
+                                        Button(
+                                            onClick = { authLauncher.signInWithGoogle() },
+                                            colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Color.Black),
+                                            shape = RoundedCornerShape(12.dp),
+                                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                                        ) {
+                                            Text(
+                                                text = "Sign In".translate(displayLanguage),
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
                                     }
                                 }
                             }
                         }
-                    }
 
-                    if (viewMode == LeaderboardViewMode.FamilyMembers) {
-                        // ── GROUP SUMMARY CARD WITH CUSTOM NAME EDIT ──
+                        // ── TAB SWITCHER: Family Members vs Group Rankings ──
                         item {
                             Surface(
-                                shape = RoundedCornerShape(24.dp),
+                                shape = RoundedCornerShape(16.dp),
                                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                border = BorderStroke(1.dp, Gold.copy(alpha = 0.4f)),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .background(
-                                            Brush.linearGradient(
-                                                listOf(Gold.copy(alpha = 0.15f), Color.Transparent)
-                                            )
-                                        )
-                                        .padding(20.dp)
-                                ) {
-                                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceBetween,
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Column(modifier = Modifier.weight(1f)) {
-                                                Row(
-                                                    verticalAlignment = Alignment.CenterVertically,
-                                                    modifier = Modifier.clickable {
-                                                        newGroupNameInput = currentGroup.groupName
-                                                        showEditGroupNameDialog = true
-                                                    }
-                                                ) {
-                                                    Text(
-                                                        text = currentGroup.groupName,
-                                                        fontSize = 19.sp,
-                                                        fontWeight = FontWeight.Bold,
-                                                        color = MaterialTheme.colorScheme.onSurface
-                                                    )
-                                                    Spacer(Modifier.width(6.dp))
-                                                    Icon(
-                                                        Icons.Default.Edit,
-                                                        contentDescription = "Edit Group Name",
-                                                        tint = Gold,
-                                                        modifier = Modifier.size(16.dp)
-                                                    )
-                                                }
-                                                if (isAdmin) {
-                                                    Text(
-                                                        text = "Code: ${currentGroup.inviteCode}",
-                                                        fontSize = 13.sp,
-                                                        fontWeight = FontWeight.SemiBold,
-                                                        color = Gold
-                                                    )
-                                                }
-                                            }
-
-                                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                                if (isAdmin) {
-                                                    Button(
-                                                        onClick = { showAddDialog = true },
-                                                        colors = ButtonDefaults.buttonColors(containerColor = Gold),
-                                                        shape = RoundedCornerShape(14.dp),
-                                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
-                                                    ) {
-                                                        Icon(Icons.Default.PersonAdd, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.Black)
-                                                        Spacer(Modifier.width(4.dp))
-                                                        Text("Add".translate(displayLanguage), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-                                                    }
-                                                }
-
-                                                OutlinedButton(
-                                                    onClick = { showLeaveConfirmDialog = true },
-                                                    shape = RoundedCornerShape(14.dp),
-                                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f)),
-                                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp)
-                                                ) {
-                                                    Icon(Icons.Default.ExitToApp, contentDescription = null, modifier = Modifier.size(15.dp))
-                                                    Spacer(Modifier.width(4.dp))
-                                                    Text("Leave".translate(displayLanguage), fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                                }
-                                            }
-                                        }
-
-                                        // Stats Highlights Row
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceEvenly
-                                        ) {
-                                            LeaderboardStatPill(
-                                                icon = Icons.Default.LocalFireDepartment,
-                                                title = "Group Streak",
-                                                value = "${currentGroup.groupTotalStreak} Days",
-                                                color = Color(0xFFFF5722)
-                                            )
-                                            LeaderboardStatPill(
-                                                icon = Icons.Default.Star,
-                                                title = "Total XP",
-                                                value = "${currentGroup.groupTotalXp} XP",
-                                                color = Gold
-                                            )
-                                            LeaderboardStatPill(
-                                                icon = Icons.Default.CheckCircle,
-                                                title = "Members",
-                                                value = "${currentGroup.members.size}",
-                                                color = MaterialTheme.colorScheme.primary
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        // ── SECTION HEADER ────────────────────────────────────────────────
-                        item {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "🏆 Sangat Member Standings".translate(displayLanguage),
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                if (isLoadingRealData) {
-                                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                                }
-                            }
-                        }
-
-                        // ── LEADERBOARD RANKINGS LIST ──────────────────────────────────────
-                        itemsIndexed(currentGroup.members) { index, member ->
-                            val rank = index + 1
-                            val isUser = member.userId == currentMember.userId || (authUser?.uid != null && member.userId == authUser.uid)
-
-                            val rankBadgeColor = when (rank) {
-                                1 -> Color(0xFFFFD700) // Gold
-                                2 -> Color(0xFFC0C0C0) // Silver
-                                3 -> Color(0xFFCD7F32) // Bronze
-                                else -> MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
-                            }
-
-                            Surface(
-                                shape = RoundedCornerShape(18.dp),
-                                color = if (isUser) Gold.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surface,
-                                border = BorderStroke(
-                                    if (isUser) 1.5.dp else 1.dp,
-                                    if (isUser) Gold.copy(alpha = 0.6f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
-                                ),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Row(
-                                    modifier = Modifier.padding(14.dp),
-                                    verticalAlignment = Alignment.CenterVertically
+                                    modifier = Modifier.padding(4.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                                 ) {
-                                    // Rank Badge
-                                    Surface(
-                                        shape = CircleShape,
-                                        color = rankBadgeColor.copy(alpha = if (rank <= 3) 0.25f else 0.10f),
-                                        border = BorderStroke(1.dp, rankBadgeColor),
-                                        modifier = Modifier.size(36.dp)
-                                    ) {
-                                        Box(contentAlignment = Alignment.Center) {
-                                            Text(
-                                                text = if (rank <= 3) "#$rank" else "$rank",
-                                                fontWeight = FontWeight.ExtraBold,
-                                                fontSize = 13.sp,
-                                                color = if (rank <= 3) rankBadgeColor else MaterialTheme.colorScheme.onSurface
-                                            )
-                                        }
-                                    }
-
-                                    Spacer(Modifier.width(12.dp))
-
-                                    // Name, Username & Level
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Text(
-                                                text = member.displayName,
-                                                fontSize = 15.sp,
-                                                fontWeight = if (isUser) FontWeight.ExtraBold else FontWeight.Bold,
-                                                color = if (isUser) Gold else MaterialTheme.colorScheme.onSurface
-                                            )
-                                            Spacer(Modifier.width(6.dp))
-                                            Surface(
-                                                shape = RoundedCornerShape(100.dp),
-                                                color = Gold.copy(alpha = 0.15f)
-                                            ) {
-                                                Text(
-                                                    text = "Lvl ${member.level}",
-                                                    fontSize = 10.sp,
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = Gold,
-                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                                )
-                                            }
-                                            if (member.badges.contains("lifetime_patron")) {
-                                                Spacer(Modifier.width(4.dp))
-                                                Surface(
-                                                    shape = RoundedCornerShape(100.dp),
-                                                    color = Color(0xFFFFD700).copy(alpha = 0.2f),
-                                                    border = BorderStroke(0.8.dp, Color(0xFFFFD700))
-                                                ) {
-                                                    Text(
-                                                        text = "🪯 Lifetime",
-                                                        fontSize = 9.sp,
-                                                        fontWeight = FontWeight.ExtraBold,
-                                                        color = Color(0xFFFFD700),
-                                                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.5.dp)
-                                                    )
-                                                }
-                                            } else if (member.badges.contains("premium_supporter")) {
-                                                Spacer(Modifier.width(4.dp))
-                                                Surface(
-                                                    shape = RoundedCornerShape(100.dp),
-                                                    color = Color(0xFF64B5F6).copy(alpha = 0.2f),
-                                                    border = BorderStroke(0.8.dp, Color(0xFF64B5F6))
-                                                ) {
-                                                    Text(
-                                                        text = "⭐ Premium",
-                                                        fontSize = 9.sp,
-                                                        fontWeight = FontWeight.Bold,
-                                                        color = Color(0xFF64B5F6),
-                                                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.5.dp)
-                                                    )
-                                                }
-                                            } else if (member.badges.contains("seva_supporter")) {
-                                                Spacer(Modifier.width(4.dp))
-                                                Surface(
-                                                    shape = RoundedCornerShape(100.dp),
-                                                    color = Color(0xFFFF8A80).copy(alpha = 0.2f),
-                                                    border = BorderStroke(0.8.dp, Color(0xFFFF8A80))
-                                                ) {
-                                                    Text(
-                                                        text = "❤️ Seva",
-                                                        fontSize = 9.sp,
-                                                        fontWeight = FontWeight.Bold,
-                                                        color = Color(0xFFFF8A80),
-                                                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.5.dp)
-                                                    )
-                                                }
-                                            }
-                                        }
-
-                                        if (member.username.isNotBlank()) {
-                                            Text(
-                                                text = "@${member.username}",
-                                                fontSize = 12.sp,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                        }
-
-                                        Spacer(Modifier.height(4.dp))
-
-                                        // Stats Mini Row
-                                        Row(
-                                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                                Icon(Icons.Default.LocalFireDepartment, contentDescription = null, tint = Color(0xFFFF5722), modifier = Modifier.size(13.dp))
-                                                Spacer(Modifier.width(2.dp))
-                                                RollingNumberText(
-                                                    value = member.currentStreak,
-                                                    suffix = "d",
-                                                    fontSize = 11.sp,
-                                                    fontWeight = FontWeight.SemiBold,
-                                                    color = Color(0xFFFF5722)
-                                                )
-                                            }
-
-                                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                                Icon(Icons.Default.MenuBook, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(13.dp))
-                                                Spacer(Modifier.width(2.dp))
-                                                RollingNumberText(
-                                                    value = member.completedBanisCount,
-                                                    suffix = " banis",
-                                                    fontSize = 11.sp,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                                )
-                                            }
-
-                                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                                Icon(Icons.Default.AccessTime, contentDescription = null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(13.dp))
-                                                Spacer(Modifier.width(2.dp))
-                                                RollingNumberText(
-                                                    value = member.totalRecitationMinutes,
-                                                    suffix = "m",
-                                                    fontSize = 11.sp,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                                )
-                                            }
-                                        }
-                                    }
-
-                                    // XP Score Pill
                                     Surface(
                                         shape = RoundedCornerShape(12.dp),
-                                        color = Gold.copy(alpha = 0.15f),
-                                        border = BorderStroke(1.dp, Gold.copy(alpha = 0.3f))
+                                        color = if (viewMode == LeaderboardViewMode.FamilyMembers) Gold else Color.Transparent,
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clickable { viewMode = LeaderboardViewMode.FamilyMembers }
                                     ) {
-                                        Box(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)) {
-                                            RollingNumberText(
-                                                value = member.xp,
-                                                suffix = " XP",
+                                        Box(
+                                            contentAlignment = Alignment.Center,
+                                            modifier = Modifier.padding(vertical = 10.dp)
+                                        ) {
+                                            Text(
+                                                text = "Sangat Members".translate(displayLanguage),
                                                 fontWeight = FontWeight.Bold,
                                                 fontSize = 13.sp,
-                                                color = Gold
+                                                color = if (viewMode == LeaderboardViewMode.FamilyMembers) Color.Black else MaterialTheme.colorScheme.onSurface
+                                            )
+                                        }
+                                    }
+
+                                    Surface(
+                                        shape = RoundedCornerShape(12.dp),
+                                        color = if (viewMode == LeaderboardViewMode.AllGroups) Gold else Color.Transparent,
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clickable {
+                                                viewMode = LeaderboardViewMode.AllGroups
+                                                if (repository != null) {
+                                                    scope.launch {
+                                                        isLoadingGroups = true
+                                                        allGroups = repository.getAllFamilyGroups().ifEmpty { listOf(currentGroup) }
+                                                        isLoadingGroups = false
+                                                    }
+                                                }
+                                            }
+                                    ) {
+                                        Box(
+                                            contentAlignment = Alignment.Center,
+                                            modifier = Modifier.padding(vertical = 10.dp)
+                                        ) {
+                                            Text(
+                                                text = "Group Rankings".translate(displayLanguage),
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 13.sp,
+                                                color = if (viewMode == LeaderboardViewMode.AllGroups) Color.Black else MaterialTheme.colorScheme.onSurface
                                             )
                                         }
                                     }
                                 }
                             }
                         }
-                    } else {
-                        // ── ALL GROUPS / FAMILY TEAMS LEADERBOARD ─────────────────────────
-                        item {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "🌐 Global Family & Sangat Groups".translate(displayLanguage),
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                if (isLoadingGroups) {
-                                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+
+                        if (viewMode == LeaderboardViewMode.FamilyMembers) {
+                            // ── GROUP SUMMARY CARD ──
+                            item {
+                                Surface(
+                                    shape = RoundedCornerShape(22.dp),
+                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                    border = BorderStroke(1.dp, Gold.copy(alpha = 0.35f)),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .background(
+                                                Brush.linearGradient(
+                                                    listOf(Gold.copy(alpha = 0.12f), Color.Transparent)
+                                                )
+                                            )
+                                            .padding(18.dp)
+                                    ) {
+                                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Column(modifier = Modifier.weight(1f)) {
+                                                    Row(
+                                                        verticalAlignment = Alignment.CenterVertically,
+                                                        modifier = Modifier.clickable(enabled = isAdmin) {
+                                                            newGroupNameInput = currentGroup.groupName
+                                                            showEditGroupNameDialog = true
+                                                        }
+                                                    ) {
+                                                        Text(
+                                                            text = currentGroup.groupName,
+                                                            fontSize = 18.sp,
+                                                            fontWeight = FontWeight.Bold,
+                                                            color = MaterialTheme.colorScheme.onSurface
+                                                        )
+                                                        if (isAdmin) {
+                                                            Spacer(Modifier.width(6.dp))
+                                                            Icon(
+                                                                Icons.Default.Edit,
+                                                                contentDescription = "Edit Group Name",
+                                                                tint = Gold,
+                                                                modifier = Modifier.size(15.dp)
+                                                            )
+                                                        }
+                                                    }
+                                                    if (isLoggedIn) {
+                                                        Text(
+                                                            text = "Invite Code: ${currentGroup.inviteCode}",
+                                                            fontSize = 12.sp,
+                                                            fontWeight = FontWeight.SemiBold,
+                                                            color = Gold
+                                                        )
+                                                    }
+                                                }
+
+                                                if (isLoggedIn) {
+                                                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                                        if (isAdmin) {
+                                                            Button(
+                                                                onClick = { showAddDialog = true },
+                                                                colors = ButtonDefaults.buttonColors(containerColor = Gold),
+                                                                shape = RoundedCornerShape(12.dp),
+                                                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                                                            ) {
+                                                                Icon(Icons.Default.PersonAdd, contentDescription = null, modifier = Modifier.size(14.dp), tint = Color.Black)
+                                                                Spacer(Modifier.width(4.dp))
+                                                                Text("Add".translate(displayLanguage), fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                                                            }
+                                                        }
+
+                                                        OutlinedButton(
+                                                            onClick = { showLeaveConfirmDialog = true },
+                                                            shape = RoundedCornerShape(12.dp),
+                                                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f)),
+                                                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                                                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
+                                                        ) {
+                                                            Icon(Icons.Default.ExitToApp, contentDescription = null, modifier = Modifier.size(14.dp))
+                                                            Spacer(Modifier.width(4.dp))
+                                                            Text("Leave".translate(displayLanguage), fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
+                                                        }
+                                                    }
+                                                }
+                                            }
+
+                                            // Stats Row
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceEvenly
+                                            ) {
+                                                LeaderboardStatPill(
+                                                    icon = Icons.Default.LocalFireDepartment,
+                                                    title = "Streak",
+                                                    value = "${currentGroup.groupTotalStreak} Days",
+                                                    color = Color(0xFFFF7043)
+                                                )
+                                                LeaderboardStatPill(
+                                                    icon = Icons.Default.Star,
+                                                    title = "Collective XP",
+                                                    value = "${currentGroup.groupTotalXp} XP",
+                                                    color = Gold
+                                                )
+                                                LeaderboardStatPill(
+                                                    icon = Icons.Default.Group,
+                                                    title = "Members",
+                                                    value = "${currentGroup.members.size}",
+                                                    color = MaterialTheme.colorScheme.primary
+                                                )
+                                            }
+                                        }
+                                    }
                                 }
                             }
-                        }
 
-                        itemsIndexed(allGroups) { index, group ->
-                            val rank = index + 1
-                            val isMyGroup = group.groupId == currentGroup.groupId
-
-                            val rankBadgeColor = when (rank) {
-                                1 -> Color(0xFFFFD700)
-                                2 -> Color(0xFFC0C0C0)
-                                3 -> Color(0xFFCD7F32)
-                                else -> MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
-                            }
-
-                            Surface(
-                                shape = RoundedCornerShape(18.dp),
-                                color = if (isMyGroup) Gold.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surface,
-                                border = BorderStroke(
-                                    if (isMyGroup) 1.5.dp else 1.dp,
-                                    if (isMyGroup) Gold.copy(alpha = 0.6f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
-                                ),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
+                            // ── SECTION HEADER ──
+                            item {
                                 Row(
-                                    modifier = Modifier.padding(16.dp),
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Surface(
-                                        shape = CircleShape,
-                                        color = rankBadgeColor.copy(alpha = if (rank <= 3) 0.25f else 0.10f),
-                                        border = BorderStroke(1.dp, rankBadgeColor),
-                                        modifier = Modifier.size(36.dp)
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                                     ) {
-                                        Box(contentAlignment = Alignment.Center) {
-                                            Text(
-                                                text = "#$rank",
-                                                fontWeight = FontWeight.ExtraBold,
-                                                fontSize = 13.sp,
-                                                color = if (rank <= 3) rankBadgeColor else MaterialTheme.colorScheme.onSurface
-                                            )
-                                        }
+                                        Icon(
+                                            imageVector = Icons.Default.EmojiEvents,
+                                            contentDescription = null,
+                                            tint = Gold,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                        Text(
+                                            text = "Sangat Member Standings".translate(displayLanguage),
+                                            fontSize = 15.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
                                     }
+                                    if (isLoadingRealData) {
+                                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                                    }
+                                }
+                            }
 
-                                    Spacer(Modifier.width(14.dp))
+                            if (currentGroup.members.isEmpty()) {
+                                item {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 32.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = "No Sangat members yet. Sign in or add members to start standings!".translate(displayLanguage),
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            fontSize = 13.sp,
+                                            textAlign = TextAlign.Center
+                                        )
+                                    }
+                                }
+                            }
 
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Text(
-                                                text = group.groupName,
-                                                fontSize = 16.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = if (isMyGroup) Gold else MaterialTheme.colorScheme.onSurface
-                                            )
-                                            if (isMyGroup) {
+                            // ── LEADERBOARD RANKINGS LIST ──
+                            itemsIndexed(currentGroup.members) { index, member ->
+                                val rank = index + 1
+                                val isUser = isLoggedIn && authUser?.uid == member.userId
+
+                                val rankBadgeColor = when (rank) {
+                                    1 -> Color(0xFFFFD700) // Gold
+                                    2 -> Color(0xFFC0C0C0) // Silver
+                                    3 -> Color(0xFFCD7F32) // Bronze
+                                    else -> MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
+                                }
+
+                                Surface(
+                                    shape = RoundedCornerShape(18.dp),
+                                    color = if (isUser) Gold.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surface,
+                                    border = BorderStroke(
+                                        if (isUser) 1.5.dp else 1.dp,
+                                        if (isUser) Gold.copy(alpha = 0.6f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
+                                    ),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(14.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        // Rank Badge
+                                        Surface(
+                                            shape = CircleShape,
+                                            color = rankBadgeColor.copy(alpha = if (rank <= 3) 0.25f else 0.10f),
+                                            border = BorderStroke(1.dp, rankBadgeColor),
+                                            modifier = Modifier.size(36.dp)
+                                        ) {
+                                            Box(contentAlignment = Alignment.Center) {
+                                                Text(
+                                                    text = if (rank <= 3) "#$rank" else "$rank",
+                                                    fontWeight = FontWeight.ExtraBold,
+                                                    fontSize = 13.sp,
+                                                    color = if (rank <= 3) rankBadgeColor else MaterialTheme.colorScheme.onSurface
+                                                )
+                                            }
+                                        }
+
+                                        Spacer(Modifier.width(12.dp))
+
+                                        // Name, Username & Level
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Text(
+                                                    text = member.displayName,
+                                                    fontSize = 14.5.sp,
+                                                    fontWeight = if (isUser) FontWeight.ExtraBold else FontWeight.Bold,
+                                                    color = if (isUser) Gold else MaterialTheme.colorScheme.onSurface
+                                                )
                                                 Spacer(Modifier.width(6.dp))
                                                 Surface(
                                                     shape = RoundedCornerShape(100.dp),
-                                                    color = Gold.copy(alpha = 0.2f)
+                                                    color = Gold.copy(alpha = 0.15f)
                                                 ) {
                                                     Text(
-                                                        text = "Your Family".translate(displayLanguage),
-                                                        fontSize = 9.sp,
+                                                        text = "Lvl ${member.level}",
+                                                        fontSize = 10.sp,
                                                         fontWeight = FontWeight.Bold,
                                                         color = Gold,
                                                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                                     )
                                                 }
+
+                                                // Clean Tier Vector Badges (Zero Emojis)
+                                                if (member.badges.contains("lifetime_patron")) {
+                                                    Spacer(Modifier.width(4.dp))
+                                                    Surface(
+                                                        shape = RoundedCornerShape(100.dp),
+                                                        color = Color(0xFFFFD700).copy(alpha = 0.2f),
+                                                        border = BorderStroke(0.8.dp, Color(0xFFFFD700))
+                                                    ) {
+                                                        Row(
+                                                            verticalAlignment = Alignment.CenterVertically,
+                                                            modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+                                                        ) {
+                                                            Icon(Icons.Default.MilitaryTech, contentDescription = null, tint = Color(0xFFFFD700), modifier = Modifier.size(11.dp))
+                                                            Spacer(Modifier.width(2.dp))
+                                                            Text(
+                                                                text = "Lifetime",
+                                                                fontSize = 9.sp,
+                                                                fontWeight = FontWeight.ExtraBold,
+                                                                color = Color(0xFFFFD700)
+                                                            )
+                                                        }
+                                                    }
+                                                } else if (member.badges.contains("premium_supporter")) {
+                                                    Spacer(Modifier.width(4.dp))
+                                                    Surface(
+                                                        shape = RoundedCornerShape(100.dp),
+                                                        color = Color(0xFF64B5F6).copy(alpha = 0.2f),
+                                                        border = BorderStroke(0.8.dp, Color(0xFF64B5F6))
+                                                    ) {
+                                                        Row(
+                                                            verticalAlignment = Alignment.CenterVertically,
+                                                            modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+                                                        ) {
+                                                            Icon(Icons.Default.Star, contentDescription = null, tint = Color(0xFF64B5F6), modifier = Modifier.size(11.dp))
+                                                            Spacer(Modifier.width(2.dp))
+                                                            Text(
+                                                                text = "Premium",
+                                                                fontSize = 9.sp,
+                                                                fontWeight = FontWeight.Bold,
+                                                                color = Color(0xFF64B5F6)
+                                                            )
+                                                        }
+                                                    }
+                                                } else if (member.badges.contains("seva_supporter")) {
+                                                    Spacer(Modifier.width(4.dp))
+                                                    Surface(
+                                                        shape = RoundedCornerShape(100.dp),
+                                                        color = Color(0xFFFF8A80).copy(alpha = 0.2f),
+                                                        border = BorderStroke(0.8.dp, Color(0xFFFF8A80))
+                                                    ) {
+                                                        Row(
+                                                            verticalAlignment = Alignment.CenterVertically,
+                                                            modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+                                                        ) {
+                                                            Icon(Icons.Default.VolunteerActivism, contentDescription = null, tint = Color(0xFFFF8A80), modifier = Modifier.size(11.dp))
+                                                            Spacer(Modifier.width(2.dp))
+                                                            Text(
+                                                                text = "Seva",
+                                                                fontSize = 9.sp,
+                                                                fontWeight = FontWeight.Bold,
+                                                                color = Color(0xFFFF8A80)
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                            }
+
+                                            if (member.username.isNotBlank()) {
+                                                Text(
+                                                    text = "@${member.username}",
+                                                    fontSize = 11.5.sp,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
+
+                                            Spacer(Modifier.height(4.dp))
+
+                                            // Stats Mini Row
+                                            Row(
+                                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                                    Icon(Icons.Default.LocalFireDepartment, contentDescription = null, tint = Color(0xFFFF7043), modifier = Modifier.size(13.dp))
+                                                    Spacer(Modifier.width(2.dp))
+                                                    RollingNumberText(
+                                                        value = member.currentStreak,
+                                                        suffix = "d",
+                                                        fontSize = 11.sp,
+                                                        fontWeight = FontWeight.SemiBold,
+                                                        color = Color(0xFFFF7043)
+                                                    )
+                                                }
+
+                                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                                    Icon(Icons.Default.MenuBook, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(13.dp))
+                                                    Spacer(Modifier.width(2.dp))
+                                                    RollingNumberText(
+                                                        value = member.completedBanisCount,
+                                                        suffix = " banis",
+                                                        fontSize = 11.sp,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                    )
+                                                }
+
+                                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                                    Icon(Icons.Default.AccessTime, contentDescription = null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(13.dp))
+                                                    Spacer(Modifier.width(2.dp))
+                                                    RollingNumberText(
+                                                        value = member.totalRecitationMinutes,
+                                                        suffix = "m",
+                                                        fontSize = 11.sp,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                    )
+                                                }
                                             }
                                         }
 
-                                        Spacer(Modifier.height(4.dp))
-
-                                        Row(
-                                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                            verticalAlignment = Alignment.CenterVertically
+                                        // XP Score Pill
+                                        Surface(
+                                            shape = RoundedCornerShape(12.dp),
+                                            color = Gold.copy(alpha = 0.15f),
+                                            border = BorderStroke(1.dp, Gold.copy(alpha = 0.3f))
                                         ) {
-                                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                                Icon(Icons.Default.People, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(13.dp))
-                                                Spacer(Modifier.width(2.dp))
-                                                Text("${group.members.size} members", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                            }
-
-                                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                                Icon(Icons.Default.LocalFireDepartment, contentDescription = null, tint = Color(0xFFFF5722), modifier = Modifier.size(13.dp))
-                                                Spacer(Modifier.width(2.dp))
+                                            Box(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)) {
                                                 RollingNumberText(
-                                                    value = group.groupTotalStreak,
-                                                    suffix = "d streak",
-                                                    fontSize = 11.sp,
-                                                    fontWeight = FontWeight.SemiBold,
-                                                    color = Color(0xFFFF5722)
+                                                    value = member.xp,
+                                                    suffix = " XP",
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 13.sp,
+                                                    color = Gold
                                                 )
                                             }
                                         }
                                     }
-
-                                    Surface(
-                                        shape = RoundedCornerShape(12.dp),
-                                        color = Gold.copy(alpha = 0.15f),
-                                        border = BorderStroke(1.dp, Gold.copy(alpha = 0.3f))
+                                }
+                            }
+                        } else {
+                            // ── ALL GROUPS / FAMILY TEAMS LEADERBOARD ──
+                            item {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                                     ) {
-                                        Box(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)) {
-                                            RollingNumberText(
-                                                value = group.groupTotalXp,
-                                                suffix = " XP",
-                                                fontWeight = FontWeight.Bold,
-                                                fontSize = 13.sp,
-                                                color = Gold
-                                            )
+                                        Icon(
+                                            imageVector = Icons.Default.Public,
+                                            contentDescription = null,
+                                            tint = Gold,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                        Text(
+                                            text = "Global Sangat Groups".translate(displayLanguage),
+                                            fontSize = 15.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+                                    if (isLoadingGroups) {
+                                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                                    }
+                                }
+                            }
+
+                            itemsIndexed(allGroups) { index, group ->
+                                val rank = index + 1
+                                val isMyGroup = isLoggedIn && group.groupId == currentGroup.groupId
+
+                                val rankBadgeColor = when (rank) {
+                                    1 -> Color(0xFFFFD700)
+                                    2 -> Color(0xFFC0C0C0)
+                                    3 -> Color(0xFFCD7F32)
+                                    else -> MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
+                                }
+
+                                Surface(
+                                    shape = RoundedCornerShape(18.dp),
+                                    color = if (isMyGroup) Gold.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surface,
+                                    border = BorderStroke(
+                                        if (isMyGroup) 1.5.dp else 1.dp,
+                                        if (isMyGroup) Gold.copy(alpha = 0.6f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
+                                    ),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(14.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Surface(
+                                            shape = CircleShape,
+                                            color = rankBadgeColor.copy(alpha = if (rank <= 3) 0.25f else 0.10f),
+                                            border = BorderStroke(1.dp, rankBadgeColor),
+                                            modifier = Modifier.size(36.dp)
+                                        ) {
+                                            Box(contentAlignment = Alignment.Center) {
+                                                Text(
+                                                    text = "#$rank",
+                                                    fontWeight = FontWeight.ExtraBold,
+                                                    fontSize = 13.sp,
+                                                    color = if (rank <= 3) rankBadgeColor else MaterialTheme.colorScheme.onSurface
+                                                )
+                                            }
+                                        }
+
+                                        Spacer(Modifier.width(12.dp))
+
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Text(
+                                                    text = group.groupName,
+                                                    fontSize = 15.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = if (isMyGroup) Gold else MaterialTheme.colorScheme.onSurface
+                                                )
+                                                if (isMyGroup) {
+                                                    Spacer(Modifier.width(6.dp))
+                                                    Surface(
+                                                        shape = RoundedCornerShape(100.dp),
+                                                        color = Gold.copy(alpha = 0.2f)
+                                                    ) {
+                                                        Text(
+                                                            text = "Your Family".translate(displayLanguage),
+                                                            fontSize = 9.sp,
+                                                            fontWeight = FontWeight.Bold,
+                                                            color = Gold,
+                                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                        )
+                                                    }
+                                                }
+                                            }
+
+                                            Spacer(Modifier.height(4.dp))
+
+                                            Row(
+                                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                                    Icon(Icons.Default.People, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(13.dp))
+                                                    Spacer(Modifier.width(2.dp))
+                                                    Text("${group.members.size} members", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                                }
+
+                                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                                    Icon(Icons.Default.LocalFireDepartment, contentDescription = null, tint = Color(0xFFFF7043), modifier = Modifier.size(13.dp))
+                                                    Spacer(Modifier.width(2.dp))
+                                                    RollingNumberText(
+                                                        value = group.groupTotalStreak,
+                                                        suffix = "d streak",
+                                                        fontSize = 11.sp,
+                                                        fontWeight = FontWeight.SemiBold,
+                                                        color = Color(0xFFFF7043)
+                                                    )
+                                                }
+                                            }
+                                        }
+
+                                        Surface(
+                                            shape = RoundedCornerShape(12.dp),
+                                            color = Gold.copy(alpha = 0.15f),
+                                            border = BorderStroke(1.dp, Gold.copy(alpha = 0.3f))
+                                        ) {
+                                            Box(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)) {
+                                                RollingNumberText(
+                                                    value = group.groupTotalXp,
+                                                    suffix = " XP",
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 13.sp,
+                                                    color = Gold
+                                                )
+                                            }
                                         }
                                     }
                                 }
@@ -754,15 +906,14 @@ fun FamilyLeaderboardDialog(
             }
         }
     }
-    }
 
-    // ── EDIT GROUP NAME DIALOG ─────────────────────────────────────────
+    // ── EDIT GROUP NAME DIALOG ──
     if (showEditGroupNameDialog) {
         AlertDialog(
             onDismissRequest = { showEditGroupNameDialog = false },
             title = {
                 Text(
-                    text = "Edit Family Group Name".translate(displayLanguage),
+                    text = "Edit Group Name".translate(displayLanguage),
                     fontWeight = FontWeight.Bold
                 )
             },
@@ -801,7 +952,7 @@ fun FamilyLeaderboardDialog(
         )
     }
 
-    // ── ADD FRIEND / USERNAME MODAL DIALOG ─────────────────────────────
+    // ── ADD FRIEND / USERNAME MODAL DIALOG ──
     if (showAddDialog) {
         AlertDialog(
             onDismissRequest = {
@@ -819,7 +970,7 @@ fun FamilyLeaderboardDialog(
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(
-                        text = "Enter username to add them to your family leaderboard standings:".translate(displayLanguage),
+                        text = "Enter username to add them to your family leaderboard:".translate(displayLanguage),
                         fontSize = 13.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -914,8 +1065,8 @@ fun FamilyLeaderboardDialog(
         )
     }
 
-    // ── JOIN GROUP WITH CODE DIALOG ──────────────────────────────────
-    if (showJoinCodeDialog) {
+    // ── JOIN GROUP WITH CODE DIALOG ──
+    if (showJoinCodeDialog && currentMember != null) {
         AlertDialog(
             onDismissRequest = {
                 showJoinCodeDialog = false
@@ -931,7 +1082,7 @@ fun FamilyLeaderboardDialog(
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
-                        text = "Enter 6-digit or custom invite code provided by your family group admin:".translate(displayLanguage),
+                        text = "Enter invite code provided by your family group admin:".translate(displayLanguage),
                         fontSize = 13.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -941,7 +1092,7 @@ fun FamilyLeaderboardDialog(
                             inputJoinCode = it.uppercase()
                             joinError = null
                         },
-                        label = { Text("Invite Code (e.g. NK1080)".translate(displayLanguage)) },
+                        label = { Text("Invite Code (e.g. NITNEM84)".translate(displayLanguage)) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -983,8 +1134,8 @@ fun FamilyLeaderboardDialog(
         )
     }
 
-    // ── LEAVE GROUP CONFIRMATION DIALOG ───────────────────────────────
-    if (showLeaveConfirmDialog) {
+    // ── LEAVE GROUP CONFIRMATION DIALOG ──
+    if (showLeaveConfirmDialog && currentMember != null) {
         AlertDialog(
             onDismissRequest = { showLeaveConfirmDialog = false },
             title = {
@@ -1023,6 +1174,111 @@ fun FamilyLeaderboardDialog(
             }
         )
     }
+
+    // ── CREATE SANGAT GROUP DIALOG ──
+    if (showCreateGroupDialog && currentMember != null) {
+        AlertDialog(
+            onDismissRequest = { 
+                if (!isCreatingGroup) showCreateGroupDialog = false 
+            },
+            title = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(Icons.Default.AddCircleOutline, contentDescription = null, tint = Gold)
+                    Text(
+                        text = "Create Sangat Group".translate(displayLanguage),
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        text = "Create a dedicated Sangat group for your family, friends, or local Gurdwara youth. You will be the admin and a unique invite code will be generated to share with members.".translate(displayLanguage),
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        lineHeight = 17.sp
+                    )
+
+                    OutlinedTextField(
+                        value = createGroupNameInput,
+                        onValueChange = {
+                            createGroupNameInput = it
+                            createGroupError = null
+                        },
+                        label = { Text("Group Name".translate(displayLanguage)) },
+                        placeholder = { Text("e.g. Singh Sabha Youth / Family Nitnem") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        isError = createGroupError != null,
+                        supportingText = {
+                            createGroupError?.let {
+                                Text(it, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+                            }
+                        },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Gold,
+                            focusedLabelColor = Gold,
+                            cursorColor = Gold
+                        )
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val cleanName = createGroupNameInput.trim()
+                        if (cleanName.isBlank()) {
+                            createGroupError = "Please enter a group name.".translate(displayLanguage)
+                            return@Button
+                        }
+                        isCreatingGroup = true
+                        createGroupError = null
+                        scope.launch {
+                            try {
+                                val created = repository?.createFamilyGroup(cleanName, currentMember)
+                                if (created != null) {
+                                    currentGroup = created
+                                    showCreateGroupDialog = false
+                                    createGroupNameInput = ""
+                                } else {
+                                    createGroupError = "Could not create group. Please try again.".translate(displayLanguage)
+                                }
+                            } catch (e: Exception) {
+                                createGroupError = e.message ?: "Failed to create group"
+                            } finally {
+                                isCreatingGroup = false
+                            }
+                        }
+                    },
+                    enabled = !isCreatingGroup && createGroupNameInput.isNotBlank(),
+                    colors = ButtonDefaults.buttonColors(containerColor = Gold)
+                ) {
+                    if (isCreatingGroup) {
+                        CircularProgressIndicator(
+                            color = Color.Black,
+                            strokeWidth = 2.dp,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    } else {
+                        Text("Create & Get Code".translate(displayLanguage), color = Color.Black, fontWeight = FontWeight.Bold)
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showCreateGroupDialog = false },
+                    enabled = !isCreatingGroup
+                ) {
+                    Text("Cancel".translate(displayLanguage))
+                }
+            }
+        )
+    }
+
+  
 }
 
 @Composable

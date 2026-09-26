@@ -852,9 +852,9 @@ object Translations {
             DisplayLanguage.Hindi to "दैनिक नितनेम",
             DisplayLanguage.Punjabi to "ਰੋਜ਼ਾਨਾ ਨਿਤਨੇਮ"
         ),
-        "Begin your Nitnem today 🌅" to mapOf(
-            DisplayLanguage.Hindi to "आज ही अपना नितनेम शुरू करें 🌅",
-            DisplayLanguage.Punjabi to "ਅੱਜ ਤੋਂ ਆਪਣਾ ਨਿਤਨੇਮ ਸ਼ੁਰੂ ਕਰੋ 🌅"
+        "Begin your Nitnem today" to mapOf(
+            DisplayLanguage.Hindi to "आज ही अपना नितनेम शुरू करें",
+            DisplayLanguage.Punjabi to "ਅੱਜ ਤੋਂ ਆਪਣਾ ਨਿਤਨੇਮ ਸ਼ੁਰੂ ਕਰੋ"
         ),
                 "False" to mapOf(
             DisplayLanguage.Hindi to "गलत",
@@ -2589,17 +2589,17 @@ object Translations {
             DisplayLanguage.Hindi to "ऑनलाइन स्ट्रीम",
             DisplayLanguage.Punjabi to "ਔਨਲਾਈਨ ਸਟ੍ਰੀਮ"
         ),
-        "⚡ Live Timing Sync available" to mapOf(
-            DisplayLanguage.Hindi to "⚡ लाइव टाइमिंग सिंक उपलब्ध",
-            DisplayLanguage.Punjabi to "⚡ ਲਾਈਵ ਟਾਈਮਿੰਗ ਸਿੰਕ ਉਪਲਬਧ"
+        "Live Timing Sync available" to mapOf(
+            DisplayLanguage.Hindi to "लाइव टाइमिंग सिंक उपलब्ध",
+            DisplayLanguage.Punjabi to "ਲਾਈਵ ਟਾਈਮਿੰਗ ਸਿੰਕ ਉਪਲਬਧ"
         ),
         "Nitnem Daily Journey" to mapOf(
             DisplayLanguage.Hindi to "नितनेम दैनिक यात्रा",
             DisplayLanguage.Punjabi to "ਨਿਤਨੇਮ ਰੋਜ਼ਾਨਾ ਯਾਤਰਾ"
         ),
-        "Nitnem Completed! 🎉" to mapOf(
-            DisplayLanguage.Hindi to "नितनेम पूर्ण हुआ! 🎉",
-            DisplayLanguage.Punjabi to "ਨਿਤਨੇਮ ਸੰਪੂਰਨ ਹੋਇਆ! 🎉"
+        "Nitnem Completed!" to mapOf(
+            DisplayLanguage.Hindi to "नितनेम पूर्ण हुआ!",
+            DisplayLanguage.Punjabi to "ਨਿਤਨੇਮ ਸੰਪੂਰਨ ਹੋਇਆ!"
         ),
         "Banis Completed" to mapOf(
             DisplayLanguage.Hindi to "बाणियां पूर्ण हुईं",
@@ -2621,9 +2621,9 @@ object Translations {
             DisplayLanguage.Hindi to "आज अर्जित",
             DisplayLanguage.Punjabi to "ਅੱਜ ਕਮਾਏ"
         ),
-        "Waheguru 🙏" to mapOf(
-            DisplayLanguage.Hindi to "वाहेगुरु 🙏",
-            DisplayLanguage.Punjabi to "ਵਾਹਿਗੁਰੂ 🙏"
+        "Waheguru" to mapOf(
+            DisplayLanguage.Hindi to "वाहेगुरु",
+            DisplayLanguage.Punjabi to "ਵਾਹਿਗੁਰੂ"
         ),
         "Continue Paath" to mapOf(
             DisplayLanguage.Hindi to "पाठ जारी रखें",
@@ -2646,6 +2646,11 @@ object Translations {
             DisplayLanguage.Hindi to "नितनेम गुटका साहिब",
             DisplayLanguage.Punjabi to "ਨਿਤਨੇਮ ਗੁਟਕਾ ਸਾਹਿਬ"
         ),
+        "ਨਿਤਨੇਮ ਗੁਟਕਾ ਟੀਕਾ" to mapOf(
+            DisplayLanguage.English to "Nitnem Gutka Steek",
+            DisplayLanguage.Hindi to "नितनेम गुटका टीका",
+            DisplayLanguage.Punjabi to "ਨਿਤਨੇਮ ਗੁਟਕਾ ਟੀਕਾ"
+        ),
         "ੴ ਸਤਿਨਾਮੁ ਵਾਹਿਗੁਰੂ" to mapOf(
             DisplayLanguage.English to "Ek Onkar Satnam Waheguru",
             DisplayLanguage.Hindi to "ੴ सतनाम वाहेगुरु",
@@ -2667,9 +2672,9 @@ object Translations {
             DisplayLanguage.Hindi to "रीयल-टाइम लीडरबोर्ड और स्ट्रीक्स",
             DisplayLanguage.Punjabi to "ਰੀਅਲ-ਟਾਈਮ ਲੀਡਰਬੋਰਡ ਅਤੇ ਸਟ੍ਰੀਕਸ"
         ),
-        "🏆 Sangat Member Rankings" to mapOf(
-            DisplayLanguage.Hindi to "🏆 संगत सदस्य रैंकिंग",
-            DisplayLanguage.Punjabi to "🏆 ਸੰਗਤ ਮੈਂਬਰ ਦਰਜਾਬੰਦੀ"
+        "Sangat Member Rankings" to mapOf(
+            DisplayLanguage.Hindi to "संगत सदस्य रैंकिंग",
+            DisplayLanguage.Punjabi to "ਸੰਗਤ ਮੈਂਬਰ ਦਰਜਾਬੰਦੀ"
         ),
         "Transliteration not available" to mapOf(
             DisplayLanguage.Hindi to "लिप्यंतरण उपलब्ध नहीं है",
@@ -2743,9 +2748,9 @@ object Translations {
             DisplayLanguage.Hindi to "दैनिक नितनेम यात्रा",
             DisplayLanguage.Punjabi to "ਰੋਜ਼ਾਨਾ ਨਿਤਨੇਮ ਯਾਤਰਾ"
         ),
-        "Nitnem Completed! 🎉" to mapOf(
-            DisplayLanguage.Hindi to "नितनेम पूरा हुआ! 🎉",
-            DisplayLanguage.Punjabi to "ਨਿਤਨੇਮ ਪੂਰਾ ਹੋਇਆ! 🎉"
+        "Nitnem Completed!" to mapOf(
+            DisplayLanguage.Hindi to "नितनेम पूरा हुआ!",
+            DisplayLanguage.Punjabi to "ਨਿਤਨੇਮ ਪੂਰਾ ਹੋਇਆ!"
         ),
         "Banis Completed" to mapOf(
             DisplayLanguage.Hindi to "बाणियां पूर्ण हुईं",

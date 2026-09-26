@@ -28,7 +28,7 @@ fun RollingNumberText(
     fontWeight: FontWeight = FontWeight.Bold,
     style: TextStyle = TextStyle.Default
 ) {
-    val stringValue = remember(value) { value.toString() }
+    val stringValue = value.toString()
 
     Row(
         modifier = modifier,
@@ -44,37 +44,40 @@ fun RollingNumberText(
             )
         }
 
-        for (char in stringValue) {
+        for (i in stringValue.indices) {
+            val char = stringValue[i]
             if (char.isDigit()) {
                 val digit = char.digitToInt()
-                AnimatedContent(
-                    targetState = digit,
-                    transitionSpec = {
-                        if (targetState > initialState) {
-                            (slideInVertically(
-                                animationSpec = tween(450, easing = FastOutSlowInEasing)
-                            ) { height -> height } + fadeIn(animationSpec = tween(450))) togetherWith
-                                    (slideOutVertically(
-                                        animationSpec = tween(450, easing = FastOutSlowInEasing)
-                                    ) { height -> -height } + fadeOut(animationSpec = tween(450)))
-                        } else {
-                            (slideInVertically(
-                                animationSpec = tween(450, easing = FastOutSlowInEasing)
-                            ) { height -> -height } + fadeIn(animationSpec = tween(450))) togetherWith
-                                    (slideOutVertically(
-                                        animationSpec = tween(450, easing = FastOutSlowInEasing)
-                                    ) { height -> height } + fadeOut(animationSpec = tween(450)))
-                        }
-                    },
-                    label = "SuitcasePinDigit"
-                ) { targetDigit ->
-                    Text(
-                        text = targetDigit.toString(),
-                        color = color,
-                        fontSize = fontSize,
-                        fontWeight = fontWeight,
-                        style = style
-                    )
+                key(i) {
+                    AnimatedContent(
+                        targetState = digit,
+                        transitionSpec = {
+                            if (targetState > initialState) {
+                                (slideInVertically(
+                                    animationSpec = tween(400, easing = FastOutSlowInEasing)
+                                ) { height -> height } + fadeIn(animationSpec = tween(400))) togetherWith
+                                        (slideOutVertically(
+                                            animationSpec = tween(400, easing = FastOutSlowInEasing)
+                                        ) { height -> -height } + fadeOut(animationSpec = tween(400)))
+                            } else {
+                                (slideInVertically(
+                                    animationSpec = tween(400, easing = FastOutSlowInEasing)
+                                ) { height -> -height } + fadeIn(animationSpec = tween(400))) togetherWith
+                                        (slideOutVertically(
+                                            animationSpec = tween(400, easing = FastOutSlowInEasing)
+                                        ) { height -> height } + fadeOut(animationSpec = tween(400)))
+                            }
+                        },
+                        label = "SuitcasePinDigit_$i"
+                    ) { targetDigit ->
+                        Text(
+                            text = targetDigit.toString(),
+                            color = color,
+                            fontSize = fontSize,
+                            fontWeight = fontWeight,
+                            style = style
+                        )
+                    }
                 }
             } else {
                 Text(

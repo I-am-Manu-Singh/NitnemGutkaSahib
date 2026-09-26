@@ -116,7 +116,7 @@ fun FinalSetupPage(
             BaniSlide(
                 mascotState = MascotState.Idle,
                 heading = "Meet Bani".translate(displayLanguage),
-                body = "In the quiet, sacred hours of Amrit Vela, a small golden bird named Bani wakes up — her wings painted with the warm orange hues of a breaking dawn, carrying an ancient crimson Gutka Sahib close to her chest.".translate(displayLanguage),
+                body = "In the quiet, sacred hours of Amrit Vela, a small golden bird named Bani wakes up — her wings painted with the warm orange hues of a breaking dawn, carrying an ancient crimson Gutka Steek close to her chest.".translate(displayLanguage),
                 accentColor = Gold
             ),
             BaniSlide(
@@ -128,7 +128,7 @@ fun FinalSetupPage(
             BaniSlide(
                 mascotState = MascotState.Reading,
                 heading = "A Joyful Companion".translate(displayLanguage),
-                body = "Whenever you open your Gutka Sahib with a smile, Bani flutters her golden wings with pure joy, cheering you on as you read each sacred verse of Gurbani.".translate(displayLanguage),
+                body = "Whenever you open your Gutka Steek with a smile, Bani flutters her golden wings with pure joy, cheering you on as you read each sacred verse of Gurbani.".translate(displayLanguage),
                 accentColor = Color(0xFFFFB703)
             ),
             BaniSlide(

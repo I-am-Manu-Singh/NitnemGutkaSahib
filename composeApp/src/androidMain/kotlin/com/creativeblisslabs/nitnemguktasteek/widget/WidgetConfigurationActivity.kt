@@ -299,13 +299,13 @@ private fun WidgetMockPreview(
                 "Mascot Assistant" -> {
                     Row(modifier = Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
                         Box(modifier = Modifier.size(56.dp).clip(androidx.compose.foundation.shape.CircleShape).background(Brush.radialGradient(listOf(accentColor.copy(alpha = 0.55f), accentColor.copy(alpha = 0.20f)))), contentAlignment = Alignment.Center) {
-                            Text("🦅", fontSize = 28.sp)
+                            Text("ੴ", fontSize = 24.sp, color = accentColor, fontWeight = FontWeight.Bold)
                         }
                         Spacer(Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(text = "Daily Nitnem", color = textPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                             Spacer(Modifier.height(3.dp))
-                            Text(text = "Begin your Nitnem today 🌅", color = textSecondary, fontSize = 11.sp)
+                            Text(text = "Begin your Nitnem today", color = textSecondary, fontSize = 11.sp)
                             Spacer(Modifier.height(6.dp))
                             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                 listOf("Japji", "Jaap", "Chaupai").forEach { name ->
@@ -317,14 +317,14 @@ private fun WidgetMockPreview(
                         }
                         Spacer(Modifier.width(8.dp))
                         Box(modifier = Modifier.background(accentColor.copy(alpha = 0.15f), RoundedCornerShape(10.dp)).padding(horizontal = 8.dp, vertical = 5.dp)) {
-                            Text("🔥 0", color = accentColor, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            Text("0 d", color = accentColor, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
                 else -> {
                     Row(modifier = Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
                         Box(modifier = Modifier.size(44.dp).clip(androidx.compose.foundation.shape.CircleShape).background(accentColor.copy(alpha = 0.15f)), contentAlignment = Alignment.Center) {
-                            Text("✨", fontSize = 20.sp)
+                            Text("ੴ", fontSize = 18.sp, color = accentColor, fontWeight = FontWeight.Bold)
                         }
                         Spacer(Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
@@ -333,7 +333,7 @@ private fun WidgetMockPreview(
                             Text(text = "Reflection • Upcoming: Japji Sahib", color = textSecondary, fontSize = 11.sp)
                         }
                         Box(modifier = Modifier.background(accentColor.copy(alpha = 0.15f), RoundedCornerShape(100.dp)).padding(horizontal = 10.dp, vertical = 5.dp)) {
-                            Text("🔥 0/5", color = textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Text("0/5", color = textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }

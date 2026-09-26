@@ -94,13 +94,9 @@ enum class SettingsCategory(
 
 @Composable
 fun ReminderEditableRow(
-
-    emoji: String,
-
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
     title: String,
-
     time: String,
-
     onClick: () -> Unit
 ) {
 
@@ -137,10 +133,20 @@ fun ReminderEditableRow(
                 Alignment.CenterVertically
         ) {
 
-            Text(
-                text = emoji,
-                fontSize = 22.sp
-            )
+            Surface(
+                shape = CircleShape,
+                color = Accent.copy(alpha = 0.12f),
+                modifier = Modifier.size(38.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = Accent,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
 
             Spacer(
                 Modifier.width(14.dp)
@@ -538,11 +544,8 @@ fun CompactToggleRow(
 
 @Composable
 fun ReminderRow(
-
-    emoji: String,
-
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
     title: String,
-
     displayLanguage: DisplayLanguage
 ){
 
@@ -581,12 +584,20 @@ fun ReminderRow(
                 Alignment.CenterVertically
         ) {
 
-            Text(
-
-                text = emoji,
-
-                fontSize = 24.sp
-            )
+            Surface(
+                shape = CircleShape,
+                color = Accent.copy(alpha = 0.12f),
+                modifier = Modifier.size(38.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = Accent,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
 
             Spacer(
                 modifier = Modifier.width(14.dp)
@@ -1223,18 +1234,31 @@ data class Quintuple<A, B, C, D, E>(
 )
 
 /*
- * TIER-AWARE FONT SELECTOR
+ * TIER-AWARE FONT SELECTOR (DROPDOWN WITH LIVE TYPOGRAPHY PREVIEW)
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TierAwareFontSelector(
     title: String,
     options: List<Triple<String, String, String>>, // (Key/Id, Display Title, Required Tier)
     selectedKey: String,
+    sampleScriptType: String = "gurmukhi", // "gurmukhi", "roman", "devanagari"
+    resolveFontFamily: @Composable (String) -> androidx.compose.ui.text.font.FontFamily = { androidx.compose.ui.text.font.FontFamily.Default },
     onSelect: (String) -> Unit,
     onLockedClicked: () -> Unit
 ) {
     val billingManager = remember { com.creativeblisslabs.nitnemguktasteek.domain.billing.PremiumBillingManager.instance }
     val billingState by billingManager.billingState.collectAsState()
+    var expanded by remember { mutableStateOf(false) }
+
+    val currentOption = options.firstOrNull { it.first.equals(selectedKey, ignoreCase = true) } ?: options.firstOrNull()
+    val isLight = AppTheme.themeMode == ThemeMode.Light
+
+    val sampleText = when (sampleScriptType) {
+        "roman" -> "Ik Oankaar Satnaam Kartaa Purakh"
+        "devanagari" -> "ੴ सति नामु करता पुरखु निरभउ"
+        else -> "ੴ ਸਤਿ ਨਾਮੁ ਕਰਤਾ ਪੁਰਖੁ ਨਿਰਭਉ"
+    }
 
     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
         Text(
@@ -1242,64 +1266,169 @@ fun TierAwareFontSelector(
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
             color = Primary,
-            modifier = Modifier.padding(bottom = 10.dp)
+            modifier = Modifier.padding(bottom = 8.dp)
         )
 
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            contentPadding = PaddingValues(horizontal = 2.dp, vertical = 4.dp)
+        // Dropdown Trigger Box
+        ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = { expanded = it },
+            modifier = Modifier.fillMaxWidth()
         ) {
-            items(options) { (key, name, tier) ->
-                val selected = selectedKey.equals(key, ignoreCase = true)
-                val isUnlocked = when (tier) {
-                    "supporter" -> billingState.isSupporter || billingState.isPremium || billingState.isLifetimePatron || billingState.isTrialActive
-                    "premium" -> billingState.isPremium || billingState.isLifetimePatron || billingState.isTrialActive
-                    else -> true
-                }
-
-                Surface(
-                    shape = RoundedCornerShape(16.dp),
-                    color = if (selected) Accent.copy(alpha = 0.16f) else MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.4f),
-                    border = BorderStroke(
-                        if (selected) 1.5.dp else 0.8.dp,
-                        if (selected) Accent else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f)
-                    ),
-                    modifier = Modifier.clickable {
-                        if (isUnlocked) {
-                            onSelect(key)
-                        } else {
-                            onLockedClicked()
-                        }
-                    }
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .menuAnchor(),
+                shape = RoundedCornerShape(16.dp),
+                color = if (isLight) Color(0xFFF9F6F0) else Color(0xFF221F1B),
+                border = BorderStroke(1.2.dp, Gold.copy(alpha = 0.5f))
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Text(
-                            text = name,
-                            fontSize = 13.sp,
-                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                            color = if (selected) Accent else Primary
-                        )
-
-                        if (!isUnlocked) {
-                            Icon(
-                                imageVector = Icons.Default.Lock,
-                                contentDescription = "Locked",
-                                tint = Gold,
-                                modifier = Modifier.size(13.dp)
+                    Column(modifier = Modifier.weight(1f)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = currentOption?.second ?: selectedKey,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp,
+                                color = TextPrimary
                             )
-                        } else if (selected) {
-                            Icon(
-                                imageVector = Icons.Default.Check,
-                                contentDescription = "Selected",
-                                tint = Accent,
-                                modifier = Modifier.size(13.dp)
-                            )
+                            if (currentOption != null && currentOption.third != "free") {
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = Gold.copy(alpha = 0.2f),
+                                    border = BorderStroke(0.5.dp, Gold)
+                                ) {
+                                    Text(
+                                        text = currentOption.third.replaceFirstChar { it.uppercase() },
+                                        fontSize = 10.5.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Gold,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
                         }
+
+                        Spacer(Modifier.height(4.dp))
+
+                        // Live sample preview in resolved font
+                        Text(
+                            text = sampleText,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Medium,
+                            fontFamily = resolveFontFamily(currentOption?.first ?: selectedKey),
+                            color = Gold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
+
+                    Icon(
+                        imageVector = Icons.Default.ArrowDropDown,
+                        contentDescription = "Select Font",
+                        tint = Gold,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+                modifier = Modifier
+                    .background(if (isLight) Color(0xFFFFFDF9) else Color(0xFF1C1A17))
+                    .border(1.dp, Gold.copy(alpha = 0.35f), RoundedCornerShape(12.dp))
+            ) {
+                options.forEach { (key, name, tier) ->
+                    val isSelected = selectedKey.equals(key, ignoreCase = true)
+                    val isUnlocked = when (tier) {
+                        "supporter" -> billingState.isSupporter || billingState.isPremium || billingState.isLifetimePatron || billingState.isTrialActive
+                        "premium" -> billingState.isPremium || billingState.isLifetimePatron || billingState.isTrialActive
+                        else -> true
+                    }
+
+                    DropdownMenuItem(
+                        text = {
+                            Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = name,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        fontSize = 14.5.sp,
+                                        color = if (isSelected) Gold else TextPrimary
+                                    )
+
+                                    if (!isUnlocked) {
+                                        Surface(
+                                            shape = RoundedCornerShape(6.dp),
+                                            color = Gold.copy(alpha = 0.15f),
+                                            border = BorderStroke(0.5.dp, Gold)
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Lock,
+                                                    contentDescription = "Locked",
+                                                    tint = Gold,
+                                                    modifier = Modifier.size(11.dp)
+                                                )
+                                                Text(
+                                                    text = tier.replaceFirstChar { it.uppercase() },
+                                                    fontSize = 10.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = Gold
+                                                )
+                                            }
+                                        }
+                                    } else if (isSelected) {
+                                        Icon(
+                                            imageVector = Icons.Default.Check,
+                                            contentDescription = "Selected",
+                                            tint = Gold,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+
+                                Spacer(Modifier.height(3.dp))
+
+                                // Live text preview line inside dropdown
+                                Text(
+                                    text = sampleText,
+                                    fontSize = 14.5.sp,
+                                    fontFamily = resolveFontFamily(key),
+                                    color = if (isSelected) Gold else TextSecondary,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        },
+                        onClick = {
+                            expanded = false
+                            if (isUnlocked) {
+                                onSelect(key)
+                            } else {
+                                onLockedClicked()
+                            }
+                        },
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
+                    )
                 }
             }
         }

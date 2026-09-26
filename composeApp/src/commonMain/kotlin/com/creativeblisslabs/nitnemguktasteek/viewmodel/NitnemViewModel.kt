@@ -1887,4 +1887,13 @@ fun setSohilaTime(time: String) {
             }
         }
     }
+
+    fun setAmbientParticleEffect(effect: String) {
+        _uiState.update {
+            it.copy(ambientParticleEffect = effect)
+        }
+        viewModelScope.launch {
+            settingsRepository.setAmbientParticleEffect(effect)
+        }
+    }
 }

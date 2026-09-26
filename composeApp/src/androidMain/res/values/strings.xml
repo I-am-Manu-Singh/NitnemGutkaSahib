@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Nitnem Gutka Sahib</string>
+    <string name="app_name">Nitnem Gutka Steek</string>
     <string name="notification_channel_reminders">Gentle reminders</string>
     <string name="notification_channel_reminders_description">Peaceful Nitnem reminders without pressure.</string>
     <string name="notification_channel_playback">Audio playback</string>

@@ -322,7 +322,7 @@ class AndroidNotificationBridge(
                     com.creativeblisslabs.nitnemguktasteek.R.drawable.ic_notification
                 )
                 .setContentTitle(
-                    "Spiritual Milestone 🌟"
+                    "Spiritual Milestone"
                 )
                 .setContentText(
                     "You've maintained your Nitnem streak for $streakDays days."
@@ -391,7 +391,7 @@ class AndroidNotificationBridge(
                     com.creativeblisslabs.nitnemguktasteek.R.drawable.ic_notification
                 )
                 .setContentTitle(
-                    "Bani Completed 🙏"
+                    "Bani Completed"
                 )
                 .setContentText(
                     "You completed $baniTitle."
@@ -450,7 +450,7 @@ class AndroidNotificationBridge(
             NitnemNotificationChannels.REMINDERS
         )
             .setSmallIcon(com.creativeblisslabs.nitnemguktasteek.R.drawable.ic_notification)
-            .setContentTitle("Daily Nitnem Goal 📖 ($completedCount/$totalCount)")
+            .setContentTitle("Daily Nitnem Goal ($completedCount/$totalCount)")
             .setContentText(message)
             .setStyle(NotificationCompat.BigTextStyle().bigText(message))
             .setCategory(NotificationCompat.CATEGORY_STATUS)
@@ -486,7 +486,7 @@ class AndroidNotificationBridge(
             NitnemNotificationChannels.REMINDERS
         )
             .setSmallIcon(com.creativeblisslabs.nitnemguktasteek.R.drawable.ic_notification)
-            .setContentTitle("Weekly Nitnem Summary 📊")
+            .setContentTitle("Weekly Nitnem Summary")
             .setContentText(message)
             .setStyle(NotificationCompat.BigTextStyle().bigText(message))
             .setCategory(NotificationCompat.CATEGORY_STATUS)

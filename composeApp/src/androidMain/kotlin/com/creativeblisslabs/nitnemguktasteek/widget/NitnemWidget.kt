@@ -70,6 +70,8 @@ private fun WidgetContent() {
     }
 
     val streakDays        = prefs.getInt("streak_days", 0)
+    val monthlyConsistencyDays = prefs.getInt("monthly_consistency_days", streakDays.coerceAtMost(30))
+    val weeklyCompleted   = prefs.getInt("weekly_completed", 0)
     val widgetTheme       = prefs.getString("widget_theme", "Dark") ?: "Dark"
     val widgetContent     = prefs.getString("widget_content", "Mascot Assistant") ?: "Mascot Assistant"
     val completedBaniIds  = prefs.getStringSet("completed_bani_ids", emptySet()) ?: emptySet()
@@ -96,10 +98,11 @@ private fun WidgetContent() {
     val textPrimary = if (isLight) Color(0xFF212529) else Color.White
     val textSecondary = if (isLight) Color(0xFF495057) else Color(0xCCFFFFFF)
 
-    // ── State-derived values ───────────────────────────────────────────────
-    val totalBanis      = if (totalPref == 5 || totalPref <= 0) 7 else totalPref
+    // ── State-derived values (Canonical 7 Nitnem Banis) ────────────────────
+    val totalBanis      = 7
     val completedCount  = completedPref.coerceIn(0, totalBanis)
     val progress        = completedCount.toFloat() / totalBanis
+    val activeDays      = if (monthlyConsistencyDays > 0) monthlyConsistencyDays else streakDays.coerceIn(0, 30)
 
     val headerTitle: String
     val subtitleMsg: String
@@ -108,35 +111,40 @@ private fun WidgetContent() {
     if (completedCount >= totalBanis) {
         headerTitle = "Nitnem Complete"
         subtitleMsg = when {
-            streakDays >= 30 -> "Sensational! $streakDays-day streak! Guru Kirpa! 🌟"
-            streakDays >= 10 -> "Incredible! $streakDays-day streak! Bani is in bliss! ✨"
-            streakDays > 0 -> "Bani is so proud of you! 🎉 $streakDays-day streak alive!"
-            else -> "Nitnem Complete! Bani is so proud of you! 🎉 Waheguru!"
+            streakDays >= 30 -> "Sensational! $streakDays-day streak! Guru Kirpa!"
+            streakDays >= 10 -> "Incredible! $streakDays-day streak! Bani is in bliss!"
+            streakDays > 0 -> "Bani is proud of you! $streakDays-day streak alive!"
+            else -> "Nitnem Complete! Waheguru Ji Ki Fateh!"
         }
         detailMsg   = "Daily target achieved!"
     } else {
         headerTitle = recommendedBani
         subtitleMsg = when {
-            completedCount > 0 -> "You're on track ($completedCount/$totalBanis)! 🌟 Bani is cheering you on."
-            hour >= 21 -> "Night has arrived... 🌙 Don't miss Kirtan Sohila tonight!"
-            hour >= 17 -> "Sunset is here! 🌇 Quick, do Rehras Sahib with Bani!"
-            hour in 3..6 -> "Amrit Vela bliss! 🌅 Start your morning path with Japji Sahib."
-            streakDays == 0 -> "Bani is missing you... 💔 Tap to revive your daily streak!"
-            streakDays > 0 -> "Keep your $streakDays-day streak burning! 🔥 Bani is waiting."
-            else -> "Bani misses you... 💔 Tap to start your Nitnem today!"
+            completedCount > 0 -> "You're on track ($completedCount/$totalBanis)! Keep reciting."
+            hour >= 21 -> "Night has arrived... Don't miss Kirtan Sohila tonight!"
+            hour >= 17 -> "Sunset is here! Recite Rehras Sahib with devotion."
+            hour in 3..6 -> "Amrit Vela bliss! Start your morning path with Japji Sahib."
+            streakDays == 0 -> "Start your daily Nitnem journey today!"
+            streakDays > 0 -> "Keep your $streakDays-day streak active today."
+            else -> "Tap to start your Nitnem today!"
         }
         detailMsg   = "$completedCount / $totalBanis banis"
     }
 
     // ── Responsive constraints ─────────────────────────────────────────────
     val size = LocalSize.current
-    val isSmallWidth = size.width < 150.dp
-    val isSmallHeight = size.height < 90.dp
-    val isLarge = size.width >= 260.dp
-    val isUltraSmall = size.width < 110.dp || size.height < 70.dp
+    val wDp = size.width.value.toInt()
+    val hDp = size.height.value.toInt()
 
-    val widthDp = size.width.value.toInt().coerceAtLeast(100)
-    val heightDp = size.height.value.toInt().coerceAtLeast(60)
+    val isUltraNarrow = wDp < 130
+    val isNarrow = wDp < 190
+    val isUltraShort = hDp < 75
+    val isShort = hDp < 100
+    val isTall = hDp >= 135
+    val isWide = wDp >= 220
+
+    val widthDp = wDp.coerceAtLeast(80)
+    val heightDp = hDp.coerceAtLeast(50)
 
     // ── Dynamic Background Generator ───────────────────────────────────────
     val bgBitmap = remember(hour, widgetTheme, progress, widthDp, heightDp) {
@@ -157,7 +165,7 @@ private fun WidgetContent() {
     Box(
         modifier = GlanceModifier
             .fillMaxSize()
-            .cornerRadius(24.dp)
+            .cornerRadius(20.dp)
             .clickable(actionStartActivity<MainActivity>())
     ) {
         Image(
@@ -167,7 +175,8 @@ private fun WidgetContent() {
             contentScale = ContentScale.FillBounds
         )
 
-        if (isUltraSmall) {
+        if (isUltraShort && isUltraNarrow) {
+            // Ultra-compact tile: center icon + badge
             Box(
                 modifier = GlanceModifier.fillMaxSize().padding(4.dp),
                 contentAlignment = Alignment.Center
@@ -176,273 +185,341 @@ private fun WidgetContent() {
                     Image(
                         provider = ImageProvider(mascotBitmap),
                         contentDescription = "Mascot",
-                        modifier = GlanceModifier.size(36.dp)
+                        modifier = GlanceModifier.size(28.dp)
                     )
                 } else {
                     Text(
                         text = "ੴ",
-                        style = TextStyle(color = ColorProvider(accent), fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                        style = TextStyle(color = ColorProvider(accent), fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    )
+                }
+            }
+        } else if (isUltraNarrow) {
+            // Narrow vertical column
+            Column(
+                modifier = GlanceModifier
+                    .fillMaxSize()
+                    .padding(horizontal = 6.dp, vertical = 6.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (widgetContent == "Mascot Assistant") {
+                    Image(
+                        provider = ImageProvider(mascotBitmap),
+                        contentDescription = "Mascot",
+                        modifier = GlanceModifier.size(32.dp)
+                    )
+                    Spacer(GlanceModifier.height(2.dp))
+                    Text(
+                        text = "$completedCount/$totalBanis",
+                        style = TextStyle(color = ColorProvider(accent), fontSize = 10.sp, fontWeight = FontWeight.Bold),
+                        maxLines = 1
+                    )
+                } else {
+                    Text(
+                        text = "ੴ",
+                        style = TextStyle(color = ColorProvider(accent), fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    )
+                    Spacer(GlanceModifier.height(2.dp))
+                    Text(
+                        text = "$completedCount/$totalBanis",
+                        style = TextStyle(color = ColorProvider(accent), fontSize = 10.sp, fontWeight = FontWeight.Bold),
+                        maxLines = 1
+                    )
+                }
+                Spacer(GlanceModifier.height(3.dp))
+                LinearProgressIndicator(
+                    progress = progress,
+                    modifier = GlanceModifier.fillMaxWidth().height(3.dp).cornerRadius(2.dp),
+                    color = ColorProvider(accent),
+                    backgroundColor = ColorProvider(if (isLight) Color(0x33000000) else Color(0x33FFFFFF))
+                )
+            }
+        } else if (isUltraShort) {
+            // Ultra-short strip: single horizontal row
+            Row(
+                modifier = GlanceModifier
+                    .fillMaxSize()
+                    .padding(horizontal = 10.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (widgetContent == "Mascot Assistant") {
+                    Image(
+                        provider = ImageProvider(mascotBitmap),
+                        contentDescription = "Mascot",
+                        modifier = GlanceModifier.size(26.dp)
+                    )
+                } else {
+                    Text(
+                        text = "ੴ",
+                        style = TextStyle(color = ColorProvider(accent), fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    )
+                }
+                Spacer(GlanceModifier.width(8.dp))
+                Column(modifier = GlanceModifier.defaultWeight()) {
+                    Row(
+                        modifier = GlanceModifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = headerTitle,
+                            style = TextStyle(color = ColorProvider(textPrimary), fontSize = 12.sp, fontWeight = FontWeight.Bold),
+                            maxLines = 1
+                        )
+                        Spacer(GlanceModifier.defaultWeight())
+                        Text(
+                            text = "$completedCount/$totalBanis",
+                            style = TextStyle(color = ColorProvider(accent), fontSize = 9.sp, fontWeight = FontWeight.Bold),
+                            maxLines = 1
+                        )
+                    }
+                    Spacer(GlanceModifier.height(2.dp))
+                    LinearProgressIndicator(
+                        progress = progress,
+                        modifier = GlanceModifier.fillMaxWidth().height(3.dp).cornerRadius(2.dp),
+                        color = ColorProvider(accent),
+                        backgroundColor = ColorProvider(if (isLight) Color(0x33000000) else Color(0x33FFFFFF))
                     )
                 }
             }
         } else {
+            // Standard / Wide / Tall responsive layout
+            val mascotSize = when {
+                isTall && isWide -> 44.dp
+                isShort -> 30.dp
+                else -> 36.dp
+            }
+            val titleFontSize = if (isWide && !isShort) 14.sp else 12.sp
+            val descFontSize = if (isWide) 10.sp else 9.sp
+
             Column(
                 modifier = GlanceModifier
                     .fillMaxSize()
-                    .padding(horizontal = if (isSmallWidth) 8.dp else 14.dp, vertical = if (isSmallHeight) 6.dp else 12.dp),
+                    .padding(
+                        horizontal = if (isNarrow) 8.dp else 12.dp,
+                        vertical = if (isShort) 6.dp else 8.dp
+                    ),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (isSmallWidth) {
-                    Column(
-                        modifier = GlanceModifier.fillMaxWidth().defaultWeight(),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        if (widgetContent == "Mascot Assistant") {
+                // ── TOP HERO ROW ──
+                Row(
+                    modifier = GlanceModifier.fillMaxWidth().defaultWeight(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (widgetContent == "Mascot Assistant") {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Image(
                                 provider = ImageProvider(mascotBitmap),
-                                contentDescription = "Mascot",
-                                modifier = GlanceModifier.size(38.dp)
+                                contentDescription = "Bani mascot",
+                                modifier = GlanceModifier.size(mascotSize)
                             )
-                            Spacer(GlanceModifier.height(2.dp))
+                            Spacer(GlanceModifier.height(1.dp))
                             Text(
-                                text = "$completedCount/$totalBanis Banis",
-                                style = TextStyle(color = ColorProvider(accent), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                text = "$completedCount/$totalBanis",
+                                style = TextStyle(
+                                    color = ColorProvider(accent),
+                                    fontSize = 8.sp,
+                                    fontWeight = FontWeight.Bold
+                                ),
+                                maxLines = 1
                             )
-                        } else {
-                            Text(text = "✨", style = TextStyle(fontSize = 16.sp))
-                            Spacer(GlanceModifier.height(2.dp))
+                        }
+                    } else {
+                        Box(
+                            modifier = GlanceModifier
+                                .size(mascotSize)
+                                .background(ColorProvider(accent.copy(alpha = 0.15f)))
+                                .cornerRadius((mascotSize.value / 2).dp),
+                            contentAlignment = Alignment.Center
+                        ) {
                             Text(
                                 text = "ੴ",
-                                style = TextStyle(color = ColorProvider(textPrimary), fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                                style = TextStyle(color = ColorProvider(accent), fontSize = 16.sp, fontWeight = FontWeight.Bold)
                             )
                         }
                     }
-                } else {
-                    val mascotSize = if (isLarge) 68.dp else 60.dp
-                    val titleFontSize = if (isLarge) 16.sp else 14.sp
-                    val descFontSize = if (isLarge) 12.sp else 11.sp
-                    if (widgetContent == "Mascot Assistant") {
-    Row(
-        modifier = GlanceModifier.fillMaxWidth().defaultWeight(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Image(
-                provider = ImageProvider(mascotBitmap),
-                contentDescription = "Bani mascot",
-                modifier = GlanceModifier.size(mascotSize)
-            )
-            Spacer(GlanceModifier.height(2.dp))
-            Text(
-                text = "$completedCount/$totalBanis Banis",
-                style = TextStyle(
-                    color = ColorProvider(accent),
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            )
-        }
 
-        Spacer(GlanceModifier.width(10.dp))
+                    Spacer(GlanceModifier.width(8.dp))
 
-        Column(modifier = GlanceModifier.defaultWeight()) {
-            // Inner row pushing elements to each end
-            Row(
-                modifier = GlanceModifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = headerTitle,
-                    style = TextStyle(
-                        color = ColorProvider(textPrimary),
-                        fontSize = titleFontSize,
-                        fontWeight = FontWeight.Bold
-                    ),
-                    maxLines = 1
-                )
-                
-                // This weight spacer pushes the next text to the far right end
-                Spacer(modifier = GlanceModifier.defaultWeight())
-
-                Text(
-                    text = detailMsg,
-                    style = TextStyle(
-                        color = ColorProvider(textSecondary.copy(alpha = 0.7f)),
-                        fontSize = 10.sp
-                    ),
-                    maxLines = 1
-                )
-            }
-
-            Text(
-                text = subtitleMsg,
-                style = TextStyle(
-                    color = ColorProvider(textSecondary),
-                    fontSize = descFontSize
-                ),
-                maxLines = 2
-            )
-
-            Spacer(GlanceModifier.height(4.dp))
-
-            // Progress bar
-            LinearProgressIndicator(
-                progress = progress,
-                modifier = GlanceModifier.fillMaxWidth().height(4.dp).cornerRadius(2.dp),
-                color = ColorProvider(accent),
-                backgroundColor = ColorProvider(if (isLight) Color(0x33000000) else Color(0x33FFFFFF))
-            )
-        }
-    }
-}
-                    else {
+                    Column(modifier = GlanceModifier.defaultWeight()) {
                         Row(
-                            modifier = GlanceModifier.fillMaxWidth().defaultWeight(),
+                            modifier = GlanceModifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Box(
-                                modifier = GlanceModifier
-                                    .size(if (isLarge) 52.dp else 46.dp)
-                                    .background(ColorProvider(accent.copy(alpha = 0.15f)))
-                                    .cornerRadius(if (isLarge) 26.dp else 23.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "✨",
-                                    style = TextStyle(fontSize = if (isLarge) 22.sp else 18.sp)
-                                )
-                            }
+                            Text(
+                                text = headerTitle,
+                                style = TextStyle(
+                                    color = ColorProvider(textPrimary),
+                                    fontSize = titleFontSize,
+                                    fontWeight = FontWeight.Bold
+                                ),
+                                maxLines = 1
+                            )
+                            
+                            Spacer(modifier = GlanceModifier.defaultWeight())
 
-                            Spacer(GlanceModifier.width(10.dp))
-
-                            Column(modifier = GlanceModifier.defaultWeight()) {
-                                Text(
-                                    text = "ੴ Satnam Waheguru",
-                                    style = TextStyle(
-                                        color = ColorProvider(textPrimary),
-                                        fontSize = titleFontSize,
-                                        fontWeight = FontWeight.Bold
-                                    ),
-                                    maxLines = 1
-                                )
-
-                                Spacer(GlanceModifier.height(2.dp))
-
-                                Text(
-                                    text = "Upcoming: $recommendedBani",
-                                    style = TextStyle(
-                                        color = ColorProvider(textSecondary),
-                                        fontSize = descFontSize
-                                    ),
-                                    maxLines = 1
-                                )
-
-                                Spacer(GlanceModifier.height(2.dp))
-
-                                Text(
-                                    text = "$completedCount of $totalBanis completed",
-                                    style = TextStyle(
-                                        color = ColorProvider(textSecondary.copy(alpha = 0.7f)),
-                                        fontSize = 10.sp
-                                    ),
-                                    maxLines = 1
-                                )
-
-                                Spacer(GlanceModifier.height(4.dp))
-
-                                LinearProgressIndicator(
-                                    progress = progress,
-                                    modifier = GlanceModifier.fillMaxWidth().height(4.dp).cornerRadius(2.dp),
-                                    color = ColorProvider(accent),
-                                    backgroundColor = ColorProvider(if (isLight) Color(0x33000000) else Color(0x33FFFFFF))
-                                )
-                            }
+                            Text(
+                                text = detailMsg,
+                                style = TextStyle(
+                                    color = ColorProvider(textSecondary.copy(alpha = 0.8f)),
+                                    fontSize = 8.sp
+                                ),
+                                maxLines = 1
+                            )
                         }
+
+                        if (!isShort) {
+                            Spacer(GlanceModifier.height(1.dp))
+                            Text(
+                                text = subtitleMsg,
+                                style = TextStyle(
+                                    color = ColorProvider(textSecondary),
+                                    fontSize = descFontSize
+                                ),
+                                maxLines = if (isTall) 2 else 1
+                            )
+                        }
+
+                        Spacer(GlanceModifier.height(3.dp))
+
+                        // Progress bar
+                        LinearProgressIndicator(
+                            progress = progress,
+                            modifier = GlanceModifier.fillMaxWidth().height(4.dp).cornerRadius(2.dp),
+                            color = ColorProvider(accent),
+                            backgroundColor = ColorProvider(if (isLight) Color(0x33000000) else Color(0x33FFFFFF))
+                        )
                     }
                 }
 
-                if (!isSmallHeight && isLarge) {
+                // ── MONTHLY HEATMAP & STREAK SECTION ──
+                if (!isShort && !isNarrow) {
                     Spacer(GlanceModifier.height(4.dp))
                     Box(
                         modifier = GlanceModifier
                             .fillMaxWidth()
                             .height(1.dp)
-                            .background(ColorProvider(accent.copy(alpha = 0.2f)))
+                            .background(ColorProvider(accent.copy(alpha = 0.18f)))
                     ) {}
-                    Spacer(GlanceModifier.height(4.dp))
-                    Row(
-                        modifier = GlanceModifier.fillMaxWidth(),
-                        horizontalAlignment = Alignment.Horizontal.CenterHorizontally,
-                        verticalAlignment = Alignment.Vertical.CenterVertically
-                    ) {
-                        val weekdays = listOf("M", "T", "W", "T", "F", "S", "S")
-                        val cal = Calendar.getInstance()
-                        val day = cal.get(Calendar.DAY_OF_WEEK)
-                        val currentDayIndex = when (day) {
-                            Calendar.MONDAY -> 0
-                            Calendar.TUESDAY -> 1
-                            Calendar.WEDNESDAY -> 2
-                            Calendar.THURSDAY -> 3
-                            Calendar.FRIDAY -> 4
-                            Calendar.SATURDAY -> 5
-                            else -> 6
-                        }
-                        
-                        weekdays.forEachIndexed { index, dayName ->
-                            val isToday = index == currentDayIndex
-                            val isCompleted = index < currentDayIndex || (isToday && progress >= 1f)
+                    Spacer(GlanceModifier.height(3.dp))
+
+                    if (isTall) {
+                        // 30-Day Activity Heatmap Grid (3 rows x 10 cols = 30 days)
+                        Column(
+                            modifier = GlanceModifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.Horizontal.CenterHorizontally
+                        ) {
+                            Row(
+                                modifier = GlanceModifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.Vertical.CenterVertically
+                            ) {
+                                Text(
+                                    text = "30-Day Heatmap",
+                                    style = TextStyle(
+                                        color = ColorProvider(textPrimary.copy(alpha = 0.9f)),
+                                        fontSize = 8.sp,
+                                        fontWeight = FontWeight.Bold
+                                    ),
+                                    maxLines = 1
+                                )
+                                Spacer(GlanceModifier.defaultWeight())
+                                Text(
+                                    text = "${activeDays.coerceAtMost(30)} / 30 Days (${streakDays}d streak)",
+                                    style = TextStyle(
+                                        color = ColorProvider(accent),
+                                        fontSize = 8.sp,
+                                        fontWeight = FontWeight.Bold
+                                    ),
+                                    maxLines = 1
+                                )
+                            }
+                            Spacer(GlanceModifier.height(3.dp))
                             
-                            Row {
-                                if (index > 0) Spacer(GlanceModifier.width(6.dp))
-                                Column(
+                            val totalDays = 30
+                            val activeCount = activeDays.coerceIn(0, totalDays)
+                            val rows = 3
+                            val cols = 10
+                            for (r in 0 until rows) {
+                                Row(
+                                    modifier = GlanceModifier.fillMaxWidth(),
                                     horizontalAlignment = Alignment.Horizontal.CenterHorizontally
                                 ) {
-                                    Text(
-                                        text = dayName,
-                                        style = TextStyle(
-                                            color = ColorProvider(if (isToday) accent else textSecondary.copy(alpha = 0.6f)),
-                                            fontSize = 8.sp,
-                                            fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal
-                                        )
-                                    )
-                                    Spacer(GlanceModifier.height(1.dp))
-                                    Box(
-                                        modifier = GlanceModifier
-                                            .size(14.dp)
-                                            .background(
-                                                ColorProvider(
-                                                    if (isCompleted) accent.copy(alpha = 0.2f)
-                                                    else textSecondary.copy(alpha = 0.08f)
-                                                )
-                                            )
-                                            .cornerRadius(7.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        if (isCompleted) {
-                                            Text(
-                                                text = "✓",
-                                                style = TextStyle(color = ColorProvider(accent), fontSize = 9.sp, fontWeight = FontWeight.Bold)
-                                            )
-                                        } else {
-                                            Box(
-                                                modifier = GlanceModifier
-                                                    .size(3.dp)
-                                                    .background(
-                                                        ColorProvider(
-                                                            if (isToday) accent.copy(alpha = 0.6f)
-                                                            else textSecondary.copy(alpha = 0.3f)
-                                                        )
+                                    for (c in 0 until cols) {
+                                        val dayIdx = (r * cols) + c
+                                        val isCellActive = dayIdx >= (totalDays - activeCount)
+                                        if (c > 0) Spacer(GlanceModifier.width(2.dp))
+                                        Box(
+                                            modifier = GlanceModifier
+                                                .defaultWeight()
+                                                .height(5.dp)
+                                                .cornerRadius(2.dp)
+                                                .background(
+                                                    ColorProvider(
+                                                        if (isCellActive) accent.copy(alpha = 0.9f)
+                                                        else textSecondary.copy(alpha = 0.15f)
                                                     )
-                                                    .cornerRadius(1.5.dp)
-                                            ) {}
-                                        }
+                                                )
+                                        ) {}
                                     }
                                 }
+                                if (r < rows - 1) Spacer(GlanceModifier.height(2.dp))
                             }
+                        }
+                    } else {
+                        // Single-line 15-segment mini heatmap track + streak badge
+                        Row(
+                            modifier = GlanceModifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.Vertical.CenterVertically
+                        ) {
+                            Text(
+                                text = "30D:",
+                                style = TextStyle(
+                                    color = ColorProvider(textSecondary.copy(alpha = 0.8f)),
+                                    fontSize = 8.sp,
+                                    fontWeight = FontWeight.Medium
+                                ),
+                                maxLines = 1
+                            )
+                            Spacer(GlanceModifier.width(4.dp))
+                            
+                            val segments = 15
+                            val activeSegments = ((activeDays.toFloat() / 30f) * segments).toInt().coerceIn(0, segments)
+                            Row(
+                                modifier = GlanceModifier.defaultWeight(),
+                                verticalAlignment = Alignment.Vertical.CenterVertically
+                            ) {
+                                for (s in 0 until segments) {
+                                    val isSegActive = s >= (segments - activeSegments)
+                                    if (s > 0) Spacer(GlanceModifier.width(2.dp))
+                                    Box(
+                                        modifier = GlanceModifier
+                                            .defaultWeight()
+                                            .height(4.dp)
+                                            .cornerRadius(2.dp)
+                                            .background(
+                                                ColorProvider(
+                                                    if (isSegActive) accent.copy(alpha = 0.9f)
+                                                    else textSecondary.copy(alpha = 0.15f)
+                                                )
+                                            )
+                                    ) {}
+                                }
+                            }
+
+                            Spacer(GlanceModifier.width(6.dp))
+
+                            Text(
+                                text = "${streakDays}d streak",
+                                style = TextStyle(
+                                    color = ColorProvider(accent),
+                                    fontSize = 8.sp,
+                                    fontWeight = FontWeight.Bold
+                                ),
+                                maxLines = 1
+                            )
                         }
                     }
                 }
@@ -489,35 +566,35 @@ private fun drawWidgetBackground(context: Context, widthDp: Int, heightDp: Int, 
         canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paint)
         paint.style = Paint.Style.FILL
     } else {
-        // Dark Theme gradients
+        // Dark Theme gradients precisely matching HeroCard sky
         val skyColors = when {
             // Amrit Vela: deep twilight
             hour in 3..5 -> intArrayOf(
-                0xFF030712.toInt(),
-                0xFF0F172A.toInt(),
-                0xFF1E1B4B.toInt(),
-                0xFF31102F.toInt()
+                0xFF030712.toInt(), // Deep Space Black
+                0xFF0F172A.toInt(), // Midnight Navy
+                0xFF1E1B4B.toInt(), // Dark Indigo
+                0xFF31102F.toInt()  // Dawn Horizon Wine
             )
             // Sunrise: golden-orange-purple
             hour in 6..8 -> intArrayOf(
-                0xFF4C1D95.toInt(),
-                0xFF8B5CF6.toInt(),
-                0xFFEC4899.toInt(),
-                0xFFF59E0B.toInt()
+                0xFF4C1D95.toInt(), // Deep Purple
+                0xFF8B5CF6.toInt(), // Violet
+                0xFFEC4899.toInt(), // Pink
+                0xFFF59E0B.toInt()  // Sunrise Gold
             )
-            // Day: deep serene navy-sapphire to preserve text contrast
+            // Day: bright serene warm blues with high contrast
             hour in 9..16 -> intArrayOf(
-                0xFF0C2444.toInt(),
-                0xFF103663.toInt(),
-                0xFF1A467D.toInt(),
-                0xFF132F53.toInt()
+                0xFF0284C7.toInt(), // Sky Blue
+                0xFF0369A1.toInt(), // Deep Sky Blue
+                0xFF075985.toInt(), // Deep Marine
+                0xFF0C4A6E.toInt()  // Slate Navy
             )
-            // Sunset: dramatic deep crimson/purple/indigo
+            // Sunset: dramatic crimson/purple/amber
             hour in 17..18 -> intArrayOf(
-                0xFF2D0E2B.toInt(),
-                0xFF5B1736.toInt(),
-                0xFF4A154B.toInt(),
-                0xFF1E1035.toInt()
+                0xFF31102F.toInt(), // Dusk Wine
+                0xFFBE123C.toInt(), // Crimson
+                0xFFF59E0B.toInt(), // Sunset Orange
+                0xFF1E1035.toInt()  // Night Violet
             )
             // Twilight / Early Night: dark violet-indigo
             hour in 19..20 -> intArrayOf(
@@ -526,7 +603,7 @@ private fun drawWidgetBackground(context: Context, widthDp: Int, heightDp: Int, 
                 0xFF111827.toInt(),
                 0xFF030712.toInt()
             )
-            // Late Night: space black-blue
+            // Late Night: cosmic space black-blue
             else -> intArrayOf(
                 0xFF030712.toInt(),
                 0xFF080E1E.toInt(),
@@ -545,19 +622,29 @@ private fun drawWidgetBackground(context: Context, widthDp: Int, heightDp: Int, 
 
         // Draw shining stars at night
         if (isNight) {
-            paint.color = 0x66FFFFFF
-            val randomX = floatArrayOf(width * 0.12f, width * 0.34f, width * 0.52f, width * 0.76f, width * 0.92f)
-            val randomY = floatArrayOf(height * 0.18f, height * 0.28f, height * 0.15f, height * 0.32f, height * 0.22f)
-            repeat(5) { i ->
-                canvas.drawCircle(randomX[i], randomY[i], 1.5f * density, paint)
+            paint.color = 0x80FFFFFF.toInt()
+            val starPositions = floatArrayOf(
+                0.10f, 0.18f,
+                0.22f, 0.12f,
+                0.35f, 0.28f,
+                0.48f, 0.14f,
+                0.62f, 0.24f,
+                0.75f, 0.10f,
+                0.85f, 0.30f,
+                0.92f, 0.16f
+            )
+            for (i in 0 until starPositions.size step 2) {
+                val sx = width * starPositions[i]
+                val sy = height * starPositions[i + 1]
+                canvas.drawCircle(sx, sy, 1.2f * density, paint)
             }
         }
     }
 
     // Draw Sun/Moon corona and body (proportional to widget dimensions to prevent stretching)
     val sunMoonX = width * 0.88f
-    val sunMoonY = height * 0.20f
-    val baseRadius = Math.min(width, height) * 0.08f
+    val sunMoonY = height * 0.22f
+    val baseRadius = Math.min(width, height) * 0.10f
 
     val showMoon = isNight && widgetTheme == "Dark"
 

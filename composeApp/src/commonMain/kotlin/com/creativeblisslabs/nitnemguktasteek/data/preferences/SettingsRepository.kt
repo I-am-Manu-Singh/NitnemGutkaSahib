@@ -259,6 +259,11 @@ class SettingsRepository(
                 "display_language"
             )
 
+        private val AMBIENT_PARTICLE_EFFECT =
+            stringPreferencesKey(
+                "ambient_particle_effect"
+            )
+
       
 
         /*
@@ -587,9 +592,19 @@ class SettingsRepository(
 
                 widgetContent =
                     prefs[WIDGET_CONTENT]
-                        ?: "Mascot Assistant"
+                        ?: "Mascot Assistant",
+
+                ambientParticleEffect =
+                    prefs[AMBIENT_PARTICLE_EFFECT]
+                        ?: "GoldenStardust"
             )
         }
+
+    suspend fun setAmbientParticleEffect(effect: String) {
+        context.settingsDataStore.edit {
+            it[AMBIENT_PARTICLE_EFFECT] = effect
+        }
+    }
 
     /*
      * THEME

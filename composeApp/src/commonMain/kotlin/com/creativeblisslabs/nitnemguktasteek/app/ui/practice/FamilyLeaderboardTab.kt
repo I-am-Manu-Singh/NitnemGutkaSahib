@@ -63,21 +63,26 @@ fun FamilyLeaderboardTab(
         ?: authUser?.email?.substringBefore('@')?.replace(".", " ")?.replace("_", " ")?.split(" ")?.joinToString(" ") { it.replaceFirstChar { c -> c.titlecase() } }
         ?: "You"
 
-    val currentMember = remember(uiState.totalXp, uiState.streakDays, uiState.quizHighscore, uiState.totalListeningMinutes, userDisplayName, authUser?.uid) {
-        FamilyMemberProgress(
-            userId = authUser?.uid ?: "user_me",
-            username = authUser?.email?.substringBefore('@') ?: "",
-            displayName = userDisplayName,
-            xp = uiState.totalXp,
-            level = (uiState.totalXp / 500).coerceAtLeast(1),
-            currentStreak = uiState.streakDays,
-            bestStreak = uiState.streakDays.coerceAtLeast(1),
-            totalRecitationMinutes = uiState.totalListeningMinutes,
-            completedBanisCount = uiState.completedBanis.size,
-            completedBanisToday = uiState.completedBanis.toList(),
-            quizScore = uiState.quizHighscore,
-            avatarMascotState = ""
-        )
+    val isLoggedIn = authUser != null && authUser.uid.isNotBlank()
+
+    val currentMember = remember(uiState.totalXp, uiState.streakDays, uiState.quizHighscore, uiState.totalListeningMinutes, userDisplayName, authUser?.uid, isLoggedIn) {
+        if (!isLoggedIn) null
+        else {
+            FamilyMemberProgress(
+                userId = authUser!!.uid,
+                username = authUser.email?.substringBefore('@') ?: "",
+                displayName = userDisplayName,
+                xp = uiState.totalXp,
+                level = (uiState.totalXp / 500).coerceAtLeast(1),
+                currentStreak = uiState.streakDays,
+                bestStreak = uiState.streakDays.coerceAtLeast(1),
+                totalRecitationMinutes = uiState.totalListeningMinutes,
+                completedBanisCount = uiState.completedBanis.size,
+                completedBanisToday = uiState.completedBanis.toList(),
+                quizScore = uiState.quizHighscore,
+                avatarMascotState = ""
+            )
+        }
     }
 
     val dynamicDefaultCode = remember(authUser?.uid) {
@@ -93,7 +98,7 @@ fun FamilyLeaderboardTab(
                 inviteCode = dynamicDefaultCode,
                 groupTotalStreak = uiState.streakDays,
                 groupTotalXp = uiState.totalXp,
-                members = listOf(currentMember)
+                members = emptyList()
             )
         )
     }
@@ -106,25 +111,30 @@ fun FamilyLeaderboardTab(
     var joinGroupError by remember { mutableStateOf<String?>(null) }
     var isJoiningGroup by remember { mutableStateOf(false) }
 
-    val isAdmin = currentGroup.adminUserId.isEmpty() || currentGroup.adminUserId == currentMember.userId || (authUser?.uid != null && currentGroup.adminUserId == authUser.uid)
+    val isAdmin = isLoggedIn && (currentGroup.adminUserId.isEmpty() || currentGroup.adminUserId == authUser?.uid)
 
     // Load actual group from repository & auto-join/sync
-    LaunchedEffect(currentMember.userId, authUser?.uid, repository) {
+    LaunchedEffect(currentMember?.userId, authUser?.uid, isLoggedIn, repository) {
         if (repository != null) {
             try {
-                // Auto sync current member so they are registered in their active group
-                repository.syncUserProgress(currentGroup.groupId, currentMember)
+                // Auto sync current member if authenticated
+                if (currentMember != null) {
+                    repository.syncUserProgress(currentGroup.groupId, currentMember)
+                }
 
                 val realGroup = repository.getFamilyGroup(currentGroup.groupId)
-                if (realGroup != null && realGroup.members.isNotEmpty()) {
-                    val filteredMembers = realGroup.members.filterNot { 
-                        it.userId == currentMember.userId || (authUser?.uid != null && it.userId == "user_me") 
-                    } + currentMember
-                    val updated = filteredMembers.sortedByDescending { it.xp }
+                if (realGroup != null) {
+                    val rawMembers = realGroup.members.filterNot { it.userId == "user_me" }
+                    val finalMembers = if (currentMember != null) {
+                        (rawMembers.filterNot { it.userId == currentMember.userId } + currentMember)
+                    } else {
+                        rawMembers
+                    }.distinctBy { it.userId }.sortedByDescending { it.xp }
+                    
                     currentGroup = realGroup.copy(
-                        members = updated,
-                        groupTotalXp = updated.sumOf { it.xp },
-                        groupTotalStreak = updated.maxOfOrNull { it.currentStreak } ?: uiState.streakDays
+                        members = finalMembers,
+                        groupTotalXp = finalMembers.sumOf { it.xp },
+                        groupTotalStreak = finalMembers.maxOfOrNull { it.currentStreak } ?: 0
                     )
                 }
 
@@ -344,7 +354,7 @@ fun FamilyLeaderboardTab(
             // ── LEADERBOARD RANKINGS LIST ──────────────────────────────────────
             itemsIndexed(currentGroup.members) { index, member ->
                 val rank = index + 1
-                val isUser = member.userId == currentMember.userId || (authUser?.uid != null && member.userId == authUser.uid)
+                val isUser = isLoggedIn && authUser?.uid == member.userId
 
                 val rankBadgeColor = when (rank) {
                     1 -> Color(0xFFFFD700) // Gold
@@ -715,17 +725,20 @@ fun FamilyLeaderboardTab(
                             joinGroupError = null
                             scope.launch {
                                 val foundGroup = repository?.getFamilyGroupByCode(cleanCode)
-                                if (foundGroup != null) {
-                                    val success = repository.joinGroupByCode(cleanCode, currentMember)
+                                val memberToJoin = currentMember
+                                if (foundGroup != null && memberToJoin != null) {
+                                    val success = repository?.joinGroupByCode(cleanCode, memberToJoin) ?: false
                                     if (success) {
-                                        val updatedGroup = repository.getFamilyGroup(foundGroup.groupId) ?: foundGroup
+                                        val updatedGroup = repository?.getFamilyGroup(foundGroup.groupId) ?: foundGroup
                                         currentGroup = updatedGroup
-                                        allGroups = repository.getAllFamilyGroups().ifEmpty { listOf(currentGroup) }
+                                        allGroups = repository?.getAllFamilyGroups()?.ifEmpty { listOf(currentGroup) } ?: listOf(currentGroup)
                                         showJoinGroupDialog = false
                                         joinGroupCodeInput = ""
                                     } else {
                                         joinGroupError = "Failed to join group. Please try again."
                                     }
+                                } else if (memberToJoin == null) {
+                                    joinGroupError = "Please sign in to join a group."
                                 } else {
                                     joinGroupError = "Group not found with code: $cleanCode"
                                 }

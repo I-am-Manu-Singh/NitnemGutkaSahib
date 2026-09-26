@@ -130,6 +130,10 @@ fun NitnemRoot(
         mutableStateOf(true)
     }
 
+    var isAssistantOpen by remember {
+        mutableStateOf(false)
+    }
+
     // Tracks user touch events to re-show chrome and restart the auto-hide countdown
     var interactionTick by remember { mutableStateOf(0) }
 
@@ -618,7 +622,10 @@ fun NitnemRoot(
 
                     HomeScreen(
                         viewModel = viewModel,
-                        audioController = audioController
+                        audioController = audioController,
+                        onAssistantVisibilityChanged = { isOpen ->
+                            isAssistantOpen = isOpen
+                        }
                     )
                 }
 
@@ -695,7 +702,7 @@ fun NitnemRoot(
                 AnimatedVisibility(
 
                     visible =
-                        uiState.miniPlayerVisible && uiState.selectedTab != AppTab.Practice && (!uiState.fullScreenReadingMode || showChrome)
+                        uiState.miniPlayerVisible && uiState.selectedTab != AppTab.Practice && (!uiState.fullScreenReadingMode || showChrome) && !isAssistantOpen
                 ) {
 
                     ThinMiniPlayer(

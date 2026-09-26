@@ -884,7 +884,7 @@ private fun AccountAndCloudSyncPage(
         )
 
         Text(
-            text = "Choose how you would like to use Nitnem Gutka Sahib.".translate(displayLanguage),
+            text = "Choose how you would like to use Nitnem Gutka Steek.".translate(displayLanguage),
             color = secondaryText,
             fontSize = 13.5.sp,
             lineHeight = 18.sp

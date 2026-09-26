@@ -1,3 +1,8 @@
+@file:OptIn(
+    androidx.compose.foundation.ExperimentalFoundationApi::class,
+    androidx.compose.material3.ExperimentalMaterial3Api::class
+)
+
 package com.creativeblisslabs.nitnemguktasteek.app.ui.player
 
 import androidx.compose.animation.AnimatedVisibility
@@ -30,6 +35,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.ui.text.style.LineHeightStyle
 import com.creativeblisslabs.nitnemguktasteek.app.models.DisplayLanguage
 import com.creativeblisslabs.nitnemguktasteek.app.ui.theme.*
 import com.creativeblisslabs.nitnemguktasteek.models.Bani
@@ -37,7 +45,9 @@ import com.creativeblisslabs.nitnemguktasteek.models.PlaybackSnapshot
 import com.creativeblisslabs.nitnemguktasteek.utils.translate
 import com.creativeblisslabs.nitnemguktasteek.utils.translateDigits
 import com.creativeblisslabs.nitnemguktasteek.utils.translateAng
-@OptIn(ExperimentalMaterial3Api::class)
+
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun ThinMiniPlayer(
 
@@ -731,26 +741,44 @@ fun ThinMiniPlayer(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         // Playback Speed Toggle Button (e.g. 1.0x -> 1.25x -> 1.5x -> 2.0x -> 0.75x)
-                        val speedText = if (playback.speed == 1f) "1x" else if (playback.speed == 1.25f) "1.2x" else if (playback.speed == 1.5f) "1.5x" else if (playback.speed == 2f) "2x" else "${playback.speed}x"
-                        Surface(
-                            modifier = Modifier.size(28.dp),
-                            onClick = onSpeedToggle,
-                            shape = CircleShape,
-                            color = if (playback.speed != 1.0f) Accent.copy(alpha = 0.16f) else buttonBg,
-                            border = BorderStroke(
-                                1.dp,
-                                if (AppTheme.themeMode == ThemeMode.Light) Color(0xFFECE2D4) else Color.White.copy(alpha = 0.05f)
-                            )
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text(
-                                    text = speedText,
-                                    color = if (playback.speed != 1.0f) Accent else titleColor.copy(alpha = 0.75f),
-                                    fontSize = 9.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
+val speedText = if (playback.speed == 1f) "1x" else if (playback.speed == 1.25f) "1.25x" else if (playback.speed == 1.5f) "1.5x" else if (playback.speed == 2f) "2x" else "${playback.speed}x"
+
+Surface(
+    modifier = Modifier
+        .size(28.dp)
+        .combinedClickable(
+            onClick = onSpeedToggle,
+            onLongClick = { 
+                // TODO: Open your custom fine-tune speed slider here
+            }
+        ),
+    shape = CircleShape,
+    color = if (playback.speed != 1.0f) Accent.copy(alpha = 0.16f) else buttonBg,
+    border = BorderStroke(
+        1.dp,
+        if (AppTheme.themeMode == ThemeMode.Light) Color(0xFFECE2D4) else Color.White.copy(alpha = 0.05f)
+    )
+) {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = speedText,
+            color = if (playback.speed != 1.0f) Accent else titleColor.copy(alpha = 0.75f),
+            fontSize = if (speedText.length > 3) 8.sp else 9.sp, // Shrinks slightly for longer text like "1.25x" to prevent clipping
+            fontWeight = FontWeight.Bold,
+            softWrap = false,
+            overflow = TextOverflow.Visible,
+            style = androidx.compose.ui.text.TextStyle(
+                lineHeightStyle = androidx.compose.ui.text.style.LineHeightStyle(
+                    alignment = androidx.compose.ui.text.style.LineHeightStyle.Alignment.Center,
+                    trim = androidx.compose.ui.text.style.LineHeightStyle.Trim.Both
+                )
+            )
+        )
+    }
+}
 
                         // Repeat Mode Cycle Button (OFF -> ONE -> ALL -> OFF)
                         val isRepeatActive = repeatMode != "OFF"

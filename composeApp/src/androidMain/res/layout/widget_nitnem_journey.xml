@@ -49,9 +49,9 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
 
-                android:text="🌇"
+                android:text="ੴ"
 
-                android:textSize="26sp"
+                android:textSize="24sp"
 
                 android:textStyle="bold"
 
@@ -133,7 +133,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
 
-                android:text="🔥 6"
+                android:text="6d"
 
                 android:textColor="#FFFFFF"
 
@@ -229,7 +229,7 @@
 
             android:layout_marginTop="12dp"
 
-            android:text="Keep going ✨"
+            android:text="Keep going with devotion"
 
             android:textColor="#CCFFFFFF"
 

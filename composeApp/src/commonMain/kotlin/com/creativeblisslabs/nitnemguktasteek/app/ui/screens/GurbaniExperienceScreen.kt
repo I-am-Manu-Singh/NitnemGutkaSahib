@@ -200,6 +200,9 @@ import androidx.compose.ui.input.pointer.pointerInput
              * RESOLVE TRACK USING ACTIVE TRACK ID
              */
 
+            val remoteAssetTrack = com.creativeblisslabs.nitnemguktasteek.data.RemoteAssetCatalog.getTrackById(currentActiveTrackId)
+                ?: com.creativeblisslabs.nitnemguktasteek.data.RemoteAssetCatalog.currentAssets.firstOrNull { it.id == currentActiveTrackId }
+
             val track =
                 (
                                 audioController.getCustomTracks(bani.id)
@@ -212,10 +215,13 @@ import androidx.compose.ui.input.pointer.pointerInput
              * RESOLVE TIMING KEY
              */
 
+            val remoteTimingFile = remoteAssetTrack?.timingFileName
             val timingKey = when {
+                remoteTimingFile != null -> {
+                    remoteTimingFile.removeSuffix(".json")
+                }
 
                 track != null -> {
-
                     track.timingKey()
                 }
 
@@ -236,7 +242,6 @@ import androidx.compose.ui.input.pointer.pointerInput
                 }
 
                 else -> {
-
                     currentActiveTrackId
                         .replace("-", "_")
                 }
@@ -282,12 +287,15 @@ import androidx.compose.ui.input.pointer.pointerInput
                         "count=${timings.size}"
             )
 
-            timingLoadState = timings.isNotEmpty()
+            val hasEmbeddedTimings = bani.lines.any { it.startsAtMs > 0L || it.endsAtMs > 0L }
+            timingLoadState = timings.isNotEmpty() || hasEmbeddedTimings
 
             if (timings.isEmpty()) {
-
-                value = bani.lines.map { it.copy(startsAtMs = 0L, endsAtMs = 0L) }
-
+                if (hasEmbeddedTimings) {
+                    value = bani.lines
+                } else {
+                    value = bani.lines.map { it.copy(startsAtMs = 0L, endsAtMs = 0L) }
+                }
                 return@produceState
             }
 
@@ -300,40 +308,24 @@ import androidx.compose.ui.input.pointer.pointerInput
                 "TIMING MAP SIZE -> ${timingMap.size}"
             )
 
-            println(
-                "FIRST TIMING IDS -> ${
-                    timings.take(5).joinToString {
-                        it.id
-                    }
-                }"
-            )
-
-            println(
-                "FIRST BANI IDS -> ${
-                    bani.lines.take(5).joinToString {
-                        it.id
-                    }
-                }"
-            )
             value =
-                bani.lines.map { line ->
-
+                bani.lines.mapIndexed { index, line ->
+                    val numericId = line.id.substringAfterLast("_")
                     val timing =
                         timingMap[line.id]
+                            ?: timingMap[numericId]
+                            ?: timingMap["${bani.id}_$numericId"]
+                            ?: timings.getOrNull(index)
 
                     if (timing != null) {
-
                         line.copy(
-
                             startsAtMs =
                                 timing.startsAtMs,
 
                             endsAtMs =
                                 timing.endsAtMs
                         )
-
                     } else {
-
                         line
                     }
                 }
@@ -915,37 +907,54 @@ import androidx.compose.ui.input.pointer.pointerInput
                 .padding(paddingValues)
         ) {
             // Dynamic subtle floating spiritual particles in background
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                val w = size.width
-                val h = size.height
-                val particleColor = Gold.copy(alpha = if (uiState.blackAndWhiteAodMode) 0.04f else 0.12f)
-                val glowColor = Gold.copy(alpha = if (uiState.blackAndWhiteAodMode) 0.02f else 0.06f)
+            if (uiState.ambientParticleEffect != "Disabled") {
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    val w = size.width
+                    val h = size.height
+                    val isAod = uiState.blackAndWhiteAodMode
 
-                val points = listOf(
-                    Offset(w * 0.15f, h * 0.20f + particleFloatOffset),
-                    Offset(w * 0.85f, h * 0.25f - particleFloatOffset),
-                    Offset(w * 0.25f, h * 0.50f + particleFloatOffset * 0.7f),
-                    Offset(w * 0.75f, h * 0.60f - particleFloatOffset * 0.7f),
-                    Offset(w * 0.10f, h * 0.80f + particleFloatOffset),
-                    Offset(w * 0.90f, h * 0.85f - particleFloatOffset),
-                    Offset(w * 0.50f, h * 0.35f + particleFloatOffset * 0.5f),
-                    Offset(w * 0.50f, h * 0.70f - particleFloatOffset * 0.5f)
-                )
+                    val effect = uiState.ambientParticleEffect
+                    val (baseColor, glowBase) = when (effect) {
+                        "DivineLotus" -> Color(0xFFFF80AB) to Color(0xFFFF4081)
+                        "AmritRipples" -> Color(0xFF80D8FF) to Color(0xFF00B0FF)
+                        "CosmicSparks" -> Color(0xFFFFD54F) to Color(0xFFFFAB00)
+                        "FloatingEmbers" -> Color(0xFFFFAB91) to Color(0xFFFF6D00)
+                        else -> Gold to Gold
+                    }
 
-                val glowRadius = 18.dp.toPx() * particlePulse
-                val coreRadius = 2.5.dp.toPx()
+                    val particleColor = baseColor.copy(alpha = if (isAod) 0.04f else 0.16f)
+                    val glowColor = glowBase.copy(alpha = if (isAod) 0.02f else 0.08f)
 
-                for (pt in points) {
-                    drawCircle(
-                        color = glowColor,
-                        radius = glowRadius,
-                        center = pt
+                    val points = listOf(
+                        Offset(w * 0.15f, h * 0.20f + particleFloatOffset),
+                        Offset(w * 0.85f, h * 0.25f - particleFloatOffset),
+                        Offset(w * 0.25f, h * 0.50f + particleFloatOffset * 0.7f),
+                        Offset(w * 0.75f, h * 0.60f - particleFloatOffset * 0.7f),
+                        Offset(w * 0.10f, h * 0.80f + particleFloatOffset),
+                        Offset(w * 0.90f, h * 0.85f - particleFloatOffset),
+                        Offset(w * 0.50f, h * 0.35f + particleFloatOffset * 0.5f),
+                        Offset(w * 0.50f, h * 0.70f - particleFloatOffset * 0.5f)
                     )
-                    drawCircle(
-                        color = particleColor,
-                        radius = coreRadius,
-                        center = pt
-                    )
+
+                    val glowRadius = 20.dp.toPx() * particlePulse
+                    val coreRadius = when (effect) {
+                        "DivineLotus" -> 3.5.dp.toPx()
+                        "CosmicSparks" -> 2.0.dp.toPx()
+                        else -> 2.8.dp.toPx()
+                    }
+
+                    for (pt in points) {
+                        drawCircle(
+                            color = glowColor,
+                            radius = glowRadius,
+                            center = pt
+                        )
+                        drawCircle(
+                            color = particleColor,
+                            radius = coreRadius,
+                            center = pt
+                        )
+                    }
                 }
             }
 
@@ -1545,7 +1554,7 @@ import androidx.compose.ui.input.pointer.pointerInput
             Surface(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(start = 24.dp, end = 24.dp, bottom = fabBottomPadding + 8.dp)
+                    .padding(start = 52.dp, end = 52.dp, bottom = fabBottomPadding + 8.dp)
                     .fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
                 color = SurfaceColor.copy(alpha = 0.95f),

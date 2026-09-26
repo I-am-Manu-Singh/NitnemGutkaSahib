@@ -318,16 +318,25 @@ fun BaniCompletionMascotOverlay(
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(56.dp)
+                                .size(54.dp)
                                 .offset(y = mascotFloatY.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            MascotBani(
-                                state = if (isAllNitnemDone) MascotState.Celebrating
-                                else if (completedStepsCount >= 4) MascotState.Happy
-                                else MascotState.Reading,
-                                modifier = Modifier.size(52.dp)
-                            )
+                            Surface(
+                                shape = CircleShape,
+                                color = Gold.copy(alpha = 0.25f),
+                                border = BorderStroke(1.5.dp, Gold),
+                                modifier = Modifier.size(50.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = if (isAllNitnemDone) Icons.Default.EmojiEvents else if (isStreakCelebration) Icons.Default.LocalFireDepartment else Icons.Default.Stars,
+                                        contentDescription = null,
+                                        tint = Gold,
+                                        modifier = Modifier.size(28.dp)
+                                    )
+                                }
+                            }
                         }
 
                         Column(modifier = Modifier.weight(1f)) {
@@ -662,18 +671,18 @@ private fun StationTile(
                 )
             }
 
-            // Animated Mascot walking/reading next to the active step
-            if (isCurrentTarget) {
-                Box(
-                    modifier = Modifier.size(36.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    MascotBani(
-                        state = MascotState.Walking,
-                        modifier = Modifier.size(34.dp)
-                    )
-                }
-            }
+            // // Animated Mascot walking/reading next to the active step
+            // if (isCurrentTarget) {
+            //     Box(
+            //         modifier = Modifier.size(36.dp),
+            //         contentAlignment = Alignment.Center
+            //     ) {
+            //         MascotBani(
+            //             state = MascotState.Walking,
+            //             modifier = Modifier.size(34.dp)
+            //         )
+            //     }
+            // }
         }
     }
 }

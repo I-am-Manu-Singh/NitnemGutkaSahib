@@ -1,4 +1,4 @@
-# 🛕 Play Store Readiness — Nitnem Gutka Sahib
+# 🛕 Play Store Readiness — Nitnem Gutka Steek
 **App:** `org.audiocular.nitnem`  
 **Current Version:** `0.1.0` (versionCode: 1)  
 **Stack:** Kotlin Multiplatform + Compose Multiplatform  

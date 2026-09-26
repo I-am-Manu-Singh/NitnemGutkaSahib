@@ -28,153 +28,103 @@ enum class PremiumTier(
  * Google Play / RevenueCat product IDs.
  */
 object BillingProducts {
+    const val FREE_TIER = "free_forever"
+    const val SUPPORTER_MONTHLY = "supporter_monthly"
+    const val PREMIUM_ANNUAL = "premium_annual"
+    const val LIFETIME_PATRON = "lifetime_patron"
 
+    // Legacy backwards compatibility constants
     const val SUPPORTER_49 = "supporter_49"
-
-    const val FOUNDING_SUPPORTER_49 =
-        "founding_supporter_49"
-
+    const val FOUNDING_SUPPORTER_49 = "founding_supporter_49"
     const val PREMIUM_99 = "premium_99"
-
     const val LIFETIME_199 = "lifetime_199"
 }
 
 /**
  * Product displayed in the billing UI.
- *
- * Prices below are fallback/display values only.
- * Production UI should prefer localized prices returned
- * by RevenueCat / Google Play.
  */
 data class InAppProductPlan(
-
     val id: String,
-
-    /**
-     * RevenueCat entitlement granted by this product.
-     */
     val entitlement: String,
-
     val title: String,
-
     val formattedPriceInr: String,
-
     val formattedPriceUsd: String,
-
     val badge: String? = null,
-
     val isLaunchOffer: Boolean = false,
-
+    val isFreeTier: Boolean = false,
     val description: String,
-
     val features: List<String>
 )
 
-/**
- * Default product configuration used before RevenueCat
- * offerings are loaded.
- */
+val FREE_TIER_PLAN = InAppProductPlan(
+    id = BillingProducts.FREE_TIER,
+    entitlement = "",
+    title = "Keep Free Forever",
+    formattedPriceInr = "Free",
+    formattedPriceUsd = "$0",
+    badge = "Active by Default",
+    isFreeTier = true,
+    description = "100% free and ad-free forever. Authentic Gurmukhi scripture, steek translations, audio sync, and offline reading.",
+    features = listOf(
+        "100% Free & Ad-Free Forever",
+        "All 40+ Gurbani Banis & Steek Translations",
+        "Synchronized Audio Playback & Offline Mode",
+        "Daily Streaks, Monthly Heatmap & XP History",
+        "5 Standard Themes & Core Typography"
+    )
+)
+
 val DEFAULT_APP_PLANS = listOf(
+    FREE_TIER_PLAN,
 
     InAppProductPlan(
-        id = BillingProducts.SUPPORTER_49,
+        id = BillingProducts.SUPPORTER_MONTHLY,
         entitlement = BillingEntitlements.SUPPORTER,
-
         title = "Seva Supporter",
-
         formattedPriceInr = "₹49",
-        formattedPriceUsd = "$1.99",
-
-        badge = "❤️ Seva",
-
-        description =
-            "Support the continued development of Nitnem Gutka Sahib " +
-            "and help keep the app free and ad-free.",
-
+        formattedPriceUsd = "$0.99",
+        badge = "Seva",
+        description = "Support ongoing server hosting, audio CDN costs, and continuous app development with a small recurring seva.",
         features = listOf(
-            "Seva Supporter badge",
-            "2 additional spiritual themes",
-            "Remove voluntary support prompts",
-            "Help support audio and data hosting"
+            "Golden Seva Supporter Badge",
+            "4 Exclusive Spiritual Themes",
+            "Unlocks Supporter Calligraphy (Anmol Lipi, Lora)",
+            "Direct Contribution to Server & Audio Hosting"
         )
     ),
 
     InAppProductPlan(
-        id = BillingProducts.FOUNDING_SUPPORTER_49,
+        id = BillingProducts.PREMIUM_ANNUAL,
         entitlement = BillingEntitlements.PREMIUM,
-
-        title = "Early Supporter",
-
-        formattedPriceInr = "₹49",
-        formattedPriceUsd = "$1.99",
-
-        badge = "🚀 Launch Offer",
+        title = "Seva Patron",
+        formattedPriceInr = "₹299",
+        formattedPriceUsd = "$4.99",
+        badge = "Most Popular • 50% Off",
         isLaunchOffer = true,
-
-        description =
-            "A special launch price for early supporters. " +
-            "Get Premium permanently with a one-time purchase.",
-
+        description = "Unlock the ultimate Gurbani focus experience with advanced typography, ambient effects, and full-screen reading.",
         features = listOf(
-            "Lifetime Premium access",
-            "Full-screen immersive reading mode",
-            "Ultra-minimalist black & white AOD mode",
-            "8 exclusive AMOLED & spiritual themes",
-            "Advanced Gurbani search",
-            "First-letter and transliteration search",
-            "Teeka-aware search",
-            "Future Premium features included"
+            "Full-Screen Immersive Reading Mode",
+            "Ultra-Minimalist Black & White AOD Mode",
+            "All 10 Premium Calligraphy & Script Fonts",
+            "Divine Ambient Particle Effects & Auras",
+            "Advanced Verse Search & Sleep Timer"
         )
     ),
 
     InAppProductPlan(
-        id = BillingProducts.PREMIUM_99,
+        id = BillingProducts.LIFETIME_PATRON,
         entitlement = BillingEntitlements.PREMIUM,
-
-        title = "Gurbani Premium",
-
-        formattedPriceInr = "₹99",
-        formattedPriceUsd = "$3.99",
-
-        badge = "⭐ Popular",
-
-        description =
-            "Unlock advanced reading, search, audio, " +
-            "customization and convenience features.",
-
+        title = "Lifetime Sangat Patron",
+        formattedPriceInr = "₹599",
+        formattedPriceUsd = "$9.99",
+        badge = "Lifetime • Best Value",
+        description = "One-time contribution for lifetime full access. Keep all current and all future Premium features forever.",
         features = listOf(
-            "Full-screen immersive reading mode",
-            "Ultra-minimalist black & white AOD mode",
-            "8 exclusive AMOLED & spiritual themes",
-            "Advanced Gurbani search",
-            "Sleep timer",
-            "Custom audio controls",
-            "Supporter tier benefits",
-            "Future Premium features included"
-        )
-    ),
-
-    InAppProductPlan(
-        id = BillingProducts.LIFETIME_199,
-        entitlement = BillingEntitlements.PREMIUM,
-
-        title = "Lifetime Patron",
-
-        formattedPriceInr = "₹199",
-        formattedPriceUsd = "$7.99",
-
-        badge = "🪯 Lifetime",
-
-        description =
-            "One-time purchase. Keep all current and future " +
-            "Premium features permanently.",
-
-        features = listOf(
-            "Every current Premium feature",
-            "All future Premium features",
-            "Lifetime Patron badge",
-            "Support ongoing Gurmat app development",
-            "Priority developer support"
+            "Permanent Lifetime Access to All Features",
+            "All Future Premium Features Included",
+            "Lifetime Patron Golden Shield Badge",
+            "Create & Administer Sangat Family Groups",
+            "Direct Priority Support & Seva Recognition"
         )
     )
 )

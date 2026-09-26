@@ -6,7 +6,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
 /**
- * RevenueCat integration bridge for Nitnem Gutka Sahib.
+ * RevenueCat integration bridge for Nitnem Gutka Steek.
  *
  * Synchronizes with [PremiumBillingManager] to handle entitlements,
  * non-consumable lifetime purchases, and restore transactions.

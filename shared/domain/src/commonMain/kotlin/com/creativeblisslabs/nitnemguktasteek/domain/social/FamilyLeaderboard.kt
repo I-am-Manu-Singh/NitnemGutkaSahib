@@ -31,6 +31,17 @@ data class FamilyGroup(
     val groupTotalXp: Int = 0
 )
 
+@Serializable
+data class XpHistoryItem(
+    val id: String = "",
+    val userId: String = "",
+    val title: String = "",
+    val category: String = "Bani", // "Bani", "Streak", "Quiz", "Practice"
+    val xpAmount: Int = 0,
+    val timestamp: Long = 0L,
+    val formattedDate: String = ""
+)
+
 interface FamilyLeaderboardRepository {
     suspend fun getFamilyGroup(groupId: String): FamilyGroup?
     suspend fun getFamilyGroupByCode(inviteCode: String): FamilyGroup?
@@ -43,6 +54,8 @@ interface FamilyLeaderboardRepository {
     suspend fun leaveFamilyGroup(groupId: String, userId: String): Boolean
     suspend fun addMemberByUsername(groupId: String, username: String): Boolean
     suspend fun findUserByUsername(username: String): FamilyMemberProgress?
+    suspend fun recordXpTransaction(item: XpHistoryItem): Boolean = true
+    suspend fun getXpHistory(userId: String): List<XpHistoryItem> = emptyList()
 }
 
 class InMemoryFamilyLeaderboardRepository : FamilyLeaderboardRepository {

@@ -11,9 +11,12 @@ import com.google.firebase.appcheck.playintegrity.PlayIntegrityAppCheckProviderF
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreSettings
 import com.creativeblisslabs.nitnemguktasteek.domain.billing.RevenueCatBillingManager
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 /**
- * Main Application class for Nitnem Gutka Sahib.
+ * Main Application class for Nitnem Gutka Steek.
  *
  * Initializes:
  * - Firebase
@@ -34,6 +37,18 @@ class NitnemApplication : Application() {
         initFirestore()
 
         initRevenueCat()
+
+        initFirestoreAudioCatalog()
+    }
+
+    private fun initFirestoreAudioCatalog() {
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            try {
+                com.creativeblisslabs.nitnemguktasteek.auth.NitnemAuthManager.fetchFirestoreAudioCatalog()
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to initialize Firestore audio catalog: ${e.message}")
+            }
+        }
     }
 
     private fun initRevenueCat() {

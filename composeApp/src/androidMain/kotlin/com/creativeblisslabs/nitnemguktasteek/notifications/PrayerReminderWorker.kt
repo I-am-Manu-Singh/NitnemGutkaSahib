@@ -69,7 +69,7 @@ class PrayerReminderWorker(
                 val displayMsg = if (textLines.isNotBlank()) textLines else "Start your morning with Gurbani."
 
                 bridge.sendReminderNotification(
-                    "Daily Hukamnama Sahib 🌅",
+                    "Daily Hukamnama Sahib",
                     displayMsg
                 )
 
@@ -95,7 +95,7 @@ class PrayerReminderWorker(
 
                 bridge.sendReminderNotification(
 
-                    "Midday Reflection ✨",
+                    "Midday Reflection",
 
                     "Pause for a few peaceful moments with Gurbani."
                 )
@@ -124,7 +124,7 @@ class PrayerReminderWorker(
 
                 bridge.sendReminderNotification(
 
-                    "Rehras Sahib 🌇",
+                    "Rehras Sahib",
 
                     "Recharge spiritually after the day's journey."
                 )
@@ -153,7 +153,7 @@ class PrayerReminderWorker(
 
                 bridge.sendReminderNotification(
 
-                    "Kirtan Sohila 🌙",
+                    "Kirtan Sohila",
 
                     "Prepare the mind for peaceful rest before sleep."
                 )
@@ -193,7 +193,7 @@ class PrayerReminderWorker(
 
                     bridge.sendReminderNotification(
 
-                        "Save your streak! 🔥",
+                        "Save your Nitnem streak",
 
                         "Keep your $streak-day streak alive. Take a few minutes to read Kirtan Sohila."
                     )

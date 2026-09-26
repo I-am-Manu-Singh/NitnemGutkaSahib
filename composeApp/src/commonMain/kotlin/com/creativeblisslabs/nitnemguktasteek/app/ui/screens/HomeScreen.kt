@@ -58,6 +58,7 @@ import com.creativeblisslabs.nitnemguktasteek.app.ui.components.WeeklyStreakDial
 import com.creativeblisslabs.nitnemguktasteek.app.ui.components.FamilyLeaderboardDialog
 import com.creativeblisslabs.nitnemguktasteek.app.ui.components.GurbaniMeaningSheet
 import com.creativeblisslabs.nitnemguktasteek.app.ui.components.RollingNumberText
+import com.creativeblisslabs.nitnemguktasteek.app.ui.components.XpHistoryDialog
 import com.creativeblisslabs.nitnemguktasteek.domain.social.FamilyLeaderboardRepository
 import com.creativeblisslabs.nitnemguktasteek.app.ui.theme.*
 import com.creativeblisslabs.nitnemguktasteek.viewmodel.NitnemViewModel
@@ -84,7 +85,8 @@ import kotlinx.datetime.toLocalDateTime
 @Composable
 fun HomeScreen(
     viewModel: NitnemViewModel,
-    audioController: StreamAudioController
+    audioController: StreamAudioController,
+    onAssistantVisibilityChanged: (Boolean) -> Unit = {}
 ) {
 
     val state by viewModel.uiState.collectAsState()
@@ -99,13 +101,10 @@ val context = LocalContext.current
             viewModel.setHukamnama(hukamnama)
         }
     }
-    var showInfoSheet by remember {
-        mutableStateOf(false)
-    }
+    var showXpHistoryDialog by remember { mutableStateOf(false) }
 
     var showWeeklyStreakDialog by remember { mutableStateOf(false) }
     var showLeaderboardDialog by remember { mutableStateOf(false) }
-    var showSevaSheet by remember { mutableStateOf(false) }
     var streakToDisplay by remember { mutableStateOf(state.streakDays) }
     val lastStreak = remember { mutableStateOf(state.streakDays) }
     val scope = rememberCoroutineScope()
@@ -157,15 +156,13 @@ val context = LocalContext.current
 
     val nitnemBaniIds = remember {
         setOf(
-            "morning-nitnem",
             "japji-sahib",
             "jaap-sahib",
             "tav-prasad-savaiye",
             "benti-chaupai-sahib",
             "anand-sahib",
             "rehras-sahib",
-            "kirtan-sohila",
-            "ardas"
+            "kirtan-sohila"
         )
     }
 
@@ -183,6 +180,9 @@ val context = LocalContext.current
         }
     }
     var isMascotOverlayVisible by remember { mutableStateOf(false) }
+    LaunchedEffect(isMascotOverlayVisible) {
+        onAssistantVisibilityChanged(isMascotOverlayVisible)
+    }
     var isGlobalSearchVisible by remember { mutableStateOf(false) }
     var globalSearchQuery by remember { mutableStateOf("") }
     var selectedSearchVerseLine by remember { mutableStateOf<BaniLine?>(null) }
@@ -326,7 +326,7 @@ Surface(
                 )
 
                 Text(
-                    text = "ਨਿਤਨੇਮ ਗੁਟਕਾ ਸਾਹਿਬ".translate(state.displayLanguage),
+                    text = "ਨਿਤਨੇਮ ਗੁਟਕਾ ਟੀਕਾ".translate(state.displayLanguage),
                     color = if (AppTheme.themeMode == ThemeMode.Light)
                         Color(0xFF1A1816)
                     else
@@ -355,12 +355,13 @@ Surface(
                     modifier = Modifier
                         .clip(RoundedCornerShape(50))
                         .clickable {
+                            showXpHistoryDialog = true 
                         }
                         .padding(horizontal = 4.dp, vertical = 2.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Star,
-                        contentDescription = "XP",
+                        contentDescription = "XP History",
                         tint = Accent,
                         modifier = Modifier.size(13.dp)
                     )
@@ -409,7 +410,7 @@ Surface(
 
             Spacer(Modifier.width(6.dp))
 
-            // 4. Action Buttons (Search & Info)
+            // 4. Action Buttons (Search & Leaderboard)
             Row(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -443,58 +444,6 @@ Surface(
                         Icon(
                             imageVector = Icons.Default.Leaderboard,
                             contentDescription = "Show Leaderboard",
-                            tint = Accent.copy(alpha = 0.85f),
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                }
-                var sevaScale by remember { mutableStateOf(1f) }
-                val animatedSevaScale by animateFloatAsState(
-                    targetValue = sevaScale,
-                    animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
-                    label = "SevaScaleBounce"
-                )
-
-                Surface(
-                    onClick = {
-                        scope.launch {
-                            sevaScale = 0.82f
-                            delay(120)
-                            sevaScale = 1f
-                            showSevaSheet = true
-                        }
-                    },
-                    shape = CircleShape,
-                    color = Gold.copy(alpha = 0.16f),
-                    border = BorderStroke(1.dp, Gold.copy(alpha = 0.35f)),
-                    modifier = Modifier.scale(animatedSevaScale)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(32.dp)
-                            .semantics { contentDescription = "Seva & Patronage Tiers" },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "ੴ",
-                            color = Gold,
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-                Surface(
-                    onClick = { showInfoSheet = true },
-                    shape = CircleShape,
-                    color = Accent.copy(alpha = 0.10f)
-                ) {
-                    Box(
-                        modifier = Modifier.size(32.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Info,
-                            contentDescription = "Show Info",
                             tint = Accent.copy(alpha = 0.85f),
                             modifier = Modifier.size(16.dp)
                         )
@@ -1072,11 +1021,6 @@ Surface(
                     displayLanguage =
                         state.displayLanguage,
 
-                    onInfoClick = {
-                        showInfoSheet = false
-                        selectedInfoBani = bani
-                    },
-
                     onClick = {
                         println("HOME PLAY -> bani=${bani.id}")
 
@@ -1104,194 +1048,7 @@ Surface(
     }
 
 
-    /*
-     * BOTTOM SHEET
-     */
 
-    if (showInfoSheet) {
-
-  ModalBottomSheet(
-
-    onDismissRequest = {
-        selectedInfoBani = null
-showInfoSheet = false
-    },
-
-    sheetState = sheetState,
-
-    shape = RoundedCornerShape(
-        topStart = 32.dp,
-        topEnd = 32.dp
-    ),
-
-    containerColor = SurfaceColor,
-
-    tonalElevation = 0.dp
-){
-
-            Spacer(
-                Modifier.height(12.dp)
-            )
-
-            Column(
-
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(
-                        state = rememberScrollState(),
-                        enabled = !isMascotOverlayVisible && !isGlobalSearchVisible
-                    )
-                    .padding(
-                        horizontal = 22.dp,
-                        vertical = 12.dp
-                    )
-            ) {
-
-                
-            Text(
-                text = "ਨਿਤਨੇਮ ਗੁਟਕਾ ਸਾਹਿਬ".translate(state.displayLanguage),
-                color = if (AppTheme.themeMode == ThemeMode.Light)
-                    Color(0xFF1A1816)
-                else
-                    Color.White,
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold
-            )
-
-                Spacer(
-                    Modifier.height(10.dp)
-                )
-
-                Text(
-
-                    text =
-                        "Peaceful Gurbani reading and listening.".translate(state.displayLanguage),
-
-                    color =
-                        TextPrimary.copy(alpha = 0.75f),
-
-                    fontSize = 14.sp
-                )
-
-                Spacer(
-                    Modifier.height(24.dp)
-                )
-
-                PremiumInfoSection(
-
-                    icon =
-                        Icons.Default.AutoStories,
-
-                    title =
-                        "Gurbani Reading".translate(state.displayLanguage),
-
-                    content =
-                        "Adjust fonts, translations, transliterations, and themes for comfortable paath.".translate(state.displayLanguage)
-                )
-
-                Spacer(
-                    Modifier.height(14.dp)
-                )
-                PremiumInfoSection(
-
-                    icon =
-                        Icons.Default.Headphones,
-
-                    title =
-                        "Gurbani Listening"
-                            .translate(state.displayLanguage),
-
-                    content =
-                        "Enjoy synced Gurbani playback for better pronunciation and immersion, or import and sync your own custom audio files with banis."
-                            .translate(state.displayLanguage)
-                )
-
-                Spacer(
-                    Modifier.height(14.dp)
-                )
-
-                PremiumInfoSection(
-
-                    icon =
-                        Icons.Default.LocalFireDepartment,
-
-                    title =
-                        "Daily Progress".translate(state.displayLanguage),
-
-                    content =
-                        "Track your paath streaks and consistency with daily reminders and notifications to keep you on track.".translate(state.displayLanguage)
-                )
-                
-                Spacer(
-                    Modifier.height(14.dp)
-                )
-
-                PremiumInfoSection(
-
-                    icon =
-                        Icons.Default.AutoAwesome,
-
-                    title =
-                        "AI Gurbani Quiz".translate(state.displayLanguage),
-
-                    content =
-                        "Test your knowledge with gamified daily Gurbani questions.".translate(state.displayLanguage)
-                )
-
-                 Spacer(
-                    Modifier.height(14.dp)
-                )
-
-                PremiumInfoSection(
-
-                    icon =
-                        Icons.Default.Source,
-
-                    title =
-                        "Gurbani Database".translate(state.displayLanguage),
-
-                    content =
-                        "All Gurbani texts & translations, transliterations are taken from https://www.shabados.com/".translate(state.displayLanguage)
-                )
-                Spacer(
-                    Modifier.height(14.dp)
-                )
-      PremiumInfoSection(
-
-                    icon =
-                        Icons.Default.Podcasts,
-
-                    title =
-                        "Stay connected with Friends & Family".translate(state.displayLanguage),
-
-                    content =
-                        "Track your progress and compete with others on the leaderboard.".translate(state.displayLanguage)
-                )
-
-                 Spacer(
-                    Modifier.height(14.dp)
-                )
-                PremiumInfoSection(
-
-                    icon =
-                        Icons.Default.CalendarToday,
-
-                    title =
-                        "Daily Hukamnama".translate(state.displayLanguage),
-
-                    content =
-                       (
-                            "Parsed from".translate(state.displayLanguage) +
-                            " https://data.gurbaninow.com/" )
-                )
-
-                Spacer(
-                    Modifier.height(30.dp)
-                )
-
-            }
-        }
-    }
 
     selectedSearchVerseLine?.let { line ->
         GurbaniMeaningSheet(
@@ -1755,10 +1512,12 @@ showInfoSheet = false
         )
     }
 
-    if (showSevaSheet) {
-        com.creativeblisslabs.nitnemguktasteek.app.ui.components.SevaSupporterModalSheet(
+    // ── XP HISTORY DIALOG ──
+    if (showXpHistoryDialog) {
+        XpHistoryDialog(
+            uiState = state,
             displayLanguage = state.displayLanguage,
-            onDismiss = { showSevaSheet = false }
+            onDismiss = { showXpHistoryDialog = false }
         )
     }
 }

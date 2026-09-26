@@ -61,15 +61,10 @@ private fun buildQuestions(
     bani: Bani,
     displayLanguage: DisplayLanguage
 ): List<QuizQuestion> {
+    val usable = bani.lines.filter { it.gurmukhi.isNotBlank() }
+    if (usable.isEmpty()) return emptyList()
 
-    val lines = bani.lines
-    val usable =
-        lines.filter {
-            it.gurmukhi.isNotBlank()
-        }
-
-    val questions =
-        mutableListOf<QuizQuestion>()
+    val questions = mutableListOf<QuizQuestion>()
 
     // 1. Author Question
     if (bani.author.isNotBlank()) {
@@ -109,7 +104,6 @@ private fun buildQuestions(
             listOf((angNum + 8).coerceAtMost(1430), (angNum - 6).coerceAtLeast(1), (angNum + 24).coerceAtMost(1430))
                 .map { it.toString().translate(displayLanguage) }
         } else {
-            // Realistic randomized Angs from Sri Guru Granth Sahib Ji (1 to 1430)
             listOf((1..300).random(), (301..800).random(), (801..1430).random())
                 .map { it.toString().translate(displayLanguage) }
         }
@@ -123,267 +117,155 @@ private fun buildQuestions(
         )
     }
 
-    usable.forEachIndexed { index, line ->
+    // Pre-extract distractor pools in O(N)
+    val allWordsPool = usable.flatMap { it.gurmukhi.split(" ") }.filter { it.length > 2 }.distinct()
+    val allTranslationsPool = usable.mapNotNull {
+        val t = when (displayLanguage) {
+            DisplayLanguage.Punjabi -> it.punjabi.ifBlank { it.translation }
+            DisplayLanguage.Hindi -> it.hindi.translateHindiTransliteration().ifBlank { it.translation }
+            DisplayLanguage.English -> it.translation
+        }.trim()
+        t.takeIf { s -> s.isNotBlank() }?.take(90)
+    }.distinct()
 
-        val words =
-            line.gurmukhi
-                .split(" ")
-                .filter {
-                    it.isNotBlank()
-                }
+    val allMeaningsPool = usable.mapNotNull {
+        it.wordMeaning.trim().takeIf { m -> m.isNotBlank() }?.take(95)
+    }.distinct()
 
+    // Sample candidate lines up to 50 lines evenly distributed across the Bani
+    val step = (usable.size / 50).coerceAtLeast(1)
+    val sampledIndices = (0 until usable.size step step).take(50)
+
+    for (index in sampledIndices) {
+        val line = usable[index]
+        val words = line.gurmukhi.split(" ").filter { it.isNotBlank() }
         val translationText = when (displayLanguage) {
             DisplayLanguage.Punjabi -> line.punjabi.ifBlank { line.translation }
             DisplayLanguage.Hindi -> line.hindi.translateHindiTransliteration().ifBlank { line.translation }
             DisplayLanguage.English -> line.translation
         }
 
-        /*
-         * SMART FILL BLANK
-         */
-
+        // SMART FILL BLANK
         if (words.size >= 5) {
+            val hiddenIndex = (1 until words.lastIndex).random()
+            val hiddenWord = words[hiddenIndex]
+            val display = words.mapIndexed { i, word ->
+                if (i == hiddenIndex) "_____" else word
+            }.joinToString(" ")
 
-            val hiddenIndex =
-                (1 until words.lastIndex)
-                    .random()
-
-            val hiddenWord =
-                words[hiddenIndex]
-
-            val display =
-                words.mapIndexed { i, word ->
-
-                    if (i == hiddenIndex)
-                        "_____"
-                    else
-                        word
-
-                }.joinToString(" ")
-
-            val distractors =
-                usable.flatMap {
-
-                    it.gurmukhi.split(" ")
-
-                }.filter {
-
-                    it.length > 2 &&
-                    it != hiddenWord
-
-                }.distinct()
-                    .shuffled()
-                    .take(5)
+            val distractors = allWordsPool
+                .filter { it != hiddenWord }
+                .shuffled()
+                .take(5)
 
             questions.add(
-
                 QuizQuestion.FillBlank(
-
                     line = display,
-
                     answer = hiddenWord,
-
-                    chips =
-                        (
-                            listOf(hiddenWord) +
-                            distractors
-                        ).shuffled()
+                    chips = (listOf(hiddenWord) + distractors).shuffled()
                 )
             )
         }
 
-        /*
-         * TRANSLATION
-         */
-
+        // TRANSLATION
         if (translationText.isNotBlank()) {
-            val distractors = usable
-                .filter { it.id != line.id }
-                .map {
-                    val dt = when (displayLanguage) {
-                        DisplayLanguage.Punjabi -> it.punjabi.ifBlank { it.translation }
-                        DisplayLanguage.Hindi -> it.hindi.translateHindiTransliteration().ifBlank { it.translation }
-                        DisplayLanguage.English -> it.translation
-                    }
-                    dt.trim()
-                }
-                .filter { it.isNotBlank() && it.take(90) != translationText.trim().take(90) }
-                .distinct()
+            val cleanAnswer = translationText.take(90)
+            val distractors = allTranslationsPool
+                .filter { it != cleanAnswer }
                 .shuffled()
                 .take(3)
-                .map { it.take(90) }
                 .toMutableList()
 
             while (distractors.size < 3) {
-                val fallback = usable
-                    .filter { it.id != line.id && !distractors.contains(it.translation.take(90)) }
-                    .shuffled()
-                    .firstOrNull()
-                    ?.translation
-                    ?.take(90) ?: "Gurbani Translation Detail"
-                distractors.add(fallback)
+                distractors.add("Gurbani Translation Explanation")
             }
 
             questions.add(
                 QuizQuestion.Translation(
                     line = line.gurmukhi,
-                    answer = translationText.take(90),
-                    options = (
-                        listOf(
-                            translationText.take(90)
-                        ) + distractors
-                    ).shuffled()
+                    answer = cleanAnswer,
+                    options = (listOf(cleanAnswer) + distractors).shuffled()
                 )
             )
         }
 
-        /*
-         * WORD MEANING
-         */
+        // WORD MEANING
         if (line.wordMeaning.isNotBlank()) {
-            val distractors = usable
-                .filter { it.id != line.id && it.wordMeaning.isNotBlank() }
+            val cleanMeaning = line.wordMeaning.take(95)
+            val distractors = allMeaningsPool
+                .filter { it != cleanMeaning }
                 .shuffled()
                 .take(3)
-                .map { it.wordMeaning.take(95) }
                 .toMutableList()
 
             while (distractors.size < 3) {
-                val fallback = usable
-                    .filter { it.id != line.id }
-                    .shuffled()
-                    .firstOrNull()
-                    ?.let {
-                        if (it.wordMeaning.isNotBlank()) it.wordMeaning.take(95)
-                        else it.translation.take(95)
-                    } ?: "Gurbani Word Meaning Explanation"
-                distractors.add(fallback)
+                distractors.add("Word Meaning Details")
             }
 
             questions.add(
                 QuizQuestion.WordMeaning(
                     line = line.gurmukhi,
-                    answer = line.wordMeaning.take(95),
-                    options = (listOf(line.wordMeaning.take(95)) + distractors).shuffled()
+                    answer = cleanMeaning,
+                    options = (listOf(cleanMeaning) + distractors).shuffled()
                 )
             )
         }
 
-        /*
-         * NEXT LINE
-         */
-
+        // NEXT LINE
         if (index < usable.lastIndex) {
-
-            val nextLine =
-                usable[index + 1]
-
-            val distractors =
-                usable
-                    .filter {
-                        it.id != nextLine.id
-                    }
-                    .shuffled()
-                    .take(3)
-                    .map {
-                        it.gurmukhi.take(70)
-                    }
-                    .toMutableList()
+            val nextLine = usable[index + 1]
+            val nextGurmukhi = nextLine.gurmukhi.take(70)
+            val distractors = usable
+                .filter { it.id != nextLine.id && it.id != line.id }
+                .shuffled()
+                .take(3)
+                .map { it.gurmukhi.take(70) }
+                .toMutableList()
 
             while (distractors.size < 3) {
-                val fallback = usable
-                    .filter { it.id != nextLine.id && !distractors.contains(it.gurmukhi.take(70)) }
-                    .shuffled()
-                    .firstOrNull()
-                    ?.gurmukhi
-                    ?.take(70) ?: "Gurbani Paath Line"
-                distractors.add(fallback)
+                distractors.add("Gurbani Paath Line")
             }
 
             questions.add(
-
                 QuizQuestion.NextLine(
-
-                    currentLine =
-                        line.gurmukhi,
-
-                    answer =
-                        nextLine.gurmukhi.take(70),
-
-                    options =
-                        (
-                            listOf(
-                                nextLine.gurmukhi.take(70)
-                            ) +
-                                distractors
-                            ).shuffled()
-                    )
+                    currentLine = line.gurmukhi,
+                    answer = nextGurmukhi,
+                    options = (listOf(nextGurmukhi) + distractors).shuffled()
+                )
             )
         }
 
-        /*
-         * TRUE FALSE
-         */
-
+        // TRUE FALSE
         if (translationText.isNotBlank()) {
-
-            val isCorrect =
-                listOf(true, false)
-                    .random()
-
-            val otherLines = usable.filter { 
-                it.id != line.id && 
-                when (displayLanguage) {
-                    DisplayLanguage.Punjabi -> it.punjabi.isNotBlank() || it.translation.isNotBlank()
-                    DisplayLanguage.Hindi -> it.hindi.isNotBlank() || it.translation.isNotBlank()
-                    DisplayLanguage.English -> it.translation.isNotBlank()
-                }
+            val isCorrect = listOf(true, false).random()
+            val shownTranslation = if (isCorrect || allTranslationsPool.size < 2) {
+                translationText
+            } else {
+                allTranslationsPool.filter { it != translationText.take(90) }.randomOrNull() ?: translationText
             }
-            val shownTranslation =
-                if (isCorrect || otherLines.isEmpty()) {
-                    translationText
-                } else {
-                    val otherLine = otherLines.random()
-                    val otherText = when (displayLanguage) {
-                        DisplayLanguage.Punjabi -> otherLine.punjabi.ifBlank { otherLine.translation }
-                        DisplayLanguage.Hindi -> otherLine.hindi.translateHindiTransliteration().ifBlank { otherLine.translation }
-                        DisplayLanguage.English -> otherLine.translation
+
+            questions.add(
+                QuizQuestion.TrueFalse(
+                    statement = "${line.gurmukhi}\n\n$shownTranslation",
+                    answer = isCorrect && (shownTranslation == translationText)
+                )
+            )
+        }
+
+        // SEQUENCE BUILDER
+        if (words.size in 4..9) {
+            questions.add(
+                QuizQuestion.SequenceBuilder(
+                    originalWords = words,
+                    hint = translationText.ifBlank {
+                        "Arrange the Gurbani line correctly".translate(displayLanguage)
                     }
-                    if (otherText.isNotBlank()) otherText else otherLine.translation
-                }
-
-      questions.add(
-
-    QuizQuestion.TrueFalse(
-
-        statement =
-            "${line.gurmukhi}\n\n$shownTranslation",
-
-        answer =
-            isCorrect && (shownTranslation == translationText)
-    )
-)
-        }
-
-        /*
-         * SEQUENCE BUILDER
-         */
-
-        if (words.size >= 4) {
-questions.add(
-    QuizQuestion.SequenceBuilder(
-        originalWords = words,
-        hint = translationText.ifBlank {
-            "Arrange the Gurbani line correctly".translate(displayLanguage)
-        }
-    )
-)
+                )
+            )
         }
     }
 
-    return questions
-        .shuffled()
-        .take(30)
+    return questions.shuffled().take(25)
 }
 
 @OptIn(ExperimentalLayoutApi::class)
