@@ -23,6 +23,7 @@ kotlin {
     androidTarget {
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_11)
+            freeCompilerArgs.addAll("-Xskip-metadata-version-check", "-Xskip-prerelease-check")
         }
     }
 
@@ -78,6 +79,10 @@ kotlin {
             implementation(libs.ktor.client.core)
             implementation(libs.ktor.client.cio)
             implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.0")
+            implementation(libs.revenuecat.kmp.core)
+            implementation(libs.revenuecat.kmp.ui)
+            implementation(libs.coil.compose)
+            implementation(libs.coil.network.ktor)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -133,6 +138,8 @@ android {
         versionCode = 1
         versionName = "0.1.0"
         buildConfigField("String", "REVENUECAT_GOOGLE_API_KEY", "\"$revenueCatApiKey\"")
+        buildConfigField("String", "SUPPORT_EMAIL", "\"creativeblisslabs@gmail.com\"")
+        buildConfigField("String", "CONTACT_EMAIL", "\"creativeblisslabs@gmail.com\"")
     }
 
     splits {
@@ -159,6 +166,9 @@ android {
             if (keyPath.isNotEmpty()) {
                 signingConfig = signingConfigs.getByName("release")
             }
+            configure<com.google.firebase.crashlytics.buildtools.gradle.CrashlyticsExtension> {
+                mappingFileUploadEnabled = false
+            }
         }
     }
 
@@ -170,6 +180,12 @@ android {
     lint {
         checkReleaseBuilds = false
         abortOnError = false
+    }
+}
+
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask<*>>().configureEach {
+    compilerOptions {
+        freeCompilerArgs.addAll("-Xskip-metadata-version-check", "-Xskip-prerelease-check")
     }
 }
 

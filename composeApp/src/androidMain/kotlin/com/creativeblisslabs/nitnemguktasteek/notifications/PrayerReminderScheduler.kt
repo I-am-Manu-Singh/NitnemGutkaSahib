@@ -51,13 +51,28 @@ object PrayerReminderScheduler {
         sohilaTime: String
     ) {
 
-        /*
-         * You can later use these times
-         * inside Worker / AlarmManager.
-         *
-         * Right now compile stability first.
-         */
-
+    
         schedule(context)
+    }
+
+    fun scheduleSnoozeReminder(
+        context: Context,
+        baniId: String? = null
+    ) {
+        val inputData = androidx.work.workDataOf(
+            "is_snooze" to true,
+            "snooze_bani_id" to (baniId ?: "")
+        )
+
+        val snoozeRequest = androidx.work.OneTimeWorkRequestBuilder<PrayerReminderWorker>()
+            .setInitialDelay(15, TimeUnit.MINUTES)
+            .setInputData(inputData)
+            .build()
+
+        WorkManager.getInstance(context).enqueueUniqueWork(
+            "nitnem_snooze_reminder",
+            androidx.work.ExistingWorkPolicy.REPLACE,
+            snoozeRequest
+        )
     }
 }

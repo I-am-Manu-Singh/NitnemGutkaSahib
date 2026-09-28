@@ -17,7 +17,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material.icons.filled.ColorLens
@@ -54,6 +53,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Book
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import com.creativeblisslabs.nitnemguktasteek.audio.StreamAudioController
@@ -76,22 +82,15 @@ data class SettingsToggleItem(
 )
 
 enum class SettingsCategory(
-    val title: String
+    val title: String,
+    val icon: ImageVector
 ) {
-
-    Reading("Reading"),
-
-    Appearance("Appearance"),
-
-    Reminders("Account & Data"),
-
-    Audio("Manage Audio"),
-
-    Supporter("Seva & Tiers"),
-
-    About("About & Feedback"),
+    Reading("Reading", Icons.Default.Book),
+    Appearance("Appearance", Icons.Default.Palette),
+    Reminders("Account & Data", Icons.Default.Person),
+    Audio("Manage Audio", Icons.Default.VolumeUp), // Changed from AutoMirrored to Default
+    About("About & Feedback", Icons.Default.Info);
 }
-
 @Composable
 fun ReminderEditableRow(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
@@ -787,12 +786,22 @@ fun AccentThemeSelector(
                         color = if (selected) color else TextPrimary.copy(alpha = if (isUnlocked) 0.8f else 0.45f),
                         fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
                     )
-                    if (style.requiredTier != "free") {
-                        Text(
-                            text = if (style.requiredTier == "supporter") "❤️" else "⭐",
-                            fontSize = 8.sp
-                        )
-                    }
+                      val billingManager = remember { com.creativeblisslabs.nitnemguktasteek.domain.billing.PremiumBillingManager.instance }
+    val billingState by billingManager.billingState.collectAsState()
+                        val isPremiumOrTrial = billingState.isPremium || billingState.isLifetimePatron || billingState.isTrialActive
+
+    if (style.requiredTier != "free") {
+    if (!isPremiumOrTrial) {
+        Icon(
+            imageVector = Icons.Default.Lock,
+            contentDescription = null,
+            tint = Gold,
+            modifier = Modifier.size(13.dp)
+        )
+        // Adds a 4.dp horizontal gap between the lock icon and the text
+        Spacer(modifier = Modifier.width(4.dp)) 
+    }
+}
                 }
             }
         }
@@ -1055,20 +1064,27 @@ fun AudioTrackRow(
                     horizontalArrangement = Arrangement.spacedBy(5.dp),
                     modifier = Modifier.padding(top = 1.dp)
                 ) {
+                    // Audio File Chip with tick mark or download button
+                    val audioLabel = when {
+                        audioFileName?.endsWith(".opus", ignoreCase = true) == true -> "Opus Audio"
+                        audioFileName?.endsWith(".mp3", ignoreCase = true) == true -> "MP3 Audio"
+                        audioFileName?.endsWith(".m4a", ignoreCase = true) == true -> "M4A Audio"
+                        else -> "Audio"
+                    }
                     if (showDelete) {
                         Surface(
                             shape = RoundedCornerShape(6.dp),
-                            color = Color(0xFF4CAF50).copy(alpha = 0.14f),
-                            border = BorderStroke(0.6.dp, Color(0xFF4CAF50).copy(alpha = 0.4f))
+                            color = Color(0xFF4CAF50).copy(alpha = 0.15f),
+                            border = BorderStroke(0.6.dp, Color(0xFF4CAF50).copy(alpha = 0.45f))
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(3.dp)
                             ) {
-                                Icon(Icons.Default.CheckCircle, contentDescription = "Downloaded", tint = Color(0xFF4CAF50), modifier = Modifier.size(11.dp))
+                                Icon(Icons.Default.CheckCircle, contentDescription = "Audio Downloaded", tint = Color(0xFF4CAF50), modifier = Modifier.size(11.dp))
                                 Text(
-                                    text = "Downloaded",
+                                    text = "$audioLabel ✓",
                                     fontSize = 9.5.sp,
                                     color = Color(0xFF4CAF50),
                                     fontWeight = FontWeight.Bold,
@@ -1076,15 +1092,40 @@ fun AudioTrackRow(
                                 )
                             }
                         }
-                    }
-
-                    if (!audioFileName.isNullOrBlank()) {
-                        val audioLabel = when {
-                            audioFileName.endsWith(".opus", ignoreCase = true) -> "Opus Audio"
-                            audioFileName.endsWith(".mp3", ignoreCase = true) -> "MP3 Audio"
-                            audioFileName.endsWith(".m4a", ignoreCase = true) -> "M4A Audio"
-                            else -> "Audio File"
+                    } else if (onDownload != null) {
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = Accent.copy(alpha = 0.12f),
+                            border = BorderStroke(0.6.dp, Accent.copy(alpha = 0.35f)),
+                            modifier = Modifier.clickable { onDownload() }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(3.dp)
+                            ) {
+                                if (downloading) {
+                                    CircularProgressIndicator(modifier = Modifier.size(9.dp), strokeWidth = 1.dp, color = Accent)
+                                    Text(
+                                        text = "Downloading...",
+                                        fontSize = 9.5.sp,
+                                        color = Accent,
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines = 1
+                                    )
+                                } else {
+                                    Icon(Icons.Default.Download, contentDescription = "Download Audio", tint = Accent, modifier = Modifier.size(10.dp))
+                                    Text(
+                                        text = "Download $audioLabel",
+                                        fontSize = 9.5.sp,
+                                        color = Accent,
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines = 1
+                                    )
+                                }
+                            }
                         }
+                    } else if (!audioFileName.isNullOrBlank()) {
                         Surface(
                             shape = RoundedCornerShape(6.dp),
                             color = Accent.copy(alpha = 0.08f),
@@ -1101,51 +1142,105 @@ fun AudioTrackRow(
                                     fontSize = 9.5.sp,
                                     color = Accent,
                                     fontWeight = FontWeight.Medium,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
+                                    maxLines = 1
                                 )
                             }
                         }
                     }
 
-                    if (!timingFileName.isNullOrBlank()) {
+                    // Timing File Chip with tick mark or download button
+                    if (!timingFileName.isNullOrBlank() || synced || isTimingDownloaded) {
                         val hasLocalTiming = synced || isTimingDownloaded
-                        val timingLabel = if (hasLocalTiming) "Synced" else if (onDownloadTiming != null) "Get Timing" else "Edit Timing"
-                        Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            color = if (hasLocalTiming) Gold.copy(alpha = 0.14f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-                            border = BorderStroke(0.6.dp, if (hasLocalTiming) Gold.copy(alpha = 0.4f) else Accent.copy(alpha = 0.25f)),
-                            modifier = if (!hasLocalTiming && onDownloadTiming != null) {
-                                Modifier.clickable { onDownloadTiming() }
-                            } else if (!hasLocalTiming) {
-                                Modifier.clickable { onEdit() }
-                            } else {
-                                Modifier
-                            }
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(3.dp)
+                        if (hasLocalTiming) {
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = Gold.copy(alpha = 0.16f),
+                                border = BorderStroke(0.6.dp, Gold.copy(alpha = 0.5f))
                             ) {
-                                if (isTimingDownloading) {
-                                    CircularProgressIndicator(modifier = Modifier.size(9.dp), strokeWidth = 1.dp, color = Gold)
-                                } else {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(3.dp)
+                                ) {
                                     Icon(
-                                        imageVector = if (hasLocalTiming) Icons.Default.Sync else if (onDownloadTiming != null) Icons.Default.Download else Icons.Default.Edit,
-                                        contentDescription = null,
-                                        tint = if (hasLocalTiming) Gold else Accent,
-                                        modifier = Modifier.size(10.dp)
+                                        imageVector = Icons.Default.CheckCircle,
+                                        contentDescription = "Timing Downloaded",
+                                        tint = Gold,
+                                        modifier = Modifier.size(11.dp)
+                                    )
+                                    Text(
+                                        text = "Timing ✓",
+                                        fontSize = 9.5.sp,
+                                        color = Gold,
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines = 1
                                     )
                                 }
-                                Text(
-                                    text = timingLabel,
-                                    fontSize = 9.5.sp,
-                                    color = if (hasLocalTiming) Gold else Accent,
-                                    fontWeight = FontWeight.Medium,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
+                            }
+                        } else if (onDownloadTiming != null) {
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = Gold.copy(alpha = 0.12f),
+                                border = BorderStroke(0.6.dp, Gold.copy(alpha = 0.35f)),
+                                modifier = Modifier.clickable { onDownloadTiming() }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(3.dp)
+                                ) {
+                                    if (isTimingDownloading) {
+                                        CircularProgressIndicator(modifier = Modifier.size(9.dp), strokeWidth = 1.dp, color = Gold)
+                                        Text(
+                                            text = "Downloading...",
+                                            fontSize = 9.5.sp,
+                                            color = Gold,
+                                            fontWeight = FontWeight.Bold,
+                                            maxLines = 1
+                                        )
+                                    } else {
+                                        Icon(
+                                            imageVector = Icons.Default.Download,
+                                            contentDescription = "Download Timing",
+                                            tint = Gold,
+                                            modifier = Modifier.size(10.dp)
+                                        )
+                                        Text(
+                                            text = "Get Timing",
+                                            fontSize = 9.5.sp,
+                                            color = Gold,
+                                            fontWeight = FontWeight.Bold,
+                                            maxLines = 1
+                                        )
+                                    }
+                                }
+                            }
+                        } else {
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                                border = BorderStroke(0.6.dp, Accent.copy(alpha = 0.25f)),
+                                modifier = Modifier.clickable { onEdit() }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(3.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Edit,
+                                        contentDescription = "Edit Timing",
+                                        tint = Accent,
+                                        modifier = Modifier.size(10.dp)
+                                    )
+                                    Text(
+                                        text = "Edit Timing",
+                                        fontSize = 9.5.sp,
+                                        color = Accent,
+                                        fontWeight = FontWeight.Medium,
+                                        maxLines = 1
+                                    )
+                                }
                             }
                         }
                     }

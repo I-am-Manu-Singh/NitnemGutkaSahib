@@ -128,7 +128,7 @@ private fun PrivacyPolicyContent(displayLanguage: DisplayLanguage) {
     
     SectionCard(
         title = "1. 100% Offline-First Core",
-        body = "Nitnem Gutka Steek is engineered to be completely offline-first. All Gurmukhi Gurbani texts, English/Punjabi Steek translations, Roman transliterations, and core audio files function entirely on your device without transmitting your reading activity or private personal data to external ad networks."
+        body = "Nitnem Steek is engineered to be completely offline-first. All Gurmukhi Gurbani texts, English/Punjabi Steek translations, Roman transliterations, and core audio files function entirely on your device without transmitting your reading activity or private personal data to external ad networks."
     )
 
     SectionCard(
@@ -138,17 +138,22 @@ private fun PrivacyPolicyContent(displayLanguage: DisplayLanguage) {
 
     SectionCard(
         title = "3. Zero Third-Party Advertising & Zero Tracking",
-        body = "We do not sell, rent, or monetize your personal data. We do not integrate third-party ad networks (like AdMob or Facebook Pixel). The app is 100% ad-free forever as part of our Seva commitment."
+        body = "We do not sell, rent, or monetize your personal data. We do not integrate third-party advertising networks (like AdMob or Facebook Pixel). The app is 100% ad-free forever as part of our Seva commitment."
     )
 
     SectionCard(
-        title = "4. Device Permissions",
+        title = "4. Secure Billing & In-App Purchases",
+        body = "All voluntary Seva contributions and in-app memberships are processed directly via Google Play In-App Billing (powered by RevenueCat). Creative Bliss Labs never accesses or stores your payment details or credit cards."
+    )
+
+    SectionCard(
+        title = "5. Device Permissions",
         body = "• POST_NOTIFICATIONS: Used solely to schedule local Amritvela, Rehras Sahib, and Kirtan Sohila Nitnem reminders chosen by you.\n• FOREGROUND_SERVICE_MEDIA_PLAYBACK: Used to allow continuous uninterrupted Nitnem Gurbani audio listening while your screen is locked."
     )
 
     SectionCard(
-        title = "5. Account & Data Deletion",
-        body = "You can request complete deletion of your Firebase profile and progress data at any time by contacting support@creativeblisslabs.com or using the in-app feedback channel."
+        title = "6. Account & Data Deletion",
+        body = "You can request complete deletion of your Firebase profile and progress data at any time by contacting creativeblisslabs@gmail.com or using the in-app feedback channel."
     )
 }
 
@@ -158,7 +163,7 @@ private fun TermsOfServiceContent(displayLanguage: DisplayLanguage) {
 
     SectionCard(
         title = "1. Reverence & Sacred Intent",
-        body = "Nitnem Gutka Steek is provided to the global Sangat as a digital spiritual companion for reading, contemplating, and listening to sacred Gurbani from Sri Guru Granth Sahib Ji, Sri Dasam Granth Sahib, and Bhai Gurdas Ji Vaaran. Users are encouraged to maintain maryada, cleanliness, and respect while reciting Gurbani."
+        body = "Nitnem Steek is provided to the global Sangat as a digital spiritual companion for reading, contemplating, and listening to sacred Gurbani from Sri Guru Granth Sahib Ji, Sri Dasam Granth Sahib, and Bhai Gurdas Ji Vaaran. Users are encouraged to maintain maryada, cleanliness, and respect while reciting Gurbani."
     )
 
     SectionCard(
@@ -167,8 +172,8 @@ private fun TermsOfServiceContent(displayLanguage: DisplayLanguage) {
     )
 
     SectionCard(
-        title = "3. Seva Supporter Contributions & Perks",
-        body = "Voluntary Seva memberships (Monthly Seva, Annual Sangat Patron, Lifetime Patron) are voluntary contributions that fund audio hosting infrastructure, Steek research, and continuous development. In appreciation, supporters receive visual aesthetic enhancements (such as bespoke calligraphy styles, ambient particle auras, and Sangat badges)."
+        title = "3. Seva Supporter Contributions & Billing",
+        body = "Voluntary Seva memberships (Monthly Seva, Annual Sangat Patron, Lifetime Patron) are voluntary contributions that fund audio hosting infrastructure, Steek research, and continuous development. In appreciation, supporters receive visual aesthetic enhancements, ambient particle auras, and Sangat badges. Subscriptions renew automatically unless cancelled via Google Play at least 24 hours before the end of the current period."
     )
 
     SectionCard(
@@ -188,7 +193,7 @@ private fun CancellationRefundContent(displayLanguage: DisplayLanguage) {
 
     SectionCard(
         title = "2. Google Play Refund Process",
-        body = "Purchases made through Google Play In-App Billing are subject to standard Google Play refund policies. If you made an accidental purchase or experienced a technical billing discrepancy, you can request a full refund within 48 hours directly via Google Play Order History or by emailing order details to support@creativeblisslabs.com."
+        body = "Purchases made through Google Play In-App Billing are subject to standard Google Play refund policies. If you made an accidental purchase or experienced a technical billing discrepancy, you can request a full refund within 48 hours directly via Google Play Order History or by emailing order details to creativeblisslabs@gmail.com."
     )
 
     SectionCard(

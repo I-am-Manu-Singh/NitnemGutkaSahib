@@ -49,6 +49,7 @@ import com.creativeblisslabs.nitnemguktasteek.utils.translate
 import com.creativeblisslabs.nitnemguktasteek.data.generated.GeneratedBaniCatalog
 import com.creativeblisslabs.nitnemguktasteek.utils.rememberTextToSpeechHelper
 import androidx.compose.ui.text.style.TextOverflow as StyleTextOverflow
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Data
 // ─────────────────────────────────────────────────────────────────────────────
@@ -228,12 +229,10 @@ fun BaniAiAssistantTab(
 
     val ttsEngineHelper = rememberTextToSpeechHelper()
     
-    // Dynamic bottom padding tracking purely for player state spacing (non-hardcoded)
     val playerSpacingPadding = remember(uiState.playback.isPlaying) {
         if (uiState.playback.isPlaying) 78.dp else 0.dp
     }
 
-    // Dynamic list bottom padding avoiding hardcoded keyboard heights
     val listBottomPadding = remember(playerSpacingPadding, inputText) {
         val query = inputText.lowercase().trim()
         val isSearching = query.length >= 3
@@ -289,14 +288,32 @@ fun BaniAiAssistantTab(
             isTyping = true
 
             coroutineScope.launch {
-                delay(800L + (query.length * 10L).coerceAtMost(1500L))
-                isTyping = false
-                
                 val response = generateResponse(query, bani, displayLanguage)
-                messages.add(response)
+                val fullText = response.text
+                val msgId = System.currentTimeMillis()
+                
+                isTyping = false
+                val streamMsg = response.copy(id = msgId, text = "")
+                messages.add(streamMsg)
+                
+                val chunkSize = 3
+                val words = fullText.split(" ")
+                val streamedBuilder = StringBuilder()
+                
+                for (i in words.indices) {
+                    streamedBuilder.append(words[i]).append(" ")
+                    if (i % chunkSize == 0 || i == words.lastIndex) {
+                        val currentText = streamedBuilder.toString().trimEnd()
+                        val msgIndex = messages.indexOfFirst { it.id == msgId }
+                        if (msgIndex != -1) {
+                            messages[msgIndex] = streamMsg.copy(text = currentText)
+                        }
+                        delay(25L)
+                    }
+                }
                 
                 if (ttsOutputEnabled) {
-                    val cleanTextForSpeech = response.text
+                    val cleanTextForSpeech = fullText
                         .replace("**", "")
                         .replace("`", "")
                         .replace("🙏", "")
@@ -307,279 +324,289 @@ fun BaniAiAssistantTab(
         }
     }
 
+  BoxWithConstraints(
+    modifier = Modifier
+        .fillMaxSize()
+        .background(Color.Transparent),
+    contentAlignment = Alignment.Center
+) {
+    val isWideScreen = maxWidth > 680.dp
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Transparent)
+            // Only apply the max-width restriction on wide screens
+            .then(if (isWideScreen) Modifier.widthIn(max = 640.dp) else Modifier),
+        contentAlignment = Alignment.TopCenter
     ) {
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(
-                start = 16.dp, 
-                end = 16.dp, 
-                top = 12.dp, 
-                bottom = listBottomPadding
-            ),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            items(messages, key = { it.id }) { msg ->
-                AnimatedVisibility(
-                    visible = true,
-                    enter = fadeIn(tween(300)) + slideInVertically(tween(300)) { it / 3 }
-                ) {
-                    if (msg.isUser) {
-                        UserBubble(msg = msg)
-                    } else {
-                        AssistantBubble(msg = msg, colors = colors)
-                    }
-                }
-            }
-
-            if (isTyping) {
-                item(key = "typing") {
-                    TypingIndicator(colors = colors)
-                }
-            }
-
-            if (messages.size == 1 && !isTyping) {
-                item(key = "suggestions") {
-                    SuggestionChips(
-                        suggestions = remember(bani.id, displayLanguage) { getSuggestedQuestionsForBani(bani) },
-                        colors = colors,
-                        displayLanguage = displayLanguage,
-                        onSelect = sendMessage
-                    )
-                }
-            }
-        }
-
-        val autocompleteSuggestions = remember(inputText) {
-            if (inputText.length < 3) emptyList()
-            else {
-                val query = inputText.lowercase().trim()
-                val matches = mutableListOf<BaniLine>()
-                outer@ for (dbBani in GeneratedBaniCatalog.banis) {
-                    for (line in dbBani.lines) {
-                        if (line.gurmukhi.lowercase().contains(query) ||
-                            line.translation.lowercase().contains(query) ||
-                            line.hindi.lowercase().contains(query) ||
-                            line.punjabi.lowercase().contains(query) ||
-                            line.transliteration.lowercase().contains(query)) {
-                            matches.add(line)
-                            if (matches.size >= 5) break@outer
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    start = 16.dp, 
+                    end = 16.dp, 
+                    top = 12.dp, 
+                    bottom = listBottomPadding
+                ),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(messages, key = { it.id }) { msg ->
+                    AnimatedVisibility(
+                        visible = true,
+                        enter = fadeIn(tween(300)) + slideInVertically(tween(300)) { it / 3 }
+                    ) {
+                        if (msg.isUser) {
+                            UserBubble(msg = msg)
+                        } else {
+                            AssistantBubble(msg = msg, colors = colors)
                         }
                     }
                 }
-                matches
-            }
-        }
 
-      Column(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .navigationBarsPadding() // Safely handles the bottom system bar
-                .imePadding()            // Handles the software keyboard height dynamically
-        ) {
-            if (autocompleteSuggestions.isNotEmpty()) {
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 4.dp)
-                        .shadow(6.dp, RoundedCornerShape(16.dp)),
-                    shape = RoundedCornerShape(16.dp),
-                    color = colors.card.copy(alpha = 0.98f),
-                    border = BorderStroke(1.dp, Gold.copy(alpha = 0.35f))
-                ) {
-                    Column(
-                        modifier = Modifier.padding(vertical = 6.dp)
-                    ) {
-                        Text(
-                            text = "Verse matches (tap to view meanings):".translate(displayLanguage),
-                            color = Gold,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                if (isTyping) {
+                    item(key = "typing") {
+                        TypingIndicator(colors = colors)
+                    }
+                }
+
+                if (messages.size == 1 && !isTyping) {
+                    item(key = "suggestions") {
+                        SuggestionChips(
+                            suggestions = remember(bani.id, displayLanguage) { getSuggestedQuestionsForBani(bani) },
+                            colors = colors,
+                            displayLanguage = displayLanguage,
+                            onSelect = sendMessage
                         )
-                        HorizontalDivider(color = colors.textSecondary.copy(alpha = 0.1f))
-                        autocompleteSuggestions.forEach { line ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        onShowVerseDetails(line)
+                    }
+                }
+            }
+
+            val autocompleteSuggestions = remember(inputText) {
+                if (inputText.length < 3) emptyList()
+                else {
+                    val query = inputText.lowercase().trim()
+                    val matches = mutableListOf<BaniLine>()
+                    outer@ for (dbBani in GeneratedBaniCatalog.banis) {
+                        for (line in dbBani.lines) {
+                            if (line.gurmukhi.lowercase().contains(query) ||
+                                line.translation.lowercase().contains(query) ||
+                                line.hindi.lowercase().contains(query) ||
+                                line.punjabi.lowercase().contains(query) ||
+                                line.transliteration.lowercase().contains(query)) {
+                                matches.add(line)
+                                if (matches.size >= 5) break@outer
+                            }
+                        }
+                    }
+                    matches
+                }
+            }
+
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .imePadding()
+            ) {
+                if (autocompleteSuggestions.isNotEmpty()) {
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 4.dp)
+                            .shadow(6.dp, RoundedCornerShape(16.dp)),
+                        shape = RoundedCornerShape(16.dp),
+                        color = colors.card.copy(alpha = 0.98f),
+                        border = BorderStroke(1.dp, Gold.copy(alpha = 0.35f))
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(vertical = 6.dp)
+                        ) {
+                            Text(
+                                text = "Verse matches (tap to view meanings):".translate(displayLanguage),
+                                color = Gold,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                            )
+                            HorizontalDivider(color = colors.textSecondary.copy(alpha = 0.1f))
+                            autocompleteSuggestions.forEach { line ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            onShowVerseDetails(line)
+                                        }
+                                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = line.gurmukhi,
+                                            color = colors.textPrimary,
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                        Spacer(Modifier.height(2.dp))
+                                        Text(
+                                            text = line.translation,
+                                            color = colors.textSecondary,
+                                            fontSize = 12.sp,
+                                            maxLines = 1,
+                                            overflow = StyleTextOverflow.Ellipsis
+                                        )
                                     }
-                                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = line.gurmukhi,
-                                        color = colors.textPrimary,
-                                        fontSize = 14.sp,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                    Spacer(Modifier.height(2.dp))
-                                    Text(
-                                        text = line.translation,
-                                        color = colors.textSecondary,
-                                        fontSize = 12.sp,
-                                        maxLines = 1,
-                                        overflow = StyleTextOverflow.Ellipsis
+                                    Icon(
+                                        imageVector = Icons.Default.ArrowForward,
+                                        contentDescription = null,
+                                        tint = Gold.copy(alpha = 0.7f),
+                                        modifier = Modifier.size(16.dp)
                                     )
                                 }
-                                Icon(
-                                    imageVector = Icons.Default.ArrowForward,
-                                    contentDescription = null,
-                                    tint = Gold.copy(alpha = 0.7f),
-                                    modifier = Modifier.size(16.dp)
-                                )
                             }
                         }
                     }
                 }
-            }
 
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    // REMOVED the hardcoded padding = playerSpacingPadding here because 
-                    // it leaves a dead zone gap when the keyboard opens up.
-                    .shadow(
-                        elevation = 6.dp,
-                        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
-                        clip = false
-                    ),
-                shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
-                color = colors.card.copy(alpha = 0.98f),
-                tonalElevation = 2.dp
-            ) {
-                Row(
+                Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(
-                        onClick = { ttsOutputEnabled = !ttsOutputEnabled },
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Icon(
-                            imageVector = if (ttsOutputEnabled) Icons.Default.VolumeUp else Icons.Default.VolumeMute,
-                            contentDescription = "Toggle Speech Out",
-                            tint = if (ttsOutputEnabled) Gold else colors.textSecondary.copy(alpha = 0.4f),
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-
-                    Spacer(Modifier.width(4.dp))
-
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .background(Brush.radialGradient(listOf(Gold.copy(alpha = 0.5f), Gold.copy(alpha = 0.15f)))),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        MascotBani(
-                            state = when {
-                                isTyping -> MascotState.Thinking
-                                isListening -> MascotState.Listening
-                                else -> MascotState.Idle
-                            },
-                            modifier = Modifier.size(28.dp)
-                        )
-                    }
-
-                    Spacer(Modifier.width(8.dp))
-
-                    TextField(
-                        value = inputText,
-                        onValueChange = { inputText = it },
-                        modifier = Modifier.weight(1f),
-                        placeholder = {
-                            Text(
-                                text = if (isListening) "Listening to voice run...".translate(displayLanguage) else "Ask about Gurbani...".translate(displayLanguage),
-                                color = colors.textSecondary.copy(alpha = 0.5f),
-                                fontSize = 14.sp
-                            )
-                        },
-                        colors = TextFieldDefaults.colors(
-                            focusedContainerColor   = Color.Transparent,
-                            unfocusedContainerColor = Color.Transparent,
-                            focusedIndicatorColor   = Color.Transparent,
-                            unfocusedIndicatorColor = Color.Transparent,
-                            focusedTextColor        = colors.textPrimary,
-                            unfocusedTextColor      = colors.textPrimary,
-                            cursorColor             = Gold
+                        .shadow(
+                            elevation = 6.dp,
+                            shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+                            clip = false
                         ),
-                        singleLine = false,
-                        maxLines = 3,
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                        keyboardActions = KeyboardActions(onSend = { sendMessage(inputText) }),
-                        shape = RoundedCornerShape(20.dp),
-                        textStyle = LocalTextStyle.current.copy(fontSize = 14.sp)
-                    )
-
-                    Spacer(Modifier.width(6.dp))
-
-                    val microphobePulseColor by animateColorAsState(
-                        targetValue = if (isListening) Color(0xFFEF5350) else colors.textSecondary.copy(alpha = 0.1f),
-                        label = "mic_glow"
-                    )
-
-                    Surface(
-                        modifier = Modifier.size(38.dp),
-                        shape = CircleShape,
-                        color = microphobePulseColor
+                    shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+                    color = colors.card.copy(alpha = 0.98f),
+                    tonalElevation = 2.dp
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clickable {
-                                    isListening = !isListening
-                                    if (isListening) {
-                                        ttsEngineHelper.stop()
-                                        coroutineScope.launch {
-                                            delay(3500)
-                                            if (isListening) {
-                                                isListening = false
-                                                sendMessage("What does ${bani.title} celebrate?")
-                                            }
-                                        }
-                                    }
-                                },
-                            contentAlignment = Alignment.Center
+                        IconButton(
+                            onClick = { ttsOutputEnabled = !ttsOutputEnabled },
+                            modifier = Modifier.size(32.dp)
                         ) {
                             Icon(
-                                imageVector = if (isListening) Icons.Default.MicOff else Icons.Default.Mic,
-                                contentDescription = "Voice Input Control",
-                                tint = if (isListening) Color.White else colors.textPrimary.copy(alpha = 0.8f),
-                                modifier = Modifier.size(18.dp)
+                                imageVector = if (ttsOutputEnabled) Icons.Default.VolumeUp else Icons.Default.VolumeMute,
+                                contentDescription = "Toggle Speech Out",
+                                tint = if (ttsOutputEnabled) Gold else colors.textSecondary.copy(alpha = 0.4f),
+                                modifier = Modifier.size(20.dp)
                             )
                         }
-                    }
 
-                    if (inputText.isNotBlank() && !isListening) {
+                        Spacer(Modifier.width(4.dp))
+
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(Brush.radialGradient(listOf(Gold.copy(alpha = 0.5f), Gold.copy(alpha = 0.15f)))),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            MascotBani(
+                                state = when {
+                                    isTyping -> MascotState.Thinking
+                                    isListening -> MascotState.Listening
+                                    else -> MascotState.Idle
+                                },
+                                modifier = Modifier.size(28.dp)
+                            )
+                        }
+
+                        Spacer(Modifier.width(8.dp))
+
+                        TextField(
+                            value = inputText,
+                            onValueChange = { inputText = it },
+                            modifier = Modifier.weight(1f),
+                            placeholder = {
+                                Text(
+                                    text = if (isListening) "Listening to voice run...".translate(displayLanguage) else "Ask about Gurbani...".translate(displayLanguage),
+                                    color = colors.textSecondary.copy(alpha = 0.5f),
+                                    fontSize = 14.sp
+                                )
+                            },
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor   = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent,
+                                focusedIndicatorColor   = Color.Transparent,
+                                unfocusedIndicatorColor = Color.Transparent,
+                                focusedTextColor        = colors.textPrimary,
+                                unfocusedTextColor      = colors.textPrimary,
+                                cursorColor             = Gold
+                            ),
+                            singleLine = false,
+                            maxLines = 3,
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                            keyboardActions = KeyboardActions(onSend = { sendMessage(inputText) }),
+                            shape = RoundedCornerShape(20.dp),
+                            textStyle = LocalTextStyle.current.copy(fontSize = 14.sp)
+                        )
+
                         Spacer(Modifier.width(6.dp))
+
+                        val microphobePulseColor by animateColorAsState(
+                            targetValue = if (isListening) Color(0xFFEF5350) else colors.textSecondary.copy(alpha = 0.1f),
+                            label = "mic_glow"
+                        )
+
                         Surface(
                             modifier = Modifier.size(38.dp),
                             shape = CircleShape,
-                            color = Gold
+                            color = microphobePulseColor
                         ) {
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .clickable { sendMessage(inputText) },
+                                    .clickable {
+                                        isListening = !isListening
+                                        if (isListening) {
+                                            ttsEngineHelper.stop()
+                                            coroutineScope.launch {
+                                                delay(3500)
+                                                if (isListening) {
+                                                    isListening = false
+                                                    sendMessage("What does ${bani.title} celebrate?")
+                                                }
+                                            }
+                                        }
+                                    },
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.ArrowUpward,
-                                    contentDescription = "Send",
-                                    tint = Color.White,
+                                    imageVector = if (isListening) Icons.Default.MicOff else Icons.Default.Mic,
+                                    contentDescription = "Voice Input Control",
+                                    tint = if (isListening) Color.White else colors.textPrimary.copy(alpha = 0.8f),
                                     modifier = Modifier.size(18.dp)
                                 )
+                            }
+                        }
+
+                        if (inputText.isNotBlank() && !isListening) {
+                            Spacer(Modifier.width(6.dp))
+                            Surface(
+                                modifier = Modifier.size(38.dp),
+                                shape = CircleShape,
+                                color = Gold
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .clickable { sendMessage(inputText) },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.ArrowUpward,
+                                        contentDescription = "Send",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
                             }
                         }
                     }
@@ -588,6 +615,7 @@ fun BaniAiAssistantTab(
         }
     }
 }
+
 // ─────────────────────────────────────────────────────────────────────────────
 // User Bubble UI Component
 // ─────────────────────────────────────────────────────────────────────────────
@@ -599,7 +627,7 @@ private fun UserBubble(msg: ChatMessage) {
         horizontalArrangement = Arrangement.End
     ) {
         Surface(
-            modifier = Modifier.widthIn(max = 280.dp),
+            modifier = Modifier.widthIn(max = 320.dp),
             shape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomStart = 18.dp, bottomEnd = 4.dp),
             color = Gold.copy(alpha = 0.85f)
         ) {
@@ -642,22 +670,20 @@ private fun AssistantBubble(
 
         Spacer(Modifier.width(8.dp))
 
-        // Wrap the column in a Surface to provide a unified background and shape
         Surface(
-            modifier = Modifier.widthIn(max = 280.dp),
+            modifier = Modifier.widthIn(max = 340.dp),
             shape = RoundedCornerShape(
                 topStart = 4.dp,
                 topEnd = 18.dp,
                 bottomStart = 18.dp,
                 bottomEnd = 18.dp
             ),
-            color = colors.card.copy(alpha = 0.35f) // Your container background color
+            color = colors.card.copy(alpha = 0.35f)
         ) {
             Column(modifier = Modifier.fillMaxWidth()) {
                 if (!msg.gurmukhi.isNullOrBlank()) {
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
-                        // Top corners match container, bottom corners are flat
                         shape = RoundedCornerShape(topStart = 4.dp, topEnd = 18.dp, bottomStart = 0.dp, bottomEnd = 0.dp),
                         color = Gold.copy(alpha = 0.12f)
                     ) {
@@ -685,7 +711,6 @@ private fun AssistantBubble(
 
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    // Bottom corners match container, top corners adapt dynamically
                     shape = RoundedCornerShape(
                         topStart = if (msg.gurmukhi.isNullOrBlank()) 4.dp else 0.dp,
                         topEnd = if (msg.gurmukhi.isNullOrBlank()) 18.dp else 0.dp,
@@ -801,7 +826,7 @@ private fun SuggestionChips(
                         text = suggestion.translate(displayLanguage),
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                         fontSize = 11.sp,
-                        maxLines = 1, // Optional: Prevents text wrapping if string is exceptionally long
+                        maxLines = 1,
                         color = colors.textPrimary,
                         textAlign = TextAlign.Center
                     )

@@ -7,17 +7,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MenuBook
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SelfImprovement
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -40,14 +34,9 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.runtime.remember
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.basicMarquee
-import androidx.compose.animation.core.*
-import androidx.compose.runtime.getValue
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.foundation.Canvas
-import androidx.compose.ui.geometry.Offset
-import java.util.Calendar
+import androidx.compose.ui.text.style.TextOverflow
+
 @Composable
 fun BottomBar(
     selectedTab: AppTab,
@@ -94,15 +83,20 @@ Surface(
             0.dp
 ) {
 
-    Row(
-
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(68.dp)
-            .padding(horizontal = 6.dp),
-
-        verticalAlignment = Alignment.CenterVertically
+    BoxWithConstraints(
+        modifier = Modifier.fillMaxWidth()
     ) {
+        val isLandscape = maxWidth > 600.dp
+        val barHeight = if (isLandscape) 58.dp else 68.dp
+        val horizontalPadding = if (isLandscape) 32.dp else 6.dp
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(barHeight)
+                .padding(horizontal = horizontalPadding),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
 
             BottomItem(
                 selected = selectedTab == AppTab.Home,
@@ -286,7 +280,8 @@ Surface(
                 icon = Icons.Filled.Settings,
                 label = "Settings".translate(language),
                 onClick = { onTabSelected(AppTab.Settings) }
-            )
+                )
+            }
         }
     }
 }
@@ -383,5 +378,192 @@ private fun formatMillis(
             seconds.toString()
                 .padStart(2, '0')
         )
+    }
+}
+
+@Composable
+fun AppNavigationRail(
+    selectedTab: AppTab,
+    language: DisplayLanguage,
+    onTabSelected: (AppTab) -> Unit,
+    playback: PlaybackSnapshot? = null,
+    currentBani: Bani? = null,
+    onToggleMiniPlayer: (() -> Unit)? = null,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier
+            .fillMaxHeight()
+            .width(76.dp)
+            .windowInsetsPadding(WindowInsets.statusBars),
+        color = when (AppTheme.themeMode) {
+            ThemeMode.Light -> Color.White
+            ThemeMode.Dark -> Color(0xFF121212)
+            ThemeMode.Amoled -> Color.Black
+        },
+        border = BorderStroke(
+            1.dp,
+            if (AppTheme.themeMode == ThemeMode.Light) Color(0xFFEAE2D7)
+            else Color.White.copy(alpha = 0.04f)
+        ),
+        shadowElevation = if (AppTheme.themeMode == ThemeMode.Light) 6.dp else 0.dp
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(vertical = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterVertically)
+        ) {
+            val topTabs = listOf(
+                AppTab.Home to Icons.Filled.Home,
+                AppTab.Experience to Icons.Filled.MenuBook
+            )
+            val bottomTabs = listOf(
+                AppTab.Practice to Icons.Filled.SelfImprovement,
+                AppTab.Settings to Icons.Filled.Settings
+            )
+
+            topTabs.forEach { (tab, icon) ->
+                val selected = selectedTab == tab
+                Surface(
+                    onClick = { onTabSelected(tab) },
+                    shape = RoundedCornerShape(16.dp),
+                    color = if (selected) Accent.copy(alpha = 0.15f) else Color.Transparent,
+                    border = BorderStroke(1.dp, if (selected) Accent.copy(alpha = 0.25f) else Color.Transparent),
+                    modifier = Modifier.size(52.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = icon,
+                                contentDescription = tab.name.translate(language),
+                                tint = if (selected) Accent else TextPrimary.copy(alpha = 0.55f),
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            // ── MIDDLE MINI PLAYER TOGGLE BUTTON IN RAIL ──
+            if (onToggleMiniPlayer != null) {
+                val baniTheme = remember(currentBani?.title) {
+                    resolveBaniTheme(currentBani?.title ?: "Nitnem")
+                }
+                val isPlaying = playback?.isPlaying == true
+                val prayerAccent = baniTheme.accent
+                val iconGradient = baniTheme.gradient
+                val leadingIcon = baniTheme.icon
+
+                Surface(
+                    modifier = Modifier
+                        .size(54.dp)
+                        .clickable(
+                            indication = null,
+                            interactionSource = remember { MutableInteractionSource() }
+                        ) {
+                            onToggleMiniPlayer()
+                        },
+                    shape = RoundedCornerShape(16.dp),
+                    // Fixed the glass box background issue by using solid/clean translucent background per theme
+                    color = prayerAccent,
+                    border = BorderStroke(
+                        1.dp,
+                        Color.White.copy(alpha = if (isPlaying) 0.20f else 0.10f)
+                    ),
+                    shadowElevation = if (isPlaying && AppTheme.themeMode == ThemeMode.Light) 4.dp else 0.dp
+                ) {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        val baseText = (currentBani?.title ?: "Nitnem").translate(language)
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 4.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(28.dp)
+                                        .clip(CircleShape)
+                                        .background(Brush.linearGradient(iconGradient)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = leadingIcon,
+                                        contentDescription = "Bani Icon",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                                Spacer(Modifier.height(0.dp))
+                                Text(
+                                    text = baseText,
+                                    color = Color.White, // Unified portrait text color consistency
+                                    maxLines = 1,
+                                    textAlign = TextAlign.Center,
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+
+                        // Progress indicator at the bottom edge
+                        if (playback != null && playback.durationMs > 0) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.BottomStart)
+                                    .fillMaxWidth()
+                                    .height(2.5.dp)
+                                    .clip(RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp))
+                                    .background(Color.White.copy(alpha = 0.15f))
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth(
+                                            (playback.positionMs.toFloat() / playback.durationMs.toFloat()).coerceIn(0f, 1f)
+                                        )
+                                        .fillMaxHeight()
+                                        .background(Brush.horizontalGradient(iconGradient))
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            bottomTabs.forEach { (tab, icon) ->
+                val selected = selectedTab == tab
+                Surface(
+                    onClick = { onTabSelected(tab) },
+                    shape = RoundedCornerShape(16.dp),
+                    color = if (selected) Accent.copy(alpha = 0.15f) else Color.Transparent,
+                    border = BorderStroke(1.dp, if (selected) Accent.copy(alpha = 0.25f) else Color.Transparent),
+                    modifier = Modifier.size(52.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = icon,
+                                contentDescription = tab.name.translate(language),
+                                tint = if (selected) Accent else TextPrimary.copy(alpha = 0.55f),
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }

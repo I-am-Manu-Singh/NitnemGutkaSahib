@@ -495,9 +495,18 @@ fun GurbaniLineCard(
                                 contentAlignment = Alignment.Center,
                                 modifier = Modifier.wrapContentSize()
                             ) {
+                                val isHeavyPause = config.showVishraam && !config.blackAndWhiteAodMode && rawWord.contains("॥")
+                                val isMediumPause = config.showVishraam && !config.blackAndWhiteAodMode && !isHeavyPause && rawWord.contains("।")
+
+                                val displayWordColor = when {
+                                    isHeavyPause -> Color(0xFFE5A93C) // Golden heavy vishram
+                                    isMediumPause -> Color(0xFFD97706) // Warm amber medium vishram
+                                    else -> effectiveWordColor
+                                }
+
                                 Text(
                                     text = rawWord,
-                                    color = effectiveWordColor,
+                                    color = displayWordColor,
                                     fontSize = config.gurmukhiFontSize.sp,
                                     lineHeight = config.lineSpacing.sp,
                                     fontWeight = if (config.boldGurmukhi) FontWeight.Bold else FontWeight.Medium,

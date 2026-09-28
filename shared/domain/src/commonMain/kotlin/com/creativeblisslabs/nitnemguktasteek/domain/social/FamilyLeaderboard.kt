@@ -17,6 +17,7 @@ data class FamilyMemberProgress(
     val quizScore: Int = 0,
     val badges: List<String> = emptyList(),
     val avatarMascotState: String = "",
+    val profilePhotoUrl: String? = null,
     val lastActiveTimestamp: Long = 0L
 )
 

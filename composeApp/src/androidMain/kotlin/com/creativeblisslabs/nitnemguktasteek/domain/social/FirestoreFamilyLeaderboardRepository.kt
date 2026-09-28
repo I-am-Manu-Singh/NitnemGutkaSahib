@@ -79,6 +79,7 @@ class FirestoreFamilyLeaderboardRepository(
                     quizScore = doc.getLong("quizScore")?.toInt() ?: 0,
                     badges = (doc.get("badges") as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
                     avatarMascotState = doc.getString("avatarMascotState") ?: "",
+                    profilePhotoUrl = doc.getString("profilePhotoUrl"),
                     lastActiveTimestamp = doc.getLong("lastActiveTimestamp") ?: 0L
                 )
             }.sortedByDescending { it.xp }
@@ -150,6 +151,7 @@ class FirestoreFamilyLeaderboardRepository(
                         quizScore = doc.getLong("quizScore")?.toInt() ?: 0,
                         badges = (doc.get("badges") as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
                         avatarMascotState = "",
+                        profilePhotoUrl = doc.getString("profilePhotoUrl"),
                         lastActiveTimestamp = doc.getLong("lastActiveTimestamp") ?: 0L
                     )
                 }.sortedByDescending { it.xp }
@@ -202,6 +204,7 @@ class FirestoreFamilyLeaderboardRepository(
                 "completedBanisToday" to progress.completedBanisToday,
                 "quizScore" to progress.quizScore,
                 "badges" to progress.badges,
+                "profilePhotoUrl" to progress.profilePhotoUrl,
                 "lastActiveTimestamp" to System.currentTimeMillis()
             )
 
@@ -324,6 +327,7 @@ class FirestoreFamilyLeaderboardRepository(
                 quizScore = doc.getLong("quizScore")?.toInt() ?: 0,
                 badges = (doc.get("badges") as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
                 avatarMascotState = doc.getString("avatarMascotState") ?: "",
+                profilePhotoUrl = doc.getString("profilePhotoUrl"),
                 lastActiveTimestamp = doc.getLong("lastActiveTimestamp") ?: 0L
             )
         } catch (e: Exception) {

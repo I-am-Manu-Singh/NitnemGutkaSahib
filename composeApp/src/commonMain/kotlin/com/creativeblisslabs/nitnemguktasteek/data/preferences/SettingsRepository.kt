@@ -6,6 +6,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.combine
 import com.creativeblisslabs.nitnemguktasteek.app.models.DisplayLanguage
 import com.creativeblisslabs.nitnemguktasteek.app.ui.theme.AccentStyle
 import com.creativeblisslabs.nitnemguktasteek.models.NitnemUiState
@@ -16,7 +17,8 @@ private val Context.settingsDataStore by
     )
 
 class SettingsRepository(
-    private val context: Context
+    private val context: Context,
+    private val appPreferences: AppPreferences
 ) {
 
     companion object {
@@ -300,15 +302,6 @@ class SettingsRepository(
                 "word_meaning_color_mode"
             )
 
-        /*
-         * ONBOARDING
-         */
-
-        private val ONBOARDING_DONE =
-            booleanPreferencesKey(
-                "onboarding_done"
-            )
-
         private val WIDGET_THEME =
             stringPreferencesKey(
                 "widget_theme"
@@ -341,262 +334,95 @@ class SettingsRepository(
      * SETTINGS FLOW
      */
 
-    val preferencesFlow:
-        Flow<NitnemUiState> =
-
-        context.settingsDataStore.data.map { prefs ->
-
+    val preferencesFlow: Flow<NitnemUiState> =
+        combine(
+            context.settingsDataStore.data,
+            appPreferences.onboardingCompleted
+        ) { prefs: androidx.datastore.preferences.core.Preferences, onboardingDone: Boolean ->
             NitnemUiState(
-
                 /*
                  * THEME
                  */
-
-                darkMode =
-                    prefs[DARK_MODE]
-                        ?: false,
-
-                amoledMode =
-                    prefs[AMOLED_MODE]
-                        ?: false,
-
-                accentStyle =
-                    prefs[ACCENT_STYLE]
-                        ?: AccentStyle.Emerald.name,
-
-                gurmukhiFont =
-                    prefs[GURMUKHI_FONT]
-                        ?: "Default",
-
-                romanFont =
-                    prefs[ROMAN_FONT]
-                        ?: "Default",
-
-                devanagariFont =
-                    prefs[DEVANAGARI_FONT]
-                        ?: "Default",
-
+                darkMode = prefs[DARK_MODE] ?: false,
+                amoledMode = prefs[AMOLED_MODE] ?: false,
+                accentStyle = prefs[ACCENT_STYLE] ?: AccentStyle.Emerald.name,
+                gurmukhiFont = prefs[GURMUKHI_FONT] ?: "Default",
+                romanFont = prefs[ROMAN_FONT] ?: "Default",
+                devanagariFont = prefs[DEVANAGARI_FONT] ?: "Default",
                 /*
                  * READING
                  */
-
-                gurmukhiFontSize =
-                    prefs[GURMUKHI_SIZE]
-                        ?: 30f,
-
-                romanTransliterationFontSize =
-                    prefs[ROMAN_SIZE]
-                        ?: 20f,
-
-                translationFontSize =
-                    prefs[TRANSLATION_SIZE]
-                        ?: 18f,
-
-                wordMeaningFontSize =
-                    prefs[WORD_MEANING_SIZE]
-                        ?: 16f,
-
-                lineSpacing =
-                    prefs[LINE_SPACING]
-                        ?: 36f,
-
+                gurmukhiFontSize = prefs[GURMUKHI_SIZE] ?: 30f,
+                romanTransliterationFontSize = prefs[ROMAN_SIZE] ?: 20f,
+                translationFontSize = prefs[TRANSLATION_SIZE] ?: 18f,
+                wordMeaningFontSize = prefs[WORD_MEANING_SIZE] ?: 16f,
+                lineSpacing = prefs[LINE_SPACING] ?: 36f,
                 /*
                  * CONTENT
                  */
-
-                showGurmukhi =
-                    prefs[SHOW_GURMUKHI]
-                        ?: true,
-
-                showTranslation =
-                    prefs[SHOW_TRANSLATION]
-                        ?: true,
-
-                showRomanTransliteration =
-                    prefs[SHOW_ROMAN]
-                        ?: true,
-
-                showWordMeaning =
-                    prefs[SHOW_WORD_MEANING]
-                        ?: false,
-
-                showEnglishTranslation =
-                    prefs[SHOW_ENGLISH]
-                        ?: true,
-
-                showPunjabiTranslation =
-                    prefs[SHOW_PUNJABI]
-                        ?: false,
-
-                showDevanagariTransliteration =
-                    prefs[SHOW_DEVANAGARI]
-                        ?: false,
-
+                showGurmukhi = prefs[SHOW_GURMUKHI] ?: true,
+                showTranslation = prefs[SHOW_TRANSLATION] ?: true,
+                showRomanTransliteration = prefs[SHOW_ROMAN] ?: true,
+                showWordMeaning = prefs[SHOW_WORD_MEANING] ?: false,
+                showEnglishTranslation = prefs[SHOW_ENGLISH] ?: true,
+                showPunjabiTranslation = prefs[SHOW_PUNJABI] ?: false,
+                showDevanagariTransliteration = prefs[SHOW_DEVANAGARI] ?: false,
                 /*
                  * STYLE
                  */
-
-                boldGurmukhi =
-                    prefs[BOLD_GURMUKHI]
-                        ?: true,
-
-                centerGurmukhi =
-                    prefs[CENTER_GURMUKHI]
-                        ?: true,
-
-                compactMode =
-                    prefs[COMPACT_MODE]
-                        ?: false,
-
-                larivaarMode =
-                    prefs[LARIVAAR_MODE]
-                        ?: true,
-
-                highlightActiveLine =
-                    prefs[HIGHLIGHT_ACTIVE]
-                        ?: true,
-
-                italicRomanTransliteration =
-                    prefs[ITALIC_ROMAN]
-                        ?: true,
-
-                showLineProgress =
-                    prefs[SHOW_LINE_PROGRESS]
-                        ?: true,
-
-                focusMode =
-                    prefs[FOCUS_MODE]
-                        ?: false,
-
-                fullScreenReadingMode =
-                    prefs[FULL_SCREEN_READING_MODE]
-                        ?: false,
-
-                blackAndWhiteAodMode =
-                    prefs[BLACK_AND_WHITE_AOD_MODE]
-                        ?: false,
-
+                boldGurmukhi = prefs[BOLD_GURMUKHI] ?: true,
+                centerGurmukhi = prefs[CENTER_GURMUKHI] ?: true,
+                compactMode = prefs[COMPACT_MODE] ?: false,
+                larivaarMode = prefs[LARIVAAR_MODE] ?: true,
+                highlightActiveLine = prefs[HIGHLIGHT_ACTIVE] ?: true,
+                italicRomanTransliteration = prefs[ITALIC_ROMAN] ?: true,
+                showLineProgress = prefs[SHOW_LINE_PROGRESS] ?: true,
+                focusMode = prefs[FOCUS_MODE] ?: false,
+                fullScreenReadingMode = prefs[FULL_SCREEN_READING_MODE] ?: false,
+                blackAndWhiteAodMode = prefs[BLACK_AND_WHITE_AOD_MODE] ?: false,
                 /*
                  * PLAYBACK
                  */
-
-                playbackSpeed =
-                    prefs[PLAYBACK_SPEED]
-                        ?: 1f,
-
-                autoScroll =
-                    prefs[AUTO_SCROLL]
-                        ?: true,
-
-                autoScrollSpeed =
-                    prefs[AUTO_SCROLL_SPEED]
-                        ?: 1f,
-
-                repeatMode =
-                    prefs[REPEAT_MODE]
-                        ?: "OFF",
-
-                ambientMode =
-                    prefs[AMBIENT_MODE]
-                        ?: false,
-
-                persistentPlayback =
-                    prefs[PERSISTENT_PLAYBACK]
-                        ?: true,
-
-                backgroundAudio =
-                    prefs[BACKGROUND_AUDIO]
-                        ?: true,
-
-                showMiniPlayer =
-                    prefs[SHOW_MINI_PLAYER]
-                        ?: false,
-
+                playbackSpeed = prefs[PLAYBACK_SPEED] ?: 1f,
+                autoScroll = prefs[AUTO_SCROLL] ?: true,
+                autoScrollSpeed = prefs[AUTO_SCROLL_SPEED] ?: 1f,
+                repeatMode = prefs[REPEAT_MODE] ?: "OFF",
+                ambientMode = prefs[AMBIENT_MODE] ?: false,
+                persistentPlayback = prefs[PERSISTENT_PLAYBACK] ?: true,
+                backgroundAudio = prefs[BACKGROUND_AUDIO] ?: true,
+                showMiniPlayer = prefs[SHOW_MINI_PLAYER] ?: false,
                 /*
                  * REMINDERS
                  */
-
-                notifications =
-                    prefs[NOTIFICATIONS]
-                        ?: true,
-
-                smartReminders =
-                    prefs[SMART_REMINDERS]
-                        ?: true,
-
-                amritTime =
-                    prefs[AMRIT_TIME].let { if (it.isNullOrBlank()) "04:30 AM" else it },
-
-                rehrasTime =
-                    prefs[REHRAS_TIME].let { if (it.isNullOrBlank()) "06:30 PM" else it },
-
-                sohilaTime =
-                    prefs[SOHILA_TIME].let { if (it.isNullOrBlank()) "10:00 PM" else it },
-
+                notifications = prefs[NOTIFICATIONS] ?: true,
+                smartReminders = prefs[SMART_REMINDERS] ?: true,
+                amritTime = prefs[AMRIT_TIME].let { if (it.isNullOrBlank()) "04:30 AM" else it },
+                rehrasTime = prefs[REHRAS_TIME].let { if (it.isNullOrBlank()) "06:30 PM" else it },
+                sohilaTime = prefs[SOHILA_TIME].let { if (it.isNullOrBlank()) "10:00 PM" else it },
                 /*
                  * LANGUAGE
                  */
-
-                displayLanguage =
-                    runCatching {
-
-                        DisplayLanguage.valueOf(
-
-                            prefs[DISPLAY_LANGUAGE]
-                                ?: DisplayLanguage.English.name
-                        )
-
-                    }.getOrDefault(
-                        DisplayLanguage.English
-                    ),
-
+                displayLanguage = runCatching {
+                    DisplayLanguage.valueOf(
+                        prefs[DISPLAY_LANGUAGE] ?: DisplayLanguage.English.name
+                    )
+                }.getOrDefault(DisplayLanguage.English),
                 /*
                  * COLORS
                  */
-
-                gurmukhiColorMode =
-                    prefs[GURMUKHI_COLOR_MODE]
-                        ?: "default",
-
-                romanTransliterationColorMode =
-                    prefs[ROMAN_COLOR_MODE]
-                        ?: "default",
-
-                devanagariTransliterationColorMode =
-                    prefs[DEVANAGARI_COLOR_MODE]
-                        ?: "default",
-
-                punjabiTranslationColorMode =
-                    prefs[PUNJABI_COLOR_MODE]
-                        ?: "default",
-
-                translationColorMode =
-                    prefs[TRANSLATION_COLOR_MODE]
-                        ?: "default",
-
-                wordMeaningColorMode =
-                    prefs[WORD_MEANING_COLOR_MODE]
-                        ?: "default",
-
+                gurmukhiColorMode = prefs[GURMUKHI_COLOR_MODE] ?: "default",
+                romanTransliterationColorMode = prefs[ROMAN_COLOR_MODE] ?: "default",
+                devanagariTransliterationColorMode = prefs[DEVANAGARI_COLOR_MODE] ?: "default",
+                punjabiTranslationColorMode = prefs[PUNJABI_COLOR_MODE] ?: "default",
+                translationColorMode = prefs[TRANSLATION_COLOR_MODE] ?: "default",
+                wordMeaningColorMode = prefs[WORD_MEANING_COLOR_MODE] ?: "default",
                 /*
                  * ONBOARDING
                  */
-
-                onboardingCompleted =
-                    prefs[ONBOARDING_DONE]
-                        ?: false,
-
-                widgetTheme =
-                    prefs[WIDGET_THEME]
-                        ?: "Dark",
-
-                widgetContent =
-                    prefs[WIDGET_CONTENT]
-                        ?: "Mascot Assistant",
-
-                ambientParticleEffect =
-                    prefs[AMBIENT_PARTICLE_EFFECT]
-                        ?: "GoldenStardust"
+                onboardingCompleted = onboardingDone,
+                widgetTheme = prefs[WIDGET_THEME] ?: "Dark",
+                widgetContent = prefs[WIDGET_CONTENT] ?: "Mascot Assistant",
+                ambientParticleEffect = prefs[AMBIENT_PARTICLE_EFFECT] ?: "Disabled"
             )
         }
 
@@ -1057,18 +883,11 @@ class SettingsRepository(
             it[WORD_MEANING_COLOR_MODE] = mode
         }
     }
-
-    /*
-     * ONBOARDING
+suspend fun completeOnboarding() {
+        appPreferences.completeOnboarding()
+    }    /*
+     * WIDGETS
      */
-
-    suspend fun completeOnboarding() {
-
-        context.settingsDataStore.edit {
-
-            it[ONBOARDING_DONE] = true
-        }
-    }
 
     suspend fun setWidgetTheme(value: String) {
         context.settingsDataStore.edit {
@@ -1104,6 +923,7 @@ class SettingsRepository(
         showWordMeaning: Boolean? = null,
         larivaarMode: Boolean? = null
     ) {
+        appPreferences.setOnboardingCompleted()
         context.settingsDataStore.edit { preferences ->
             preferences[DISPLAY_LANGUAGE] = language.name
             preferences[DARK_MODE] = darkMode
@@ -1118,7 +938,6 @@ class SettingsRepository(
             preferences[AMBIENT_MODE] = ambientMode
             preferences[WIDGET_THEME] = widgetTheme
             preferences[WIDGET_CONTENT] = widgetContent
-            preferences[ONBOARDING_DONE] = true
 
             val defaultEn = language == DisplayLanguage.English
             val defaultPa = language == DisplayLanguage.Punjabi

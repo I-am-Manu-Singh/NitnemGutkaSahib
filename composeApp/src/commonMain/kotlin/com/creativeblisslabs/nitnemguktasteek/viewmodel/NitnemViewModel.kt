@@ -630,7 +630,7 @@ sohilaTime =
     ) {
 
         viewModelScope.launch {
-
+            awardXp(50)
             analyticsRepository
                 .markCompleted(
 

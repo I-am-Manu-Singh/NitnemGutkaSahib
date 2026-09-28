@@ -26,6 +26,7 @@ import com.creativeblisslabs.nitnemguktasteek.data.analytics.AnalyticsRepository
 import com.creativeblisslabs.nitnemguktasteek.data.bookmarks.BookmarksRepository
 import com.creativeblisslabs.nitnemguktasteek.data.playback.PlaybackRepository
 import com.creativeblisslabs.nitnemguktasteek.data.preferences.SettingsRepository
+import com.creativeblisslabs.nitnemguktasteek.data.preferences.AppPreferences
 import com.creativeblisslabs.nitnemguktasteek.notifications.NitnemNotificationChannels
 import com.creativeblisslabs.nitnemguktasteek.viewmodel.NitnemViewModel
 import android.app.Activity
@@ -34,6 +35,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+
 class MainActivity : ComponentActivity() {
 
     private val _notificationIntent = mutableStateOf<Intent?>(null)
@@ -50,83 +52,69 @@ class MainActivity : ComponentActivity() {
     }
 
     private val notificationPermissionLauncher =
-
         registerForActivityResult(
             ActivityResultContracts.RequestPermission()
         ) { }
-override fun onCreate(
-    savedInstanceState: Bundle?
-) {
 
-    super.onCreate(savedInstanceState)
-    _notificationIntent.value = intent
+    override fun onCreate(
+        savedInstanceState: Bundle?
+    ) {
+        super.onCreate(savedInstanceState)
+        _notificationIntent.value = intent
 
-    /*
-     * HIDE STATUS BAR
-     */
-
-    WindowCompat.setDecorFitsSystemWindows(
-        window,
-        false
-    )
-
-    WindowInsetsControllerCompat(
-        window,
-        window.decorView
-    ).let { controller ->
-
-        controller.hide(
-            WindowInsetsCompat.Type.statusBars()
+        /*
+         * HIDE STATUS BAR
+         */
+        WindowCompat.setDecorFitsSystemWindows(
+            window,
+            false
         )
 
-        controller.systemBarsBehavior =
+        WindowInsetsControllerCompat(
+            window,
+            window.decorView
+        ).let { controller ->
+            controller.hide(
+                WindowInsetsCompat.Type.statusBars()
+            )
 
-            WindowInsetsControllerCompat
-                .BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            controller.systemBarsBehavior =
+                WindowInsetsControllerCompat
+                    .BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        }
+
+        /*
+         * NOTIFICATION CHANNELS
+         */
+        NitnemNotificationChannels
+            .create(this)
+
+        NitnemNotificationChannels
+            .createAudioChannel(this)
+
+        requestNotificationPermissionIfNeeded()
+
+        setContent {
+            MainRoot()
+        }
     }
-
-    /*
-     * NOTIFICATION CHANNELS
-     */
-
-    NitnemNotificationChannels
-        .create(this)
-
-    NitnemNotificationChannels
-        .createAudioChannel(this)
-
-    requestNotificationPermissionIfNeeded()
-
-    setContent {
-
-        MainRoot()
-    }
-}
 
     private fun requestNotificationPermissionIfNeeded() {
-
         if (
             Build.VERSION.SDK_INT <
             Build.VERSION_CODES.TIRAMISU
         ) {
-
             return
         }
 
         val granted =
-
             ContextCompat.checkSelfPermission(
-
                 this,
-
                 Manifest.permission.POST_NOTIFICATIONS
-
             ) == PackageManager.PERMISSION_GRANTED
 
         if (!granted) {
-
             notificationPermissionLauncher.launch(
-
                 Manifest.permission.POST_NOTIFICATIONS
             )
         }
@@ -136,9 +124,7 @@ override fun onCreate(
 /*
  * ROUTES
  */
-
 private enum class AppRoute {
-
     Splash,
     Onboarding,
     Home
@@ -146,125 +132,105 @@ private enum class AppRoute {
 
 @Composable
 private fun MainRoot() {
+    val context = LocalContext.current
 
-    val context =
-        LocalContext.current
-
-    /*
-     * REPOSITORIES
-     */
-
+    val appPreferences = remember { AppPreferences(context) }
     val settingsRepository = remember {
-
-        SettingsRepository(context)
+        SettingsRepository(context, appPreferences)
     }
 
-    val analyticsRepository = remember {
-
-        AnalyticsRepository(context)
-    }
-
-    val playbackRepository = remember {
-
-        PlaybackRepository(context)
-    }
-
-    val bookmarksRepository = remember {
-
-        BookmarksRepository(context)
-    }
-
-    /*
-     * VIEWMODEL
-     */
+    val analyticsRepository = remember { AnalyticsRepository(context) }
+    val playbackRepository = remember { PlaybackRepository(context) }
+    val bookmarksRepository = remember { BookmarksRepository(context) }
 
     val viewModel = remember {
-
         NitnemViewModel(
-
-            settingsRepository =
-                settingsRepository,
-
-            analyticsRepository =
-                analyticsRepository,
-
-            playbackRepository =
-                playbackRepository,
-
-            bookmarksRepository =
-                bookmarksRepository
+            settingsRepository = settingsRepository,
+            analyticsRepository = analyticsRepository,
+            playbackRepository = playbackRepository,
+            bookmarksRepository = bookmarksRepository
         )
     }
 
     val mainActivity = context as? MainActivity
     val notificationIntent by (mainActivity?.notificationIntent ?: remember { mutableStateOf(null) })
 
+    /*
+     * REACTIVE ONBOARDING ROUTING STATE:
+     * Collects onboarding status safely from AppPreferences flow.
+     */
+    val onboardingCompleted by appPreferences.onboardingCompleted.collectAsState(initial = false)
+    
+    var currentRoute by androidx.compose.runtime.saveable.rememberSaveable {
+        mutableStateOf(AppRoute.Splash)
+    }
+
+    LaunchedEffect(onboardingCompleted) {
+        if (onboardingCompleted && currentRoute == AppRoute.Splash) {
+            // If onboarding is already completed, allow natural flow or default to Home
+        }
+    }
+
     LaunchedEffect(notificationIntent) {
         val intent = notificationIntent
         if (intent != null) {
+            val action = intent.getStringExtra("action")
+            val baniId = intent.getStringExtra("bani_id")
             val targetTab = intent.getStringExtra("target_tab")
+
+            if (action == "SNOOZE_15") {
+                val notificationManager = context.getSystemService(android.content.Context.NOTIFICATION_SERVICE) as? android.app.NotificationManager
+                notificationManager?.cancel(1)
+                PrayerReminderScheduler.scheduleSnoozeReminder(context, baniId)
+                android.widget.Toast.makeText(context, "Reminder snoozed for 15 minutes", android.widget.Toast.LENGTH_SHORT).show()
+                mainActivity?.clearNotificationIntent()
+                return@LaunchedEffect
+            }
+
+            currentRoute = AppRoute.Home
+
             if (targetTab != null) {
                 runCatching {
                     viewModel.selectTab(AppTab.valueOf(targetTab))
                 }
-                mainActivity?.clearNotificationIntent()
             }
 
-            val baniId = intent.getStringExtra("bani_id")
             if (baniId != null) {
                 viewModel.selectBani(baniId)
                 viewModel.selectTab(AppTab.Experience)
 
-                val action = intent.getStringExtra("action")
                 if (action == "LISTEN") {
                     viewModel.selectExperienceTab(ExperienceTab.Listen)
-                } else if (action == "READ") {
+                } else {
                     viewModel.selectExperienceTab(ExperienceTab.Read)
                 }
-
-                mainActivity?.clearNotificationIntent()
             }
+
+            mainActivity?.clearNotificationIntent()
         }
-    }
-
-    /*
-     * ROUTING
-     */
-
-    var currentRoute by androidx.compose.runtime.saveable.rememberSaveable {
-        mutableStateOf(
-            AppRoute.Splash
-        )
     }
 
     /*
      * LOAD THEME + ACCENT
      */
-
     var displayLanguage by remember {
         mutableStateOf(DisplayLanguage.English)
     }
 
     LaunchedEffect(Unit) {
-
         settingsRepository
             .preferencesFlow
             .collectLatest { settings ->
-
                 displayLanguage = settings.displayLanguage
 
                 /*
                  * ACCENT
                  */
-
                 AppTheme.accentStyle =
-
                     runCatching {
-
                         AccentStyle.valueOf(
                             settings.accentStyle
                         )
-
                     }.getOrDefault(
                         AccentStyle.Emerald
                     )
@@ -272,17 +238,13 @@ private fun MainRoot() {
                 /*
                  * THEME
                  */
-
                 AppTheme.themeMode = when {
-
                     settings.amoledMode -> {
                         ThemeMode.Amoled
                     }
-
                     settings.darkMode -> {
                         ThemeMode.Dark
                     }
-
                     else -> {
                         ThemeMode.Light
                     }
@@ -290,54 +252,49 @@ private fun MainRoot() {
             }
     }
 
+    // ── SYSTEM BARS COLOR & ICON THEME SYNC ──
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = (context as? Activity)?.window ?: return@SideEffect
+            val insetsController = WindowCompat.getInsetsController(window, view)
+            val isDarkTheme = AppTheme.themeMode == ThemeMode.Dark || AppTheme.themeMode == ThemeMode.Amoled
+            insetsController.isAppearanceLightStatusBars = !isDarkTheme
+            insetsController.isAppearanceLightNavigationBars = !isDarkTheme
+        }
+    }
+
     /*
      * ROUTES
      */
-
     when (currentRoute) {
-
         AppRoute.Splash -> {
-
             SplashRoute(
-
                 displayLanguage = displayLanguage,
-
                 onOpenHome = {
-
-                    currentRoute =
-                        AppRoute.Home
+                    currentRoute = AppRoute.Home
                 },
-
                 onOpenOnboarding = {
-
-                    currentRoute =
-                        AppRoute.Onboarding
+                    currentRoute = AppRoute.Onboarding
                 }
             )
         }
 
         AppRoute.Onboarding -> {
-
             OnboardingRoute(
-
                 onFinish = {
-
                     /*
                      * SAVE ONBOARDING
                      */
-
-                    viewModel
-                        .completeOnboarding()
+                    viewModel.completeOnboarding()
 
                     /*
                      * SCHEDULE REMINDERS
                      */
-
-                    PrayerReminderScheduler
-                        .schedule(context)
+                    PrayerReminderScheduler.schedule(context)
 
                     /*
-                     * OPEN HOME & REDIRECT TO MANAGE AUDIO TAB
+                     * OPEN HOME & REDIRECT TO SETTINGS TAB
                      */
                     viewModel.selectTab(AppTab.Settings)
                     currentRoute = AppRoute.Home
@@ -346,7 +303,6 @@ private fun MainRoot() {
         }
 
         AppRoute.Home -> {
-
             NitnemApp(
                 viewModel = viewModel
             )

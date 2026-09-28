@@ -73,7 +73,7 @@ fun FamilyLeaderboardTab(
                 username = authUser.email?.substringBefore('@') ?: "",
                 displayName = userDisplayName,
                 xp = uiState.totalXp,
-                level = (uiState.totalXp / 500).coerceAtLeast(1),
+                level = kotlin.math.floor(kotlin.math.sqrt(uiState.totalXp.toDouble() / 50.0)).toInt().coerceAtLeast(1),
                 currentStreak = uiState.streakDays,
                 bestStreak = uiState.streakDays.coerceAtLeast(1),
                 totalRecitationMinutes = uiState.totalListeningMinutes,
@@ -90,15 +90,24 @@ fun FamilyLeaderboardTab(
         "SG-$seed"
     }
 
-    var currentGroup by remember {
+    val defaultGroupId = remember(authUser?.uid) {
+        if (authUser != null && authUser.uid.isNotBlank()) "group_${authUser.uid}" else "group_local"
+    }
+
+    val defaultGroupName = remember(userDisplayName) {
+        if (userDisplayName.isNotBlank() && userDisplayName != "You") "$userDisplayName's Family" else "My Sangat"
+    }
+
+    var currentGroup by remember(defaultGroupId) {
         mutableStateOf(
             FamilyGroup(
-                groupId = "family_group_main",
-                groupName = "Family & Friends Sangat",
+                groupId = defaultGroupId,
+                groupName = defaultGroupName,
                 inviteCode = dynamicDefaultCode,
+                adminUserId = authUser?.uid ?: "",
                 groupTotalStreak = uiState.streakDays,
                 groupTotalXp = uiState.totalXp,
-                members = emptyList()
+                members = currentMember?.let { listOf(it) } ?: emptyList()
             )
         )
     }
@@ -117,12 +126,20 @@ fun FamilyLeaderboardTab(
     LaunchedEffect(currentMember?.userId, authUser?.uid, isLoggedIn, repository) {
         if (repository != null) {
             try {
-                // Auto sync current member if authenticated
+                // Fetch all groups to see if user is already a member of one
+                val fetchedGroups = repository.getAllFamilyGroups()
+                val userGroup = if (currentMember != null) {
+                    fetchedGroups.firstOrNull { g -> g.members.any { m -> m.userId == currentMember.userId } || g.adminUserId == currentMember.userId }
+                } else null
+
+                val targetGroupId = userGroup?.groupId ?: ""
+
+                // Auto sync current member to existing group or global profile
                 if (currentMember != null) {
-                    repository.syncUserProgress(currentGroup.groupId, currentMember)
+                    repository.syncUserProgress(targetGroupId, currentMember)
                 }
 
-                val realGroup = repository.getFamilyGroup(currentGroup.groupId)
+                val realGroup = repository.getFamilyGroup(targetGroupId)
                 if (realGroup != null) {
                     val rawMembers = realGroup.members.filterNot { it.userId == "user_me" }
                     val finalMembers = if (currentMember != null) {
@@ -130,12 +147,14 @@ fun FamilyLeaderboardTab(
                     } else {
                         rawMembers
                     }.distinctBy { it.userId }.sortedByDescending { it.xp }
-                    
+
                     currentGroup = realGroup.copy(
                         members = finalMembers,
                         groupTotalXp = finalMembers.sumOf { it.xp },
                         groupTotalStreak = finalMembers.maxOfOrNull { it.currentStreak } ?: 0
                     )
+                } else if (userGroup != null) {
+                    currentGroup = userGroup
                 }
 
                 allGroups = repository.getAllFamilyGroups().ifEmpty { listOf(currentGroup) }
@@ -593,7 +612,7 @@ fun FamilyLeaderboardTab(
                                     Spacer(Modifier.width(2.dp))
                                     RollingNumberText(
                                         value = group.groupTotalStreak,
-                                        suffix = "d streak",
+                                        suffix = "D Streak",
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.SemiBold,
                                         color = Color(0xFFFF5722)

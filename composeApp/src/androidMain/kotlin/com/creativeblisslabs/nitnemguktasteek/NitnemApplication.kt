@@ -14,7 +14,9 @@ import com.creativeblisslabs.nitnemguktasteek.domain.billing.RevenueCatBillingMa
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-
+import com.revenuecat.purchases.kmp.LogLevel
+import com.revenuecat.purchases.kmp.Purchases
+import com.revenuecat.purchases.kmp.configure
 /**
  * Main Application class for Nitnem Gutka Steek.
  *
@@ -51,15 +53,27 @@ class NitnemApplication : Application() {
         }
     }
 
-    private fun initRevenueCat() {
-        try {
-            val isDebug = (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
-            RevenueCatBillingManager().initialize(debug = isDebug)
-            Log.d(TAG, "RevenueCat initialized successfully")
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to initialize RevenueCat: ${e.message}", e)
+ private fun initRevenueCat() {
+    try {
+        val isDebug = (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        
+        // Configure the RevenueCat KMP SDK globally
+        Purchases.configure(
+            apiKey = BuildConfig.REVENUECAT_GOOGLE_API_KEY
+        ) {
+            appUserId = null // Uses anonymous ID generation by default
         }
+        
+        if (isDebug) {
+            Purchases.logLevel = LogLevel.DEBUG
+        }
+
+        RevenueCatBillingManager().initialize(debug = isDebug)
+        Log.d(TAG, "RevenueCat initialized successfully")
+    } catch (e: Exception) {
+        Log.e(TAG, "Failed to initialize RevenueCat: ${e.message}", e)
     }
+}
 
     private fun initFirebase() {
 

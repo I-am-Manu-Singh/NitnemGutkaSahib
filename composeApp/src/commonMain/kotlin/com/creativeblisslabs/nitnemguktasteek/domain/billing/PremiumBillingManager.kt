@@ -79,7 +79,7 @@ class PremiumBillingManager {
     ) {
         val hasSupporter = BillingEntitlements.SUPPORTER in activeEntitlementIds
         val hasPremium = BillingEntitlements.PREMIUM in activeEntitlementIds
-        val isLifetime = BillingProducts.LIFETIME_199 in purchasedProductIds
+        val isLifetime = BillingProducts.LIFETIME_PATRON_199 in purchasedProductIds
 
         _billingState.update { current ->
             current.copy(
@@ -116,34 +116,17 @@ class PremiumBillingManager {
     }
 
     fun unlockPlan(plan: InAppProductPlan) {
-        simulatePurchase(plan)
         setPurchaseInProgress(false)
     }
 
     fun simulatePurchase(plan: InAppProductPlan) {
-        val entitlements = _billingState.value.activeEntitlements.toMutableSet()
-        entitlements += plan.entitlement
-
-        val purchasedProducts = mutableSetOf<String>()
-        if (plan.id == BillingProducts.LIFETIME_199) {
-            purchasedProducts += BillingProducts.LIFETIME_199
-        }
-
-        updateEntitlements(
-            activeEntitlementIds = entitlements,
-            purchasedProductIds = purchasedProducts
-        )
+        // Safe stub: real purchase flows must be confirmed by billing engine
+        setPurchaseInProgress(false)
     }
 
     fun simulateRestore() {
-        if (_billingState.value.activeEntitlements.isEmpty()) {
-            updateEntitlements(
-                activeEntitlementIds = setOf(
-                    BillingEntitlements.SUPPORTER,
-                    BillingEntitlements.PREMIUM
-                )
-            )
-        }
+        // Safe stub: real restore must be verified against actual store receipts
+        setPurchaseInProgress(false)
     }
 
     fun clearSimulatedState() {

@@ -142,100 +142,338 @@ fun OnboardingPagerScreen(
                 displayLanguage = displayLanguage
             )
         } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .systemBarsPadding()
-            ) {
-                // Header for setup pages
-                Column(
+            val isLandscape = maxWidth > maxHeight && maxWidth > 560.dp
+
+            if (isLandscape) {
+                // ── LANDSCAPE LAYOUT: Split Left (Header + Page Indicators) & Right (Card Setup Form) ──
+                Row(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 26.dp, vertical = 16.dp)
+                        .fillMaxSize()
+                        .systemBarsPadding()
+                        .padding(horizontal = 24.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(20.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(text = "Nitnem Gutka".translate(displayLanguage), color = primaryText, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold)
-                    Spacer(Modifier.height(4.dp))
-                    Text(text = "Focused Gurbani experience designed for peace and consistency.".translate(displayLanguage), color = secondaryText, fontSize = 15.sp, lineHeight = 23.sp)
-                }
-
-                Spacer(Modifier.height(16.dp))
-
-                HorizontalPager(
-                    state = pagerState,
-                    modifier = Modifier.weight(1f),
-                    userScrollEnabled = true
-                ) { page ->
-                    val scale by animateFloatAsState(
-                        targetValue = if (pagerState.currentPage == page) 1f else 0.96f,
-                        label = "page_scale"
-                    )
-                    val alpha by animateFloatAsState(
-                        targetValue = if (pagerState.currentPage == page) 1f else 0.50f,
-                        label = "page_alpha"
-                    )
-
-                    Card(
+                    // Left Column: App Title, subtitle, and dot indicators
+                    Column(
                         modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 26.dp, vertical = 8.dp)
-                            .scale(scale)
-                            .alpha(alpha),
-                        shape = RoundedCornerShape(34.dp),
-                        colors = CardDefaults.cardColors(containerColor = cardColor),
-                        border = BorderStroke(1.dp, borderColor)
+                            .weight(0.42f)
+                            .fillMaxHeight(),
+                        verticalArrangement = Arrangement.SpaceBetween
                     ) {
-                        when (page) {
-                            0 -> {
-                                LanguageSelectionPage(
-                                    state = state,
-                                    displayLanguage = displayLanguage,
-                                    onStateChange = onStateChange
+                        Column {
+                            Spacer(Modifier.height(12.dp))
+                            Text(
+                                text = "Nitnem Gutka".translate(displayLanguage),
+                                color = primaryText,
+                                fontSize = 28.sp,
+                                fontWeight = FontWeight.ExtraBold
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                text = "Focused Gurbani experience designed for peace and consistency.".translate(displayLanguage),
+                                color = secondaryText,
+                                fontSize = 14.sp,
+                                lineHeight = 21.sp
+                            )
+                            Spacer(Modifier.height(16.dp))
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = Gold.copy(alpha = 0.12f),
+                                border = BorderStroke(1.dp, Gold.copy(alpha = 0.3f))
+                            ) {
+                                Text(
+                                    text = when (pagerState.currentPage) {
+                                        0 -> "Step 1 of 3: Language & Display".translate(displayLanguage)
+                                        1 -> "Step 2 of 3: Personalization & Timing".translate(displayLanguage)
+                                        else -> "Step 3 of 3: Cloud & Account Sync".translate(displayLanguage)
+                                    },
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                    color = Gold,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold
                                 )
                             }
-                            1 -> {
-                                PreferencesAndWidgetSetupPage(
-                                    state = state,
-                                    displayLanguage = displayLanguage,
-                                    onStateChange = onStateChange,
-                                    onOpenTimePicker = { timing ->
-                                        timingError = null
-                                        selectedTiming = timing
-                                        showTimePicker = true
+                        }
+
+                        // Dot indicators & Navigation buttons placed neatly in the left pane
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 12.dp),
+                            verticalArrangement = Arrangement.spacedBy(14.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Start
+                            ) {
+                                repeat(3) { index ->
+                                    val isActive = pagerState.currentPage == index
+                                    Box(
+                                        modifier = Modifier
+                                            .padding(end = 8.dp)
+                                            .height(8.dp)
+                                            .width(if (isActive) 32.dp else 8.dp)
+                                            .clip(CircleShape)
+                                            .background(if (isActive) Gold else Color.White.copy(alpha = 0.20f))
+                                    )
+                                }
+                            }
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                if (pagerState.currentPage > 0) {
+                                    OutlinedButton(
+                                        onClick = {
+                                            scope.launch {
+                                                pagerState.animateScrollToPage(pagerState.currentPage - 1)
+                                            }
+                                        },
+                                        modifier = Modifier.height(44.dp),
+                                        shape = RoundedCornerShape(22.dp),
+                                        border = BorderStroke(1.dp, Gold.copy(alpha = 0.5f))
+                                    ) {
+                                        Text(text = "Back".translate(displayLanguage), color = primaryText)
                                     }
-                                )
-                            }
-                            2 -> {
-                                AccountAndCloudSyncPage(
-                                    displayLanguage = displayLanguage,
-                                    onGoogleSignIn = onGoogleSignIn,
-                                    onContinueWithoutLogin = {
+                                }
+
+                                Button(
+                                    onClick = {
                                         scope.launch {
-                                            pagerState.animateScrollToPage(3)
+                                            if (pagerState.currentPage < 2) {
+                                                pagerState.animateScrollToPage(pagerState.currentPage + 1)
+                                            } else {
+                                                pagerState.animateScrollToPage(3)
+                                            }
                                         }
+                                    },
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(44.dp),
+                                    shape = RoundedCornerShape(22.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Gold)
+                                ) {
+                                    Text(
+                                        text = if (pagerState.currentPage == 2) "Continue to Experience".translate(displayLanguage)
+                                        else "Next Step".translate(displayLanguage),
+                                        color = Color.White,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Right Box: Setup page Card inside HorizontalPager
+                    Box(
+                        modifier = Modifier
+                            .weight(0.58f)
+                            .fillMaxHeight()
+                    ) {
+                        HorizontalPager(
+                            state = pagerState,
+                            modifier = Modifier.fillMaxSize(),
+                            userScrollEnabled = true
+                        ) { page ->
+                            val scale by animateFloatAsState(
+                                targetValue = if (pagerState.currentPage == page) 1f else 0.96f,
+                                label = "page_scale"
+                            )
+                            val alpha by animateFloatAsState(
+                                targetValue = if (pagerState.currentPage == page) 1f else 0.50f,
+                                label = "page_alpha"
+                            )
+
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .scale(scale)
+                                    .alpha(alpha),
+                                shape = RoundedCornerShape(28.dp),
+                                colors = CardDefaults.cardColors(containerColor = cardColor),
+                                border = BorderStroke(1.dp, borderColor)
+                            ) {
+                                when (page) {
+                                    0 -> {
+                                        LanguageSelectionPage(
+                                            state = state,
+                                            displayLanguage = displayLanguage,
+                                            onStateChange = onStateChange
+                                        )
                                     }
-                                )
+                                    1 -> {
+                                        PreferencesAndWidgetSetupPage(
+                                            state = state,
+                                            displayLanguage = displayLanguage,
+                                            onStateChange = onStateChange,
+                                            onOpenTimePicker = { timing ->
+                                                timingError = null
+                                                selectedTiming = timing
+                                                showTimePicker = true
+                                            }
+                                        )
+                                    }
+                                    2 -> {
+                                        AccountAndCloudSyncPage(
+                                            displayLanguage = displayLanguage,
+                                            onGoogleSignIn = onGoogleSignIn,
+                                            onContinueWithoutLogin = {
+                                                scope.launch {
+                                                    pagerState.animateScrollToPage(3)
+                                                }
+                                            }
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
                 }
-
-                Spacer(Modifier.height(20.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center
+            } else {
+                // ── PORTRAIT LAYOUT: Vertical Stack (Header -> Pager -> Bottom Indicators) ──
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .systemBarsPadding()
                 ) {
-                    repeat(3) { index ->
-                        Box(
-                            modifier = Modifier
-                                .padding(horizontal = 5.dp)
-                                .height(8.dp)
-                                .width(if (pagerState.currentPage == index) 30.dp else 8.dp)
-                                .clip(CircleShape)
-                                .background(if (pagerState.currentPage == index) Gold else Color.White.copy(alpha = 0.14f))
-                        )
+                    // Header for setup pages
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 26.dp, vertical = 16.dp)
+                    ) {
+                        Text(text = "Nitnem Gutka".translate(displayLanguage), color = primaryText, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold)
+                        Spacer(Modifier.height(4.dp))
+                        Text(text = "Focused Gurbani experience designed for peace and consistency.".translate(displayLanguage), color = secondaryText, fontSize = 15.sp, lineHeight = 23.sp)
                     }
+
+                    Spacer(Modifier.height(16.dp))
+
+                    HorizontalPager(
+                        state = pagerState,
+                        modifier = Modifier.weight(1f),
+                        userScrollEnabled = true
+                    ) { page ->
+                        val scale by animateFloatAsState(
+                            targetValue = if (pagerState.currentPage == page) 1f else 0.96f,
+                            label = "page_scale"
+                        )
+                        val alpha by animateFloatAsState(
+                            targetValue = if (pagerState.currentPage == page) 1f else 0.50f,
+                            label = "page_alpha"
+                        )
+
+                        Card(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 26.dp, vertical = 8.dp)
+                                .scale(scale)
+                                .alpha(alpha),
+                            shape = RoundedCornerShape(34.dp),
+                            colors = CardDefaults.cardColors(containerColor = cardColor),
+                            border = BorderStroke(1.dp, borderColor)
+                        ) {
+                            when (page) {
+                                0 -> {
+                                    LanguageSelectionPage(
+                                        state = state,
+                                        displayLanguage = displayLanguage,
+                                        onStateChange = onStateChange
+                                    )
+                                }
+                                1 -> {
+                                    PreferencesAndWidgetSetupPage(
+                                        state = state,
+                                        displayLanguage = displayLanguage,
+                                        onStateChange = onStateChange,
+                                        onOpenTimePicker = { timing ->
+                                            timingError = null
+                                            selectedTiming = timing
+                                            showTimePicker = true
+                                        }
+                                    )
+                                }
+                                2 -> {
+                                    AccountAndCloudSyncPage(
+                                        displayLanguage = displayLanguage,
+                                        onGoogleSignIn = onGoogleSignIn,
+                                        onContinueWithoutLogin = {
+                                            scope.launch {
+                                                pagerState.animateScrollToPage(3)
+                                            }
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(Modifier.height(16.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        repeat(3) { index ->
+                            Box(
+                                modifier = Modifier
+                                    .padding(horizontal = 5.dp)
+                                    .height(8.dp)
+                                    .width(if (pagerState.currentPage == index) 30.dp else 8.dp)
+                                    .clip(CircleShape)
+                                    .background(if (pagerState.currentPage == index) Gold else Color.White.copy(alpha = 0.14f))
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(16.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (pagerState.currentPage > 0) {
+                            OutlinedButton(
+                                onClick = {
+                                    scope.launch {
+                                        pagerState.animateScrollToPage(pagerState.currentPage - 1)
+                                    }
+                                },
+                                modifier = Modifier.height(48.dp),
+                                shape = RoundedCornerShape(24.dp),
+                                border = BorderStroke(1.dp, Gold.copy(alpha = 0.5f))
+                            ) {
+                                Text(text = "Back".translate(displayLanguage), color = primaryText)
+                            }
+                        }
+
+                        Button(
+                            onClick = {
+                                scope.launch {
+                                    if (pagerState.currentPage < 2) {
+                                        pagerState.animateScrollToPage(pagerState.currentPage + 1)
+                                    } else {
+                                        pagerState.animateScrollToPage(3)
+                                    }
+                                }
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(48.dp),
+                            shape = RoundedCornerShape(24.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Gold)
+                        ) {
+                            Text(
+                                text = if (pagerState.currentPage == 2) "Continue to Experience".translate(displayLanguage)
+                                else "Next Step".translate(displayLanguage),
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(20.dp))
                 }
-                Spacer(Modifier.height(24.dp))
             }
         }
 

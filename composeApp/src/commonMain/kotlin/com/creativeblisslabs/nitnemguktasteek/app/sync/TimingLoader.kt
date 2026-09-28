@@ -60,7 +60,7 @@ object TimingLoader {
             candidateFileNames.add("${timingKey}_timing.json")
             candidateFileNames.add("$timingKey.json")
 
-            val isDefaultBaniTrack = cleanKeyUnderscore == baniIdPart || cleanKeyHyphen == baniIdPart.replace('_', '-')
+            val isDefaultBaniTrack = cleanKeyUnderscore == baniIdPart || cleanKeyHyphen == baniIdPart.replace('_', '-') || timingKey == "default"
             if (isDefaultBaniTrack) {
                 candidateFileNames.add("${baniIdPart}_timing.json")
                 candidateFileNames.add("${baniIdPart}.json")
@@ -215,12 +215,17 @@ object TimingLoader {
         timingKey: String,
         explicitUrl: String? = null
     ): Boolean {
+        Log.d(TAG, "Attempting to download timing file for key: $timingKey")
         return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
             try {
                 val remoteAssetTrack = com.creativeblisslabs.nitnemguktasteek.data.RemoteAssetCatalog.getTrackById(timingKey)
                     ?: com.creativeblisslabs.nitnemguktasteek.data.RemoteAssetCatalog.currentAssets.firstOrNull { 
                         it.id == timingKey || it.timingFileName?.removeSuffix(".json")?.removeSuffix("_timing") == timingKey || it.audioFileName.removeSuffix(".opus").removeSuffix(".mp3") == timingKey
                     }
+
+                if (remoteAssetTrack == null) {
+                    Log.w(TAG, "No matching remote asset found for timingKey: $timingKey. Proceeding with fallback URLs.")
+                }
 
                 val remoteUrls = mutableListOf<String>()
                 if (!explicitUrl.isNullOrBlank()) {
@@ -233,8 +238,12 @@ object TimingLoader {
                 remoteUrls.add("${timingBase}${timingKey}_timing.json")
                 remoteUrls.add("${timingBase}${timingKey}.json")
 
-                for (urlStr in remoteUrls.filter { it.isNotBlank() }.distinct()) {
+                val cleanUrls = remoteUrls.filter { it.isNotBlank() }.distinct()
+                Log.d(TAG, "Potential URLs for $timingKey: $cleanUrls")
+
+                for (urlStr in cleanUrls) {
                     try {
+                        Log.v(TAG, "Downloading from: $urlStr")
                         val connection = java.net.URL(urlStr).openConnection() as java.net.HttpURLConnection
                         connection.connectTimeout = 8000
                         connection.readTimeout = 8000
@@ -243,8 +252,14 @@ object TimingLoader {
                         if (connection.responseCode == java.net.HttpURLConnection.HTTP_OK) {
                             val json = connection.inputStream.bufferedReader().use { it.readText() }
                             if (json.isNotBlank()) {
-                                val parsed = parser.decodeFromString<List<LineTiming>>(json)
-                                if (parsed.isNotEmpty()) {
+                                val parsed = try {
+                                    parser.decodeFromString<List<LineTiming>>(json)
+                                } catch (e: Exception) {
+                                    Log.e(TAG, "Failed to parse JSON from $urlStr: ${e.message}")
+                                    null
+                                }
+                                
+                                if (!parsed.isNullOrEmpty()) {
                                     val saveName = remoteAssetTrack?.timingFileName ?: "${timingKey}_timing.json"
                                     val saveFile = File(context.filesDir, "audio/$saveName")
                                     saveFile.parentFile?.mkdirs()
@@ -253,12 +268,15 @@ object TimingLoader {
                                     return@withContext true
                                 }
                             }
+                        } else {
+                            Log.v(TAG, "HTTP ${connection.responseCode} from $urlStr")
                         }
                         connection.disconnect()
                     } catch (e: Exception) {
                         Log.w(TAG, "Error downloading timing from $urlStr: ${e.message}")
                     }
                 }
+                Log.w(TAG, "Exhausted all URLs for $timingKey without success.")
                 false
             } catch (e: Exception) {
                 Log.e(TAG, "Failed downloading timing file for $timingKey", e)

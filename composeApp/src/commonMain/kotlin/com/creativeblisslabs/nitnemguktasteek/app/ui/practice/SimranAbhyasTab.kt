@@ -129,8 +129,24 @@ fun SimranAbhyasTab(
         onDispose { ttsHelper.stop() }
     }
 
-    val inhalePrompts = remember { listOf("ਵਾਹਿ...") }
-    val exhalePrompts = remember { listOf("ਗੁਰੂ...") }
+    val inhalePrompts = remember(displayLanguage) {
+        listOf(
+            when (displayLanguage) {
+                DisplayLanguage.English -> "Wahe..."
+                DisplayLanguage.Hindi -> "वाहि..."
+                DisplayLanguage.Punjabi -> "ਵਾਹਿ..."
+            }
+        )
+    }
+    val exhalePrompts = remember(displayLanguage) {
+        listOf(
+            when (displayLanguage) {
+                DisplayLanguage.English -> "Guru..."
+                DisplayLanguage.Hindi -> "गुरू..."
+                DisplayLanguage.Punjabi -> "ਗੁਰੂ..."
+            }
+        )
+    }
     val moolMantarLines = remember {
         listOf(
             "ੴ ਸਤਿ ਨਾਮੁ ਕਰਤਾ ਪੁਰਖੁ",
@@ -268,8 +284,7 @@ fun SimranAbhyasTab(
     }
 
     val progress = (elapsed / defaultDuration.toFloat()).coerceIn(0f, 1f)
-
-    if (uiState.blackAndWhiteAodMode) {
+  if (uiState.blackAndWhiteAodMode) {
         // ULTRA-MINIMALIST CENTERED AOD MODE
         Box(
             modifier = Modifier
@@ -310,90 +325,87 @@ fun SimranAbhyasTab(
             }
         }
     } else {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 0.dp, bottom = 40.dp),
-            verticalArrangement = Arrangement.spacedBy(18.dp),
+        // CHANGED: Replaced LazyColumn with Column for even vertical distribution
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(start = 18.dp, end = 18.dp, top = 0.dp, bottom = 16.dp),
+            verticalArrangement = Arrangement.SpaceEvenly, // Distributes space evenly between elements
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            item {
-                SimranModeSwitcher(
-                    currentMode = mode,
-                    displayLanguage = displayLanguage,
-                    onModeSelected = {
-                        if (running) ttsHelper.stop()
-                        mode = it
-                    }
-                )
-            }
+            SimranModeSwitcher(
+                currentMode = mode,
+                displayLanguage = displayLanguage,
+                onModeSelected = {
+                    if (running) ttsHelper.stop()
+                    mode = it
+                }
+            )
 
-            item {
-                SimranTtsToggle(
-                    enabled = ttsEnabled,
-                    speechRate = ttsSpeed,
-                    colors = colors,
-                    displayLanguage = displayLanguage,
-                    onToggle = { ttsEnabled = it },
-                    onSpeedChange = { ttsSpeed = it }
-                )
-            }
+            SimranTtsToggle(
+                enabled = ttsEnabled,
+                speechRate = ttsSpeed,
+                colors = colors,
+                displayLanguage = displayLanguage,
+                onToggle = { ttsEnabled = it },
+                onSpeedChange = { ttsSpeed = it }
+            )
 
-            item {
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(32.dp),
-                    color = colors.card.copy(alpha = 0.28f),
-                    border = BorderStroke(1.dp, colors.textSecondary.copy(alpha = 0.08f))
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(32.dp),
+                color = colors.card.copy(alpha = 0.28f),
+                border = BorderStroke(1.dp, colors.textSecondary.copy(alpha = 0.08f))
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 22.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 24.dp, vertical = 22.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        if (mode == SimranMode.Mala) {
-                            MalaOrbSection(
-                                colors = colors, displayLanguage = displayLanguage, uiState = uiState,
-                                viewModel = viewModel, targetCount = targetCount, malaCount = malaCount,
-                                completedMalas = completedMalas, bounceScale = bounceScale, haptic = haptic,
-                                scope = scope, onTargetSelected = { targetCount = it },
-                                onMalaClick = { if (ttsEnabled) ttsHelper.speak("ਵਾਹਿਗੁਰੂ") },
-                                onCompletion = { message ->
-                                    completionMessage = message
-                                    showCompletionDialog = true
-                                }
-                            )
-                        } else {
-                            MeditationOrbSection(
-                                mode = mode, colors = colors, displayLanguage = displayLanguage, running = running,
-                                mins = mins, secs = secs, mantra = mantra, breathingText = breathingText, progress = progress,
-                                animatedScale = animatedScale, mascotState = mascotState, totalSeconds = totalSeconds,
-                                uiState = uiState,
-                                onDurationSelected = { minutes -> totalSeconds = minutes * 60 },
-                                onPlayPauseClick = {
-                                    running = !running
-                                    if (!running) ttsHelper.stop()
-                                },
-                                onResetClick = {
-                                    running = false
-                                    totalSeconds = defaultDuration
-                                    breathingIn = true
-                                    ttsHelper.stop()
-                                }
-                            )
-                        }
-
-                        AnimatedVisibility(visible = !running && malaCount == 0) {
-                            Column {
-                                Spacer(Modifier.height(16.dp))
-                                SimranGuidanceCard(mode = mode, colors = colors, displayLanguage = displayLanguage)
+                    if (mode == SimranMode.Mala) {
+                        MalaOrbSection(
+                            colors = colors, displayLanguage = displayLanguage, uiState = uiState,
+                            viewModel = viewModel, targetCount = targetCount, malaCount = malaCount,
+                            completedMalas = completedMalas, bounceScale = bounceScale, haptic = haptic,
+                            scope = scope, onTargetSelected = { targetCount = it },
+                            onMalaClick = { if (ttsEnabled) ttsHelper.speak("ਵਾਹਿਗੁਰੂ") },
+                            onCompletion = { message ->
+                                completionMessage = message
+                                showCompletionDialog = true
                             }
+                        )
+                    } else {
+                        MeditationOrbSection(
+                            mode = mode, colors = colors, displayLanguage = displayLanguage, running = running,
+                            mins = mins, secs = secs, mantra = mantra, breathingText = breathingText, progress = progress,
+                            animatedScale = animatedScale, mascotState = mascotState, totalSeconds = totalSeconds,
+                            uiState = uiState,
+                            onDurationSelected = { minutes -> totalSeconds = minutes * 60 },
+                            onPlayPauseClick = {
+                                running = !running
+                                if (!running) ttsHelper.stop()
+                            },
+                            onResetClick = {
+                                running = false
+                                totalSeconds = defaultDuration
+                                breathingIn = true
+                                ttsHelper.stop()
+                            }
+                        )
+                    }
+
+                    AnimatedVisibility(visible = !running && malaCount == 0) {
+                        Column {
+                            Spacer(Modifier.height(16.dp))
+                            SimranGuidanceCard(mode = mode, colors = colors, displayLanguage = displayLanguage)
                         }
                     }
                 }
             }
         }
     }
+
 
     if (showCompletionDialog) {
         AlertDialog(
@@ -953,11 +965,4 @@ private fun MalaOrbSection(
 
     Spacer(Modifier.height(18.dp))
 
-    Surface(shape = RoundedCornerShape(22.dp), color = colors.accent.copy(alpha = 0.08f), border = BorderStroke(1.dp, colors.accent.copy(alpha = 0.12f))) {
-        Row(modifier = Modifier.padding(horizontal = 18.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(imageVector = Icons.Default.Star, contentDescription = null, tint = Gold, modifier = Modifier.size(16.dp))
-            Spacer(Modifier.width(8.dp))
-            Text(text = "${"Completed Malas".translate(displayLanguage)}: $completedMalas", color = colors.accent, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-        }
-    }
 }

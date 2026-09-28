@@ -59,4 +59,8 @@ class AppPreferences(
                 true
         }
     }
+
+    suspend fun completeOnboarding() {
+        setOnboardingCompleted()
+    }
 }

@@ -21,6 +21,7 @@ import com.creativeblisslabs.nitnemguktasteek.app.models.ExperienceTab
 import com.creativeblisslabs.nitnemguktasteek.app.notifications.rememberNotificationBridge
 import com.creativeblisslabs.nitnemguktasteek.app.ui.components.BaniCompletionMascotOverlay
 import com.creativeblisslabs.nitnemguktasteek.app.ui.components.BottomBar
+import com.creativeblisslabs.nitnemguktasteek.app.ui.components.AppNavigationRail
 import com.creativeblisslabs.nitnemguktasteek.app.ui.player.ThinMiniPlayer
 import com.creativeblisslabs.nitnemguktasteek.app.ui.screens.GurbaniExperienceScreen
 import com.creativeblisslabs.nitnemguktasteek.app.ui.screens.HomeScreen
@@ -264,16 +265,18 @@ fun NitnemRoot(
                 username = authUser.email.substringBefore('@'),
                 displayName = userDisplayName,
                 xp = uiState.totalXp,
-                level = (uiState.totalXp / 500).coerceAtLeast(1),
+                level = kotlin.math.floor(kotlin.math.sqrt(uiState.totalXp.toDouble() / 50.0)).toInt().coerceAtLeast(1),
                 currentStreak = uiState.streakDays,
                 bestStreak = uiState.streakDays.coerceAtLeast(1),
                 totalRecitationMinutes = uiState.totalListeningMinutes,
                 completedBanisCount = uiState.completedBanis.size,
                 completedBanisToday = uiState.completedBanis.toList(),
                 quizScore = uiState.quizHighscore,
-                avatarMascotState = ""
+                avatarMascotState = "",
+                profilePhotoUrl = authUser.photoUrl
             )
-            leaderboardRepo.syncUserProgress("family_group_main", progress)
+            // Sync user progress with Firestore (only syncs to user's global profile unless they are in an explicit group)
+            leaderboardRepo.syncUserProgress("", progress)
 
             // Also backup to user daily history subcollection
             val todayStr = kotlinx.datetime.Clock.System.todayIn(kotlinx.datetime.TimeZone.currentSystemDefault()).toString()
@@ -312,6 +315,7 @@ fun NitnemRoot(
         if (prev == null) {
             // Initial load of completed banis
             previousCompletedBanis = uiState.completedBanis
+            lastCompletedBaniCount.value = uiState.completedBanis.size
         } else {
             val newlyAdded = uiState.completedBanis - prev
             if (newlyAdded.isNotEmpty()) {
@@ -444,15 +448,24 @@ fun NitnemRoot(
 
         viewModel.loadBanis(banis)
 
-        val downloaded =
-            banis.filter {
-
-                audioController
-                    .isAudioDownloaded(it.id)
-
-            }.map {
-                it.id
-            }.toSet()
+        // Resiliently discover all downloaded audio files across all banis and tracks
+        val allTrackIds = com.creativeblisslabs.nitnemguktasteek.data.RemoteAssetCatalog.ALL_REMOTE_ASSETS.map { it.baniId to it.id }
+        val downloaded = mutableSetOf<String>()
+        banis.forEach { bani ->
+            if (audioController.isAudioDownloaded(bani.id)) {
+                downloaded.add(bani.id)
+            }
+            audioController.getCustomTracks(bani.id).forEach { custom ->
+                if (audioController.isAudioDownloaded(bani.id, custom.id)) {
+                    downloaded.add("${bani.id}_${custom.id}")
+                }
+            }
+        }
+        allTrackIds.forEach { (baniId, trackId) ->
+            if (audioController.isAudioDownloaded(baniId, trackId)) {
+                downloaded.add("${baniId}_${trackId}")
+            }
+        }
 
         viewModel.setDownloadedBanis(
             downloaded
@@ -495,139 +508,123 @@ fun NitnemRoot(
      * UI
      */
 
-    Scaffold(
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val isLandscape = maxWidth > maxHeight && maxWidth > 600.dp
 
-        containerColor = Background,
-
-        contentWindowInsets =
-            WindowInsets(0),
-
-        bottomBar = {
-
-            AnimatedVisibility(
-                visible = showChrome
-            ) {
-
-                BottomBar(
-
-                    selectedTab =
-                        uiState.selectedTab,
-
-                    playback = playback,
-
-                    currentBani =
-                        uiState.currentBani,
-
-                    language =
-                        uiState.displayLanguage,
-
-                    onPlayPause = {
-                        val currentBani = uiState.currentBani ?: banis.firstOrNull()
-                        if (currentBani != null) {
-                            val activeTrackId = audioController.getActiveTrackId(currentBani.id)
-                            val isDownloading = uiState.downloadingBaniIds.contains("${currentBani.id}_$activeTrackId") ||
-                                    (activeTrackId == "default" && uiState.downloadingBaniIds.contains(currentBani.id))
-                            if (isDownloading) {
-                                pendingPlayBaniId = currentBani.id
-                                android.widget.Toast.makeText(
-                                    context,
-                                    "Audio file is downloading... Playback will start automatically when ready.".translate(uiState.displayLanguage),
-                                    android.widget.Toast.LENGTH_SHORT
-                                ).show()
-                            } else {
-                                val url = audioController.getActiveAudioUrl(currentBani.id)
-                                if (url != null && !playback.isPlaying && !playback.isReady) {
-                                    audioController.play(url, currentBani.title)
+        Scaffold(
+            containerColor = Background,
+            contentWindowInsets = WindowInsets(0),
+            bottomBar = {
+                // In landscape mode, use left navigation rail instead of full bottom bar
+                if (!isLandscape) {
+                    AnimatedVisibility(visible = showChrome) {
+                        BottomBar(
+                            selectedTab = uiState.selectedTab,
+                            playback = playback,
+                            currentBani = uiState.currentBani,
+                            language = uiState.displayLanguage,
+                            onPlayPause = {
+                                val currentBani = uiState.currentBani ?: banis.firstOrNull()
+                                if (currentBani != null) {
+                                    val activeTrackId = audioController.getActiveTrackId(currentBani.id)
+                                    val isDownloading = uiState.downloadingBaniIds.contains("${currentBani.id}_$activeTrackId") ||
+                                            (activeTrackId == "default" && uiState.downloadingBaniIds.contains(currentBani.id))
+                                    if (isDownloading) {
+                                        pendingPlayBaniId = currentBani.id
+                                        android.widget.Toast.makeText(
+                                            context,
+                                            "Audio file is downloading... Playback will start automatically when ready.".translate(uiState.displayLanguage),
+                                            android.widget.Toast.LENGTH_SHORT
+                                        ).show()
+                                    } else {
+                                        val url = audioController.getActiveAudioUrl(currentBani.id)
+                                        if (url != null && !playback.isPlaying && !playback.isReady) {
+                                            audioController.play(url, currentBani.title)
+                                        } else {
+                                            audioController.playPause()
+                                        }
+                                    }
                                 } else {
                                     audioController.playPause()
                                 }
+                            },
+                            onExpandPlayer = {
+                                viewModel.toggleMiniPlayer(!uiState.miniPlayerVisible)
+                            },
+                            onToggleMiniPlayer = {
+                                viewModel.toggleMiniPlayer(!uiState.miniPlayerVisible)
+                            },
+                            onTabSelected = {
+                                viewModel.selectTab(it)
                             }
-                        } else {
-                            audioController.playPause()
-                        }
-                    },
-
-                    onExpandPlayer = {
-
-                        viewModel.toggleMiniPlayer(
-                            !uiState.miniPlayerVisible
                         )
-                    },
-
-                    onToggleMiniPlayer = {
-
-                        viewModel.toggleMiniPlayer(
-                            !uiState.miniPlayerVisible
-                        )
-                    },
-
-                    onTabSelected = {
-
-                        viewModel.selectTab(it)
-                    }
-                )
-            }
-        }
-
-    ) { padding ->
-
-        val backgroundModifier = when {
-
-            uiState.amoledMode -> {
-
-                Modifier.background(
-                    Color.Black
-                )
-            }
-
-            else -> {
-
-                Modifier.background(
-
-                    Brush.verticalGradient(
-
-                        listOf(
-                            SurfaceColor,
-                            Background
-                        )
-                    )
-                )
-            }
-        }
-
-        Box(
-
-            modifier = Modifier
-                .fillMaxSize()
-                .then(backgroundModifier)
-                .padding(padding)
-                // .padding(top = 28.dp)
-                .pointerInput(uiState.fullScreenReadingMode, uiState.selectedTab) {
-                    // On any touch in fullscreen mode tabs, restore chrome and restart the hide timer
-                    if (uiState.fullScreenReadingMode && uiState.selectedTab in autoHideTabs) {
-                        awaitPointerEventScope {
-                            while (true) {
-                                awaitPointerEvent()
-                                interactionTick++
-                            }
-                        }
                     }
                 }
+            }
+        ) { padding ->
 
-        ) {
-
-            when (uiState.selectedTab) {
-
-                AppTab.Home -> {
-
-                    HomeScreen(
-                        viewModel = viewModel,
-                        audioController = audioController,
-                        onAssistantVisibilityChanged = { isOpen ->
-                            isAssistantOpen = isOpen
-                        }
+            val backgroundModifier = when {
+                uiState.amoledMode -> {
+                    Modifier.background(Color.Black)
+                }
+                else -> {
+                    Modifier.background(
+                        Brush.verticalGradient(
+                            listOf(
+                                SurfaceColor,
+                                Background
+                            )
+                        )
                     )
                 }
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .then(backgroundModifier)
+                    .padding(padding)
+            ) {
+                // ── SIDE NAVIGATION RAIL IN LANDSCAPE ──
+                if (isLandscape && showChrome) {
+                    AppNavigationRail(
+                        selectedTab = uiState.selectedTab,
+                        language = uiState.displayLanguage,
+                        playback = playback,
+                        currentBani = uiState.currentBani,
+                        onToggleMiniPlayer = {
+                            viewModel.toggleMiniPlayer(!uiState.miniPlayerVisible)
+                        },
+                        onTabSelected = { viewModel.selectTab(it) }
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .pointerInput(uiState.fullScreenReadingMode, uiState.selectedTab) {
+                            // On any touch in fullscreen mode tabs, restore chrome and restart the hide timer
+                            if (uiState.fullScreenReadingMode && uiState.selectedTab in autoHideTabs) {
+                                awaitPointerEventScope {
+                                    while (true) {
+                                        awaitPointerEvent()
+                                        interactionTick++
+                                    }
+                                }
+                            }
+                        }
+                ) {
+                    when (uiState.selectedTab) {
+                        AppTab.Home -> {
+                            HomeScreen(
+                                viewModel = viewModel,
+                                audioController = audioController,
+                                onAssistantVisibilityChanged = { isOpen ->
+                                    isAssistantOpen = isOpen
+                                }
+                            )
+                        }
 
                 AppTab.Experience -> {
 
@@ -685,6 +682,8 @@ fun NitnemRoot(
                     )
                 }
             }
+        }
+    }
 
             /*
              * MINI PLAYER
@@ -705,10 +704,20 @@ fun NitnemRoot(
                         uiState.miniPlayerVisible && uiState.selectedTab != AppTab.Practice && (!uiState.fullScreenReadingMode || showChrome) && !isAssistantOpen
                 ) {
 
-                    ThinMiniPlayer(
+                    val playerModifier = if (isLandscape) {
+                        Modifier
+                            .widthIn(max = 680.dp)
+                            .fillMaxWidth(0.72f)
+                            .padding(bottom = 12.dp)
+                    } else {
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = if (showChrome) 68.dp else 0.dp)
+                            .windowInsetsPadding(WindowInsets.navigationBars)
+                    }
 
-                        modifier = Modifier
-                            .fillMaxWidth(),
+                    ThinMiniPlayer(
+                        modifier = playerModifier,
 
                         bani =
                             uiState.currentBani,
@@ -801,20 +810,18 @@ fun NitnemRoot(
                             viewModel.setPlaybackSpeed(nextSpeed)
                             audioController.updatePlaybackSpeed(nextSpeed)
                         },
-
+                        onSpeedSelect = { customSpeed ->
+                            viewModel.setPlaybackSpeed(customSpeed)
+                            audioController.updatePlaybackSpeed(customSpeed)
+                        },
                         onBookmark = {
-
                             val currentLine =
-
                                 synchronizer.activeLine(
-
                                     effectiveLines,
-
                                     playback.positionMs
                                 )
 
                             currentLine?.let { line ->
-
                                 viewModel.toggleBookmark(
                                     line.id
                                 )

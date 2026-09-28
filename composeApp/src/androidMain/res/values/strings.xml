@@ -1,9 +1,15 @@
 <resources>
     <string name="app_name">Nitnem Gutka Steek</string>
-    <string name="notification_channel_reminders">Gentle reminders</string>
-    <string name="notification_channel_reminders_description">Peaceful Nitnem reminders without pressure.</string>
-    <string name="notification_channel_playback">Audio playback</string>
-    <string name="notification_channel_playback_description">Background Gurbani audio playback controls.</string>
+    <string name="notification_channel_reminders">Prayer Reminders &amp; Alarms</string>
+    <string name="notification_channel_reminders_description">Peaceful Nitnem reminders and full-screen prayer alerts.</string>
+    <string name="notification_channel_playback">Audio Playback</string>
+    <string name="notification_channel_playback_description">Background Gurbani audio playback controls and media sessions.</string>
+    <string name="notification_channel_streak">Streak &amp; Practice Reminders</string>
+    <string name="notification_channel_streak_description">Friendly evening reminders to keep your Nitnem streak intact.</string>
+    <string name="notification_channel_hukamnama">Daily Hukamnama</string>
+    <string name="notification_channel_hukamnama_description">Daily sacred Hukamnama notifications from Sri Darbar Sahib.</string>
+    <string name="notification_group_prayers">Prayer Alarms &amp; Schedule</string>
+    <string name="notification_group_media">Media &amp; Playback</string>
     <string name="widget_journey_name">Nitnem Journey</string>
     <string name="widget_journey_title">Nitnem Journey</string>
     <string name="widget_journey_message">Your journey continues today.</string>

@@ -103,6 +103,9 @@ object RemoteAssetCatalog {
                 Triple(cleanName.replace('_', '-'), cleanName.replace('_', ' '), false)
         }
 
+        val rawArtistSlug = cleanName.substringAfterLast("${cleanName.substringBeforeLast('_')}_", "")
+            .ifBlank { cleanName.substringAfterLast('_') }
+
         val artist = when {
             cleanName.endsWith("hari_singh") -> "Bhai Hari Singh Ji"
             cleanName.endsWith("harinder_singh") -> "Bhai Harinder Singh Ji"
@@ -117,8 +120,26 @@ object RemoteAssetCatalog {
             cleanName.endsWith("ravinder_singh") -> "Bhai Ravinder Singh Ji"
             cleanName.endsWith("pishora_singh") -> "Giani Pishora Singh Ji"
             cleanName.endsWith("lakhwinder_singh") -> "Bhai Lakhwinder Singh Ji"
-            else -> "Gurbani Kirtan"
+            cleanName.endsWith("gurpreet_singh") -> "Bhai Gurpreet Singh Ji"
+            cleanName.endsWith("amrit_singh") -> "Bhai Amrit Singh Ji"
+            cleanName.endsWith("manpreet_singh") -> "Bhai Manpreet Singh Ji"
+            else -> {
+                // Dynamically format whatever suffix is provided (e.g., "bhai_xyz_singh" -> "Bhai Xyz Singh Ji")
+                val parts = cleanName.substringAfterLast("sahib_", "").substringAfterLast("vaar_", "").substringAfterLast("nitnem_", "")
+                if (parts.isNotBlank() && parts != cleanName) {
+                    val formatted = parts.split('_').joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }
+                    if (!formatted.contains("Ji", ignoreCase = true) && (formatted.contains("Singh", ignoreCase = true) || formatted.contains("Kaur", ignoreCase = true))) {
+                        "$formatted Ji"
+                    } else {
+                        formatted
+                    }
+                } else {
+                    "Gurbani Kirtan"
+                }
+            }
         }
+
+        val resolvedTimingFile = timingFileName ?: "${cleanName}_timing.json"
 
         return RemoteAssetTrack(
             id = "curated_$cleanName",
@@ -126,7 +147,7 @@ object RemoteAssetCatalog {
             baniTitle = baniTitle,
             artist = artist,
             audioFileName = audioFileName,
-            timingFileName = timingFileName,
+            timingFileName = resolvedTimingFile,
             isPrimaryNitnem = isPrimary
         )
     }

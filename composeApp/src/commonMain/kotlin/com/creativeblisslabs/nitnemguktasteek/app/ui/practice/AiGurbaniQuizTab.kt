@@ -14,6 +14,8 @@ import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -481,7 +483,7 @@ fun AiGurbaniQuizTab(
 Box(
     modifier = Modifier
         .fillMaxSize()
-        .padding(horizontal = 38.dp, vertical = 22.dp),
+        .padding(horizontal = 16.dp, vertical = 10.dp),
     contentAlignment = Alignment.Center
 ) {
        Card(
@@ -507,7 +509,8 @@ Box(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(32.dp),
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 24.dp, vertical = 20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
@@ -834,7 +837,7 @@ Box(
                     )
                 }
 
-                itemsIndexed(wrongAnswers) { _, entry ->
+                itemsIndexed(wrongAnswers) { index, entry ->
                     val parts = entry.split(":::")
                     val qText = parts.getOrNull(0).orEmpty()
                     val aText = parts.getOrNull(1).orEmpty()

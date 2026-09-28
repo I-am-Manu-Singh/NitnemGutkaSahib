@@ -70,6 +70,7 @@ fun ThinMiniPlayer(
     onSeekBack: () -> Unit,
     onRepeatToggle: () -> Unit = {},
     onSpeedToggle: () -> Unit = {},
+    onSpeedSelect: (Float) -> Unit = {},
     onBookmark: () -> Unit = {},
     isMuted: Boolean = false,
     onMuteToggle: () -> Unit = {},
@@ -184,6 +185,8 @@ fun ThinMiniPlayer(
 
             label = ""
         )
+
+        var showSpeedDialog by remember { mutableStateOf(false) }
 
         val progress = remember(
             playback.positionMs,
@@ -749,7 +752,7 @@ Surface(
         .combinedClickable(
             onClick = onSpeedToggle,
             onLongClick = { 
-                // TODO: Open your custom fine-tune speed slider here
+                showSpeedDialog = true
             }
         ),
     shape = CircleShape,
@@ -831,6 +834,117 @@ Surface(
                     }
                 }
             }
+        }
+
+        if (showSpeedDialog) {
+            var tempSpeed by remember(playback.speed) { mutableFloatStateOf(playback.speed) }
+            val presetSpeeds = listOf(0.75f, 1.0f, 1.25f, 1.5f, 1.75f, 2.0f)
+
+            AlertDialog(
+                onDismissRequest = { showSpeedDialog = false },
+                containerColor = when (AppTheme.themeMode) {
+                    ThemeMode.Light -> Color(0xFFFFFAF3)
+                    ThemeMode.Dark -> Color(0xFF1C1C1E)
+                    ThemeMode.Amoled -> Color(0xFF0F0F10)
+                },
+                title = {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Playback Speed".translate(displayLanguage),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = Gold.copy(alpha = 0.2f),
+                            border = BorderStroke(1.dp, Gold.copy(alpha = 0.5f))
+                        ) {
+                            Text(
+                                text = "${((tempSpeed * 100).toInt()) / 100.0}x",
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                color = Gold
+                            )
+                        }
+                    }
+                },
+                text = {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        // Slider with 0.05 increments
+                        Slider(
+                            value = tempSpeed,
+                            onValueChange = { newVal ->
+                                val stepped = kotlin.math.round(newVal * 20f) / 20f
+                                tempSpeed = stepped.coerceIn(0.5f, 2.5f)
+                            },
+                            valueRange = 0.5f..2.5f,
+                            colors = SliderDefaults.colors(
+                                thumbColor = Gold,
+                                activeTrackColor = Gold,
+                                inactiveTrackColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+                            )
+                        )
+
+                        // Quick Presets Row
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            presetSpeeds.forEach { preset ->
+                                val isSelected = kotlin.math.abs(tempSpeed - preset) < 0.02f
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (isSelected) Gold else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                                    border = BorderStroke(1.dp, if (isSelected) Gold else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)),
+                                    modifier = Modifier.clickable {
+                                        tempSpeed = preset
+                                    }
+                                ) {
+                                    Text(
+                                        text = "${preset}x",
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                        fontSize = 11.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                        color = if (isSelected) Color.Black else MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            onSpeedSelect(tempSpeed)
+                            showSpeedDialog = false
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Gold,
+                            contentColor = Color.Black
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Apply".translate(displayLanguage), fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = { showSpeedDialog = false },
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Cancel".translate(displayLanguage), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            )
         }
     }
 }

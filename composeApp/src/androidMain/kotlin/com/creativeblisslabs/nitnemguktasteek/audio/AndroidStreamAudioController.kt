@@ -1292,12 +1292,13 @@ private fun createUri(
                     val githubBase = com.creativeblisslabs.nitnemguktasteek.data.RemoteAssetCatalog.GITHUB_RAW_TIMING_BASE
                     timingCandidates.add("${cleanAudioBase}_timing.json" to "${githubBase}${cleanAudioBase}_timing.json")
                     timingCandidates.add("${cleanAudioBase}.json" to "${githubBase}${cleanAudioBase}.json")
-                    timingCandidates.add("${cleanBaniId}_timing.json" to "${githubBase}${cleanBaniId}_timing.json")
-                    timingCandidates.add("${cleanBaniId}.json" to "${githubBase}${cleanBaniId}.json")
                     if (trackId != null && trackId != "default") {
                         val cleanTrackId = trackId.replace("-", "_").removePrefix("curated_")
                         timingCandidates.add("${cleanTrackId}_timing.json" to "${githubBase}${cleanTrackId}_timing.json")
                         timingCandidates.add("${cleanTrackId}.json" to "${githubBase}${cleanTrackId}.json")
+                    } else {
+                        timingCandidates.add("${cleanBaniId}_timing.json" to "${githubBase}${cleanBaniId}_timing.json")
+                        timingCandidates.add("${cleanBaniId}.json" to "${githubBase}${cleanBaniId}.json")
                     }
 
                     var timingDownloaded = false

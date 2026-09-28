@@ -303,6 +303,6 @@ val hukamnama: Hukamnama? = null,
     val meditationRemainingSeconds: Int = 0,
     val meditationDurationSeconds: Int = 0,
     val meditationSelectedMode: String = "Mantra",
-    val ambientParticleEffect: String = "GoldenStardust",
+    val ambientParticleEffect: String = "Disabled",
     val companionState: CompanionState = CompanionState()
 )

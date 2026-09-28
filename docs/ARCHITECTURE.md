@@ -2,7 +2,7 @@
 
 ## Direction
 
-Nitnem Gutka Steek is Android-first with shared Kotlin Multiplatform modules prepared for iOS. The first implementation establishes the module graph, domain contracts, offline-first repository shape, and a Compose Multiplatform UI shell.
+Nitnem Steek is Android-first with shared Kotlin Multiplatform modules prepared for iOS. The first implementation establishes the module graph, domain contracts, offline-first repository shape, and a Compose Multiplatform UI shell.
 
 ## Layers
 

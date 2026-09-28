@@ -317,19 +317,7 @@ val prayerInfo = HeroPrayerUi(
         label = ""
     )
 
-    val constellationStars = remember(streak) {
-        val points = mutableListOf<Offset>()
-        if (streak > 0) {
-            val count = streak.coerceAtMost(10)
-            for (i in 0 until count) {
-                val factor = i.toFloat() / (if (count > 1) (count - 1) else 1)
-                val rX = 0.12f + 0.62f * factor
-                val rY = 0.18f + 0.12f * sin(factor * PI.toFloat() * 2f)
-                points.add(Offset(rX, rY))
-            }
-        }
-        points
-    }
+
 
     /*
      * COLORS
@@ -694,50 +682,7 @@ drawRect(
                         }
                     }
 
-                    // --- SACRED CONSTELLATION STREAKS ---
-                    if (constellationStars.isNotEmpty()) {
-                        for (i in 0 until constellationStars.size - 1) {
-                            val start = Offset(width * constellationStars[i].x, height * constellationStars[i].y)
-                            val end = Offset(width * constellationStars[i + 1].x, height * constellationStars[i + 1].y)
-                            
-                            // Wide glowing guide lines
-                            drawLine(
-                                color = Gold.copy(alpha = 0.22f * pulse),
-                                start = start,
-                                end = end,
-                                strokeWidth = 5f,
-                                cap = StrokeCap.Round
-                            )
-                            // Bright white sharp core line
-                            drawLine(
-                                color = Color.White.copy(alpha = 0.6f),
-                                start = start,
-                                end = end,
-                                strokeWidth = 2f,
-                                cap = StrokeCap.Round
-                            )
-                        }
-                        
-                        // Draw individual star points
-                        constellationStars.forEachIndexed { index, starPoint ->
-                            val starX = width * starPoint.x
-                            val starY = height * starPoint.y
-                            val starPulse = 0.4f + 0.6f * kotlin.math.abs(sin((twinkleTime + index * 40f) * PI.toFloat() / 180f))
-                            
-                            // Twinkling Aura Glow
-                            drawCircle(
-                                color = Gold.copy(alpha = 0.4f * starPulse),
-                                radius = 12f,
-                                center = Offset(starX, starY)
-                            )
-                            // Star Core
-                            drawCircle(
-                                color = Color.White,
-                                radius = 4.5f,
-                                center = Offset(starX, starY)
-                            )
-                        }
-                    }
+
 
                    // CLOUD 1
 val cloud1X = -140f + (width + 280f) * cloudProgress1
@@ -1073,15 +1018,11 @@ drawPath(
 )
                         
                     }
-
-
                 }
 
                 Spacer(
                     Modifier.height(10.dp)
                 )
-
-                
 /*
  * INFO ROW
  */
@@ -2229,38 +2170,37 @@ PremiumToggleChip(
                 wordMeaning = "",
                 startsAtMs = 0L,
                 endsAtMs = 0L
-            )
+                    )
+                }
+                    GurbaniMeaningSheet(
+                    line = convertedBaniLine,
+                    onDismiss = { selectedMeaningLine = null },
+                    gurmukhiFontSize = uiState.gurmukhiFontSize,
+                    lineSpacing = uiState.lineSpacing,
+                    boldGurmukhi = uiState.boldGurmukhi,
+                    centerGurmukhi = uiState.centerGurmukhi,
+                    showGurmukhi = uiState.showGurmukhi,
+                    showEnglishTranslation = uiState.showEnglishTranslation,
+                    showPunjabiTranslation = uiState.showPunjabiTranslation,
+                    showDevanagariTransliteration = uiState.showDevanagariTransliteration,
+                    showWordMeaning = uiState.showWordMeaning,
+                    showRomanTransliteration = uiState.showRomanTransliteration,
+                    larivaarMode = uiState.larivaarMode,
+                    gurmukhiColorMode = uiState.gurmukhiColorMode,
+                    translationColorMode = uiState.translationColorMode,
+                    wordMeaningColorMode = uiState.wordMeaningColorMode,
+                    displayLanguage = displayLanguage,
+                    onToggleGurmukhi = { viewModel.setShowGurmukhi(it) },
+                    onToggleEnglish = { viewModel.setShowEnglishTranslation(it) },
+                    onTogglePunjabi = { viewModel.setShowPunjabiTranslation(it) },
+                    onToggleHindi = { viewModel.setShowDevanagariTransliteration(it) },
+                    onToggleWordMeaning = { viewModel.setShowWordMeaning(it) },
+                    onToggleRoman = { viewModel.setShowRomanTransliteration(it) },
+                    onToggleCenter = { viewModel.setCenterGurmukhi(it) },
+                    onToggleLarivaar = { viewModel.setLarivaarMode(it) }
+                )
+            }
         }
-        GurbaniMeaningSheet(
-            line = convertedBaniLine,
-            onDismiss = { selectedMeaningLine = null },
-            gurmukhiFontSize = uiState.gurmukhiFontSize,
-            lineSpacing = uiState.lineSpacing,
-            boldGurmukhi = uiState.boldGurmukhi,
-            centerGurmukhi = uiState.centerGurmukhi,
-            showGurmukhi = uiState.showGurmukhi,
-            showEnglishTranslation = uiState.showEnglishTranslation,
-            showPunjabiTranslation = uiState.showPunjabiTranslation,
-            showDevanagariTransliteration = uiState.showDevanagariTransliteration,
-            showWordMeaning = uiState.showWordMeaning,
-            showRomanTransliteration = uiState.showRomanTransliteration,
-            larivaarMode = uiState.larivaarMode,
-            gurmukhiColorMode = uiState.gurmukhiColorMode,
-            translationColorMode = uiState.translationColorMode,
-            wordMeaningColorMode = uiState.wordMeaningColorMode,
-            displayLanguage = displayLanguage,
-            onToggleGurmukhi = { viewModel.setShowGurmukhi(it) },
-            onToggleEnglish = { viewModel.setShowEnglishTranslation(it) },
-            onTogglePunjabi = { viewModel.setShowPunjabiTranslation(it) },
-            onToggleHindi = { viewModel.setShowDevanagariTransliteration(it) },
-            onToggleWordMeaning = { viewModel.setShowWordMeaning(it) },
-            onToggleRoman = { viewModel.setShowRomanTransliteration(it) },
-            onToggleCenter = { viewModel.setCenterGurmukhi(it) },
-            onToggleLarivaar = { viewModel.setLarivaarMode(it) }
-        )
-    }
-}
-
     }
 }
         

@@ -17,8 +17,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Book
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -40,7 +46,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import com.creativeblisslabs.nitnemguktasteek.models.NitnemUiState
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -90,8 +95,7 @@ fun HomeScreen(
 ) {
 
     val state by viewModel.uiState.collectAsState()
-
-val context = LocalContext.current
+    val context = LocalContext.current
 
     LaunchedEffect(state.hukamnama) {
         if (state.hukamnama == null) {
@@ -110,11 +114,11 @@ val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val localPrefs = remember { com.creativeblisslabs.nitnemguktasteek.data.preferences.LocalPreferences(context) }
 
-    // Check on first app open each day (or after onboarding) to present streak overview
+    // Check on daily app open to present streak overview (only if streak > 0)
     LaunchedEffect(state.streakDays) {
         streakToDisplay = state.streakDays
         val hasShownToday = localPrefs.hasShownDailyStreakToday()
-        if (!hasShownToday) {
+        if (!hasShownToday && state.streakDays > 0) {
             showWeeklyStreakDialog = true
             localPrefs.markDailyStreakShownToday()
         } else if (state.streakDays > lastStreak.value && state.streakDays > 0 && state.streakDays % 7 == 0) {
@@ -179,15 +183,16 @@ val context = LocalContext.current
             state.completedBanis.count { it in nitnemBaniIds }
         }
     }
+   
     var isMascotOverlayVisible by remember { mutableStateOf(false) }
+    var isAssistantListening by remember { mutableStateOf(false) }
+
     LaunchedEffect(isMascotOverlayVisible) {
         onAssistantVisibilityChanged(isMascotOverlayVisible)
     }
-    var isGlobalSearchVisible by remember { mutableStateOf(false) }
-    var globalSearchQuery by remember { mutableStateOf("") }
+
     var selectedSearchVerseLine by remember { mutableStateOf<BaniLine?>(null) }
     var interactiveInputText by remember { mutableStateOf("") }
-    var isAssistantListening by remember { mutableStateOf(false) }
     val overallProgress by remember(
         completedNitnemCount,
         nitnemBanis
@@ -272,15 +277,45 @@ val context = LocalContext.current
     }
 
 
-    Box(
-        modifier = Modifier.fillMaxSize()
+        
+    
+
+        /*
+         * CONTENT
+         */
+
+        if (state.banis.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    CircularProgressIndicator(
+                        color = Gold,
+                        strokeWidth = 3.dp,
+                        modifier = Modifier.size(48.dp)
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    Text(
+                        text = "Loading Gurbani...".translate(state.displayLanguage),
+                        color = if (AppTheme.themeMode == ThemeMode.Light) Primary else Color.White,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+        } 
+            else {
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .statusBarsPadding()
     ) {
-        Column(
-            modifier = Modifier.fillMaxSize()
-        ) {
-/*
- * HEADER
- */
+       
 Surface(
     modifier = Modifier.fillMaxWidth(), 
     color = Color.Transparent, 
@@ -308,22 +343,37 @@ Surface(
                     .size(46.dp)
                     .clickable {
                         isMascotOverlayVisible = true
-                        isAssistantListening = true
+                    }
+                    .semantics {
+                        contentDescription = "Spiritual Companion Mascot. Tap to ask questions."
                     }
             )
             
-            // 2. App Title (compact, single row)
+            // 2. App Title with Interactive Ek Onkar Seva Button (Item 005)
+            var isEkOnkarPressed by remember { mutableStateOf(false) }
+            val ekOnkarScale by animateFloatAsState(
+                targetValue = if (isEkOnkarPressed) 0.88f else 1f,
+                animationSpec = spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessMedium),
+                label = "EkOnkarBounce"
+            )
+
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.Center
             ) {
-                Text(
-                    text = "ੴ ਸਤਿਨਾਮੁ ਵਾਹਿਗੁਰੂ".translate(state.displayLanguage),
-                    color = Gold,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .scale(ekOnkarScale)
+                ) {
+                    Text(
+                        text = "ੴ ਸਤਿਨਾਮੁ ਵਾਹਿਗੁਰੂ".translate(state.displayLanguage),
+                        color = Gold,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1
+                    )
+                }
 
                 Text(
                     text = "ਨਿਤਨੇਮ ਗੁਟਕਾ ਟੀਕਾ".translate(state.displayLanguage),
@@ -416,23 +466,6 @@ Surface(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Surface(
-                    onClick = { isGlobalSearchVisible = true },
-                    shape = CircleShape,
-                    color = Accent.copy(alpha = 0.10f)
-                ) {
-                    Box(
-                        modifier = Modifier.size(32.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Search,
-                            contentDescription = "Global Search",
-                            tint = Accent.copy(alpha = 0.85f),
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                }
-                Surface(
                     onClick = { showLeaderboardDialog = true },
                     shape = CircleShape,
                     color = Accent.copy(alpha = 0.10f)
@@ -501,37 +534,6 @@ Surface(
         }
     }
 }
-
-        /*
-         * CONTENT
-         */
-
-        if (state.banis.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    CircularProgressIndicator(
-                        color = Gold,
-                        strokeWidth = 3.dp,
-                        modifier = Modifier.size(48.dp)
-                    )
-                    Spacer(Modifier.height(16.dp))
-                    Text(
-                        text = "Loading Gurbani...".translate(state.displayLanguage),
-                        color = if (AppTheme.themeMode == ThemeMode.Light) Primary else Color.White,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-            }
-        } 
-            else {
-
     var selectedTab by remember {
         mutableStateOf(0)
     }
@@ -543,8 +545,224 @@ Surface(
             otherBanis
         }
 
+    BoxWithConstraints(
+        modifier = Modifier
+            .weight(1f)
+            .fillMaxWidth()
+    ) {
+        val isLandscape = maxWidth > maxHeight && maxWidth > 560.dp
 
-    LazyColumn(
+     if (isLandscape) {
+    // ── LANDSCAPE DUAL-PANE LAYOUT ──
+    Row(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Left Column: Hero Card and Analytics Cards
+        Column(
+            modifier = Modifier
+                .weight(0.48f) // Keeps horizontal 48% width constraint
+                .fillMaxHeight()
+                .verticalScroll(rememberScrollState()) // 1. Added scrollability for short landscape screens
+                .padding(top = 4.dp, bottom = 16.dp), // 2. Reduced massive 80dp bottom padding to 16dp
+            verticalArrangement = Arrangement.spacedBy(14.dp) 
+        ) {
+            
+            // 3. Removed vertical weight() so HeroCard can size itself naturally without breaking
+            HeroCard(
+                // modifier = Modifier.fillMaxWidth(), 
+                streak = state.streakDays,
+                continueTitle = state.currentBani?.title ?: "Japji Sahib",
+                progress = overallProgress,
+                completedToday = overallProgress >= 1f,
+                completedCount = completedNitnemCount,
+                totalPaaths = nitnemBanis.size,
+                displayLanguage = state.displayLanguage,
+                hukamnama = state.hukamnama,
+                uiState = state,
+                viewModel = viewModel
+            )
+
+            val consistencyProgress = (state.monthlyConsistencyDays.toFloat() / 30f).coerceIn(0f, 1f)
+            val currentPlaybackMinutes = (state.playback.positionMs / 60000L).toInt()
+            val listeningMinutes = totalCompletedMinutes + currentPlaybackMinutes
+            val listeningProgress = (listeningMinutes.toFloat() / 180f).coerceIn(0f, 1f)
+            val listeningValue = when {
+                listeningMinutes < 60 -> "${listeningMinutes}m"
+                else -> {
+                    val hours = listeningMinutes / 60f
+                    "${String.format("%.1f", hours)}h"
+                }
+            }
+
+            Row(
+    modifier = Modifier
+        .fillMaxWidth()
+        .height(IntrinsicSize.Max), 
+    horizontalArrangement = Arrangement.spacedBy(8.dp)
+) {
+    // Note: Use fillMaxHeight() along with weight(1f) to match the tallest card's height
+    PremiumAnalyticsCard(
+        modifier = Modifier
+            .weight(1f)
+            .fillMaxHeight(), 
+        title = "Today".translate(state.displayLanguage),
+        value = if (nitnemBanis.isEmpty()) "0" else "$completedNitnemCount/${nitnemBanis.size}",
+        subtitle = "Paaths".translate(state.displayLanguage),
+        icon = Icons.Default.AutoStories,
+        type = AnalyticsCardType.Today,
+        progress = overallProgress
+    )
+
+    PremiumAnalyticsCard(
+        modifier = Modifier
+            .weight(1f)
+            .fillMaxHeight(),
+        title = "Listening".translate(state.displayLanguage),
+        value = listeningValue,
+        subtitle = "Time".translate(state.displayLanguage),
+        icon = Icons.Default.Headphones,
+        type = AnalyticsCardType.Listening,
+        progress = listeningProgress
+    )
+
+    PremiumAnalyticsCard(
+        modifier = Modifier
+            .weight(1f)
+            .fillMaxHeight(),
+        title = "Consistency".translate(state.displayLanguage),
+        value = "${state.monthlyConsistencyDays}",
+        subtitle = "Days".translate(state.displayLanguage),
+        icon = Icons.Default.LocalFireDepartment,
+        type = AnalyticsCardType.Consistency,
+        progress = consistencyProgress
+    )
+}
+        }
+
+                // Right Column: Tab Switcher and Bani List
+                Column(
+                    modifier = Modifier
+                        .weight(0.52f)
+                        .fillMaxHeight()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.Start
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(18.dp))
+                                .padding(horizontal = 6.dp, vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .width(118.dp)
+                                    .clickable { selectedTab = 0 }
+                                    .padding(vertical = 2.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = "Nitnem".translate(state.displayLanguage),
+                                    color = if (selectedTab == 0) Accent else TextPrimary.copy(alpha = 0.58f),
+                                    fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Medium,
+                                    fontSize = 14.sp,
+                                    maxLines = 1
+                                )
+                                Spacer(Modifier.height(8.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .height(3.dp)
+                                        .fillMaxWidth(0.62f)
+                                        .clip(RoundedCornerShape(50))
+                                        .background(
+                                            brush = if (selectedTab == 0) Brush.horizontalGradient(listOf(Gold, Accent))
+                                            else Brush.horizontalGradient(listOf(Color.Transparent, Color.Transparent))
+                                        )
+                                )
+                            }
+
+                            Column(
+                                modifier = Modifier
+                                    .width(118.dp)
+                                    .clickable { selectedTab = 1 }
+                                    .padding(vertical = 2.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = "Other Banis".translate(state.displayLanguage),
+                                    color = if (selectedTab == 1) Accent else TextPrimary.copy(alpha = 0.58f),
+                                    fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Medium,
+                                    fontSize = 14.sp,
+                                    maxLines = 1
+                                )
+                                Spacer(Modifier.height(8.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .height(3.dp)
+                                        .fillMaxWidth(0.62f)
+                                        .clip(RoundedCornerShape(50))
+                                        .background(
+                                            brush = if (selectedTab == 1) Brush.horizontalGradient(listOf(Gold, Accent))
+                                            else Brush.horizontalGradient(listOf(Color.Transparent, Color.Transparent))
+                                        )
+                                )
+                            }
+                        }
+                    }
+
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(top = 4.dp, bottom = 120.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(
+                            items = displayedBanis,
+                            key = { bani -> bani.id }
+                        ) { bani ->
+                            val isCurrent = state.currentBani?.id == bani.id
+                            val playbackProgress = calculatePlaybackProgress(bani, state, isCurrent)
+                            val activeTrack = remember(bani.id, state.activeTrackId) {
+                                val trackId = audioController.getActiveTrackId(bani.id)
+                                val custom = audioController.getCustomTracks(bani.id).firstOrNull { it.id == trackId }
+                                custom ?: com.creativeblisslabs.nitnemguktasteek.data.CuratedAudioCatalog.getTracksForBani(bani.id).firstOrNull { it.id == trackId } ?: bani.audio
+                            }
+                            val artistName = activeTrack?.artist ?: bani.audio?.artist
+                            val hasAudioFile = activeTrack != null
+                            val hasSyncedTiming = remember(activeTrack?.id, state.activeTrackId) {
+                                activeTrack != null && audioController.hasTimingFile(bani.id, activeTrack.id)
+                            }
+
+                            BaniCard(
+                                bani = bani,
+                                selected = isCurrent,
+                                progress = playbackProgress,
+                                artistName = artistName,
+                                hasSyncedTiming = hasSyncedTiming,
+                                hasAudioFile = hasAudioFile,
+                                displayLanguage = state.displayLanguage,
+                                onClick = {
+                                    if (hasAudioFile) {
+                                        viewModel.selectExperienceTab(com.creativeblisslabs.nitnemguktasteek.app.models.ExperienceTab.Listen)
+                                    } else {
+                                        viewModel.selectExperienceTab(com.creativeblisslabs.nitnemguktasteek.app.models.ExperienceTab.Read)
+                                    }
+                                    viewModel.selectBani(bani.id)
+                                    viewModel.selectTab(AppTab.Experience)
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        } else {
+            // ── PORTRAIT LAYOUT ──
+            LazyColumn(
 
         modifier = Modifier.fillMaxSize(),
 
@@ -987,68 +1205,38 @@ Surface(
                 activeTrack != null && audioController.hasTimingFile(bani.id, activeTrack.id)
             }
 
-            AnimatedVisibility(
+            BaniCard(
+                bani = bani,
+                selected = isCurrent,
+                progress = playbackProgress,
+                artistName = artistName,
+                hasSyncedTiming = hasSyncedTiming,
+                hasAudioFile = hasAudioFile,
+                displayLanguage = state.displayLanguage,
+                onClick = {
+                    println("HOME PLAY -> bani=${bani.id}")
 
-                visible = true,
-
-                enter =
-                    fadeIn() +
-                        slideInVertically(
-                            initialOffsetY = {
-                                it / 3
-                            }
+                    if (hasAudioFile) {
+                        viewModel.selectExperienceTab(
+                            com.creativeblisslabs.nitnemguktasteek.app.models.ExperienceTab.Listen
                         )
-            ) {
-
-                BaniCard(
-
-                    bani = bani,
-
-                    selected = isCurrent,
-
-                    progress =
-                        playbackProgress,
-
-                    artistName =
-                        artistName,
-
-                    hasSyncedTiming =
-                        hasSyncedTiming,
-
-                    hasAudioFile =
-                        hasAudioFile,
-
-                    displayLanguage =
-                        state.displayLanguage,
-
-                    onClick = {
-                        println("HOME PLAY -> bani=${bani.id}")
-
-                        if (hasAudioFile) {
-                            viewModel.selectExperienceTab(
-                                com.creativeblisslabs.nitnemguktasteek.app.models.ExperienceTab.Listen
-                            )
-                        } else {
-                            viewModel.selectExperienceTab(
-                                com.creativeblisslabs.nitnemguktasteek.app.models.ExperienceTab.Read
-                            )
-                        }
-
-                        viewModel.selectBani(
-                            bani.id
-                        )
-
-                        viewModel.selectTab(
-                            AppTab.Experience
+                    } else {
+                        viewModel.selectExperienceTab(
+                            com.creativeblisslabs.nitnemguktasteek.app.models.ExperienceTab.Read
                         )
                     }
-                )
-            }
+
+                    viewModel.selectBani(
+                        bani.id
+                    )
+
+                    viewModel.selectTab(
+                        AppTab.Experience
+                    )
+                }
+            )
         }
     }
-
-
-
 
     selectedSearchVerseLine?.let { line ->
         GurbaniMeaningSheet(
@@ -1209,292 +1397,125 @@ Surface(
 
                 selectedBani.source?.let { source ->
 
-    HorizontalDivider(
-        color = TextPrimary.copy(alpha = 0.06f),
-        modifier = Modifier.padding(vertical = 12.dp)
-    )
+                    HorizontalDivider(
+                        color = TextPrimary.copy(alpha = 0.06f),
+                        modifier = Modifier.padding(vertical = 12.dp)
+                    )
 
-    BaniDetailItem(
-        label = "Source".translate(state.displayLanguage),
-        value = buildString {
-            append(source.text)
-        },
-        displayLanguage = state.displayLanguage
-    )
-}
+                    BaniDetailItem(
+                        label = "Source".translate(state.displayLanguage),
+                        value = buildString {
+                            append(source.text)
+                        },
+                        displayLanguage = state.displayLanguage
+                    )
+                }
 
                 Spacer(Modifier.height(30.dp))
+                    }
                 }
             }
         }
     }
-    }
-    } // Closes the root Column container!
-    // ── FULL-SCREEN INTERACTIVE MASCOT OVERLAY ──────────────────────────────
-    AnimatedVisibility(
-        visible = isMascotOverlayVisible,
-        enter = fadeIn(animationSpec = tween(400)),
-        exit = fadeOut(animationSpec = tween(450))
+} 
+   // ── FULL-SCREEN INTERACTIVE MASCOT OVERLAY ──────────────────────────────
+AnimatedVisibility(
+    visible = isMascotOverlayVisible,
+    enter = fadeIn(animationSpec = tween(400)),
+    exit = fadeOut(animationSpec = tween(450))
+) {
+    val colors = practiceColors()
+    val currentBani = state.currentBani ?: state.banis.firstOrNull()
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            // REMOVED: .background(Color.Black.copy(alpha = 0.45f)) -> This keeps it transparent!
+            .imePadding() 
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) {
+                isMascotOverlayVisible = false
+                isAssistantListening = false
+            }
     ) {
-        val colors = practiceColors()
-        val currentBani = state.currentBani ?: state.banis.firstOrNull()
-
-        Box(
+        Card(
             modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.45f))
-                .imePadding() // Moves the root container up dynamically with the keyboard cleanly
+                .fillMaxWidth()
+                // .fillMaxHeight(0.85f)
+                .align(Alignment.BottomCenter)
+                .padding(horizontal = 12.dp, vertical = 12.dp)
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null
                 ) {
-                    isMascotOverlayVisible = false
-                    isAssistantListening = false
-                }
-        ) {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight(0.85f) // Keeps the sheet nicely proportioned as a bottom sheet overlay
-                    .align(Alignment.BottomCenter)
-                    .padding(horizontal = 12.dp, vertical = 12.dp)
-                    // REMOVED .imePadding() from here since the root Box handles it now
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null
-                    ) {
-                        // Prevent click-through dismissal
-                    },
-                shape = RoundedCornerShape(28.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = if (AppTheme.themeMode == ThemeMode.Light) Color(0xFFF7F5F0).copy(alpha = 0.98f) else Color(0xFF1C1A17).copy(alpha = 0.98f)
-                ),
-                border = BorderStroke(1.5.dp, Brush.verticalGradient(listOf(Gold.copy(alpha = 0.4f), Color.Transparent))),
-                elevation = CardDefaults.cardElevation(defaultElevation = 12.dp)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .windowInsetsPadding(WindowInsets.statusBars)
-                ) {
-                    // Header with close button
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            MascotBani(
-                                state = MascotState.Meditating,
-                                modifier = Modifier.size(36.dp)
-                            )
-                            Spacer(Modifier.width(12.dp))
-                            Text(
-                                text = "Bani AI Assistant".translate(state.displayLanguage),
-                                color = colors.textPrimary,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 18.sp
-                            )
-                        }
-                        
-                        IconButton(
-                            onClick = {
-                                isMascotOverlayVisible = false
-                                isAssistantListening = false
-                            }
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Close Assistant",
-                                tint = colors.textPrimary
-                            )
-                        }
-                    }
-                    
-                    if (currentBani != null) {
-                        BaniAiAssistantTab(
-                            bani = currentBani,
-                            colors = colors,
-                            displayLanguage = state.displayLanguage,
-                            uiState = state,
-                            onShowVerseDetails = { line ->
-                                selectedSearchVerseLine = line
-                            }
-                        )
-                    }
-                }
-            }
-        }
-    }
-
-    if (isGlobalSearchVisible) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.5f))
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null
-                ) {
-                    isGlobalSearchVisible = false
+                    // Prevent click-through dismissal
                 },
-            contentAlignment = Alignment.Center
+            shape = RoundedCornerShape(28.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = if (AppTheme.themeMode == ThemeMode.Light) Color(0xFFF7F5F0).copy(alpha = 0.98f) else Color(0xFF1C1A17).copy(alpha = 0.98f)
+            ),
+            border = BorderStroke(1.5.dp, Brush.verticalGradient(listOf(Gold.copy(alpha = 0.4f), Color.Transparent))),
+            elevation = CardDefaults.cardElevation(defaultElevation = 12.dp)
         ) {
-            Card(
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth(0.9f)
-                    .padding(16.dp)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null
-                    ) {
-                        // Prevent click-through dismissal
-                    },
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = if (AppTheme.themeMode == ThemeMode.Light) Color(0xFFF7F5F0) else Color(0xFF1C1A17)
-                ),
-                border = BorderStroke(1.5.dp, Gold.copy(alpha = 0.35f)),
-                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                    .fillMaxSize()
+                    .windowInsetsPadding(WindowInsets.statusBars)
             ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
+                // Header with close button
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Global Search".translate(state.displayLanguage),
-                            color = Gold,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        MascotBani(
+                            state = MascotState.Meditating,
+                            modifier = Modifier.size(36.dp)
                         )
-                        IconButton(onClick = { isGlobalSearchVisible = false }) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Close Search",
-                                tint = if (AppTheme.themeMode == ThemeMode.Light) Color.Black else Color.White
-                            )
-                        }
-                    }
-                    
-                    Spacer(Modifier.height(12.dp))
-                    
-                    OutlinedTextField(
-                        value = globalSearchQuery,
-                        onValueChange = { globalSearchQuery = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        placeholder = {
-                            Text(
-                                text = "Search Gurmukhi, English, Hindi...".translate(state.displayLanguage),
-                                color = (if (AppTheme.themeMode == ThemeMode.Light) Color.Black else Color.White).copy(alpha = 0.5f),
-                                fontSize = 14.sp
-                            )
-                        },
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = Gold,
-                            unfocusedBorderColor = (if (AppTheme.themeMode == ThemeMode.Light) Color.Black else Color.White).copy(alpha = 0.2f),
-                            focusedTextColor = if (AppTheme.themeMode == ThemeMode.Light) Color.Black else Color.White,
-                            unfocusedTextColor = if (AppTheme.themeMode == ThemeMode.Light) Color.Black else Color.White
-                        ),
-                        singleLine = true,
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                    
-                    val searchMatches = remember(globalSearchQuery) {
-                        if (globalSearchQuery.length < 3) emptyList()
-                        else {
-                            val lowerQuery = globalSearchQuery.lowercase().trim()
-                            val matches = mutableListOf<Pair<BaniLine, String>>()
-                            outer@ for (dbBani in com.creativeblisslabs.nitnemguktasteek.data.generated.GeneratedBaniCatalog.banis) {
-                                for (line in dbBani.lines) {
-                                    if (line.gurmukhi.lowercase().contains(lowerQuery) ||
-                                        line.translation.lowercase().contains(lowerQuery) ||
-                                        line.hindi.lowercase().contains(lowerQuery) ||
-                                        line.punjabi.lowercase().contains(lowerQuery) ||
-                                        line.transliteration.lowercase().contains(lowerQuery)) {
-                                        matches.add(line to dbBani.title)
-                                        if (matches.size >= 4) break@outer // Limit to 4 to prevent scrolling!
-                                    }
-                                }
-                            }
-                            matches
-                        }
-                    }
-                    
-                    if (searchMatches.isNotEmpty()) {
-                        Spacer(Modifier.height(12.dp))
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            searchMatches.forEach { (line, baniTitle) ->
-                                Surface(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable {
-                                            selectedSearchVerseLine = line
-                                            isGlobalSearchVisible = false
-                                        },
-                                    shape = RoundedCornerShape(12.dp),
-                                    color = if (AppTheme.themeMode == ThemeMode.Light) Color(0xFFFAFAFA) else Color(0xFF252321),
-                                    border = BorderStroke(1.dp, (if (AppTheme.themeMode == ThemeMode.Light) Color.Black else Color.White).copy(alpha = 0.05f))
-                                ) {
-                                    Column(modifier = Modifier.padding(12.dp)) {
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceBetween
-                                        ) {
-                                            Text(
-                                                text = baniTitle,
-                                                color = Gold,
-                                                fontSize = 11.sp,
-                                                fontWeight = FontWeight.Bold
-                                            )
-                                            Icon(
-                                                imageVector = Icons.Default.ArrowForward,
-                                                contentDescription = null,
-                                                tint = Gold.copy(alpha = 0.7f),
-                                                modifier = Modifier.size(14.dp)
-                                            )
-                                        }
-                                        Spacer(Modifier.height(4.dp))
-                                        Text(
-                                            text = line.gurmukhi,
-                                            color = if (AppTheme.themeMode == ThemeMode.Light) Color.Black else Color.White,
-                                            fontSize = 14.sp,
-                                            fontWeight = FontWeight.SemiBold
-                                        )
-                                        Spacer(Modifier.height(2.dp))
-                                        Text(
-                                            text = line.translation,
-                                            color = (if (AppTheme.themeMode == ThemeMode.Light) Color.Black else Color.White).copy(alpha = 0.7f),
-                                            fontSize = 12.sp,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    } else if (globalSearchQuery.length >= 3) {
-                        Spacer(Modifier.height(16.dp))
+                        Spacer(Modifier.width(12.dp))
                         Text(
-                            text = "No matching verses found.".translate(state.displayLanguage),
-                            color = (if (AppTheme.themeMode == ThemeMode.Light) Color.Black else Color.White).copy(alpha = 0.5f),
-                            fontSize = 13.sp,
-                            modifier = Modifier.fillMaxWidth(),
-                            textAlign = TextAlign.Center
-                            )
-                        }
+                            text = "Bani AI Assistant".translate(state.displayLanguage),
+                            color = colors.textPrimary,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp
+                        )
                     }
+                    
+                    IconButton(
+                        onClick = {
+                            isMascotOverlayVisible = false
+                            isAssistantListening = false
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Close Assistant",
+                            tint = colors.textPrimary
+                        )
+                    }
+                }
+                
+                if (currentBani != null) {
+                    BaniAiAssistantTab(
+                        bani = currentBani,
+                        colors = colors,
+                        displayLanguage = state.displayLanguage,
+                        uiState = state,
+                        onShowVerseDetails = { line ->
+                            selectedSearchVerseLine = line
+                        }
+                    )
                 }
             }
         }
     }
+}
+
 
     if (showWeeklyStreakDialog) {
         WeeklyStreakDialog(
@@ -1519,5 +1540,7 @@ Surface(
             displayLanguage = state.displayLanguage,
             onDismiss = { showXpHistoryDialog = false }
         )
+    }
+}
     }
 }

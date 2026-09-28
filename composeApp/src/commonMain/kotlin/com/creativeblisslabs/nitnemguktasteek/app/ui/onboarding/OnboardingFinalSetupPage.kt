@@ -2282,199 +2282,385 @@ fun FinalSetupPage(
                 }
             }
 
-            // FOREGROUND COLUMN: info card + navigation buttons (visible when walking finishes)
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Bottom
-            ) {
+            val isLandscape = w > h && w > 560f
 
-                if (slideAlpha > 0f) {
-                    Spacer(Modifier.height(8.dp))
-                    
-     Surface(
-    modifier = Modifier
-        .fillMaxWidth()
-        .height(200.dp)
-        .alpha(slideAlpha)
-        .padding(vertical = 4.dp),
-    shape = RoundedCornerShape(32.dp),
-    color = if (isLight) Color.White.copy(alpha = 0.45f) else Color(0xFF1E222B).copy(alpha = 0.88f),
-    border = BorderStroke(
-        width = 1.dp, 
-        color = if (isLight) Color.White.copy(alpha = 0.50f) else Color.White.copy(alpha = 0.20f)
-    )
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 12.dp, vertical = 12.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.SpaceBetween
-    ) {
-        // Content Area
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.weight(1f, fill = false)
-        ) {
-            Spacer(Modifier.height(10.dp))
-            Text(
-                text = currentSlide.heading,
-                fontSize = 22.sp,
-                fontWeight = FontWeight.ExtraBold,
-                // FIX: Fallback to solid contrasting text color if your primary text carries custom transparency values
-                color = primaryText.copy(alpha = 1.0f), 
-                textAlign = TextAlign.Center,
-                maxLines = 1
-            )
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = currentSlide.body,
-                fontSize = 13.5.sp,
-                lineHeight = 20.sp,
-                // FIX: Secondary text must be highly visible; never let alpha go below 0.85f on translucent background planes
-                color = secondaryText.copy(alpha = 0.88f),
-                textAlign = TextAlign.Center,
-                maxLines = 4
-            )
-        }
-    }
-}
-          
-                    Spacer(Modifier.height(4.dp))
-
-                    // Bottom Navigation Area with adaptive compact height
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .alpha(slideAlpha)
-                            .padding(bottom = 12.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (isLastSlide) {
-                            // Final slide: "Begin Your Journey" button on top + dots & counter below
+            // FOREGROUND: info card + navigation buttons (visible when walking finishes)
+            if (isLandscape) {
+                // ── LANDSCAPE MODE: Story card & navigation positioned on the right half ──
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 24.dp, vertical = 16.dp),
+                    contentAlignment = Alignment.CenterEnd
+                ) {
+                    if (slideAlpha > 0f) {
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth(0.44f)
+                                .fillMaxHeight(0.88f)
+                                .alpha(slideAlpha),
+                            shape = RoundedCornerShape(28.dp),
+                            color = if (isLight) Color.White.copy(alpha = 0.65f) else Color(0xFF1E222B).copy(alpha = 0.92f),
+                            border = BorderStroke(
+                                width = 1.dp,
+                                color = if (isLight) Color.White.copy(alpha = 0.60f) else Color.White.copy(alpha = 0.25f)
+                            ),
+                            shadowElevation = 8.dp
+                        ) {
                             Column(
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(horizontal = 18.dp, vertical = 16.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                                verticalArrangement = Arrangement.SpaceBetween
                             ) {
-                                // Centered dots + counter for final slide
+                                // Content Area
                                 Column(
                                     horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .verticalScroll(rememberScrollState())
                                 ) {
-                                    Row(
-                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        repeat(slides.size) { i ->
-                                            val isActive = currentSlideIndex == i
-                                            val dotWidth by animateDpAsState(
-                                                targetValue = if (isActive) 24.dp else 7.dp,
-                                                animationSpec = spring(stiffness = 400f),
-                                                label = "dot_width"
-                                            )
-                                            Box(
-                                                modifier = Modifier
-                                                    .height(6.dp)
-                                                    .width(dotWidth)
-                                                    .clip(CircleShape)
-                                                    .background(
-                                                        if (isActive) currentSlide.accentColor 
-                                                        else if (isLight) Color.Black.copy(alpha = 0.15f) 
-                                                        else Color.White.copy(alpha = 0.25f)
-                                                    )
-                                            )
-                                        }
-                                    }
-                                    Surface(
-                                        shape = RoundedCornerShape(100.dp),
-                                        color = if (isLight) Color.White.copy(alpha = 0.90f) else Color(0xFF121212).copy(alpha = 0.90f),
-                                        border = BorderStroke(1.dp, currentSlide.accentColor.copy(alpha = 0.4f))
-                                    ) {
-                                        Text(
-                                            text = "${currentSlideIndex + 1} / ${slides.size}",
-                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp),
-                                            color = currentSlide.accentColor.copy(alpha = 1.0f),
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    }
+                                    Spacer(Modifier.height(4.dp))
+                                    Text(
+                                        text = currentSlide.heading,
+                                        fontSize = 20.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = primaryText.copy(alpha = 1.0f),
+                                        textAlign = TextAlign.Center
+                                    )
+                                    Spacer(Modifier.height(10.dp))
+                                    Text(
+                                        text = currentSlide.body,
+                                        fontSize = 13.5.sp,
+                                        lineHeight = 20.sp,
+                                        color = secondaryText.copy(alpha = 0.90f),
+                                        textAlign = TextAlign.Center
+                                    )
                                 }
-                                Row(
+
+                                // Bottom Navigation Area with dots & buttons
+                                Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .height(52.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
+                                        .padding(top = 10.dp),
+                                    contentAlignment = Alignment.Center
                                 ) {
-                                    // Previous button
-                                    Surface(
-                                        onClick = {
-                                            currentSlideIndex--
-                                            customMascotStateOverride = slides[currentSlideIndex].mascotState
-                                        },
-                                        shape = CircleShape,
-                                        color = if (isLight) Color.White.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.08f),
-                                        border = BorderStroke(1.dp, if (isLight) Color.Black.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.20f)),
-                                        modifier = Modifier.size(48.dp)
+                                    if (isLastSlide) {
+                                        Column(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            Row(
+                                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                repeat(slides.size) { i ->
+                                                    val isActive = currentSlideIndex == i
+                                                    val dotWidth by animateDpAsState(
+                                                        targetValue = if (isActive) 24.dp else 7.dp,
+                                                        animationSpec = spring(stiffness = 400f),
+                                                        label = "dot_width"
+                                                    )
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .height(6.dp)
+                                                            .width(dotWidth)
+                                                            .clip(CircleShape)
+                                                            .background(
+                                                                if (isActive) currentSlide.accentColor
+                                                                else if (isLight) Color.Black.copy(alpha = 0.15f)
+                                                                else Color.White.copy(alpha = 0.25f)
+                                                            )
+                                                    )
+                                                }
+                                            }
+
+                                            Row(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .height(48.dp),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Surface(
+                                                    onClick = {
+                                                        currentSlideIndex--
+                                                        customMascotStateOverride = slides[currentSlideIndex].mascotState
+                                                    },
+                                                    shape = CircleShape,
+                                                    color = if (isLight) Color.White.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.08f),
+                                                    border = BorderStroke(1.dp, if (isLight) Color.Black.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.20f)),
+                                                    modifier = Modifier.size(44.dp)
+                                                ) {
+                                                    Box(contentAlignment = Alignment.Center) {
+                                                        Icon(
+                                                            imageVector = Icons.Default.ArrowBack,
+                                                            contentDescription = "Previous".translate(displayLanguage),
+                                                            tint = if (isLight) Primary else Color.White.copy(alpha = 0.85f),
+                                                            modifier = Modifier.size(18.dp)
+                                                        )
+                                                    }
+                                                }
+
+                                                Button(
+                                                    onClick = onContinue,
+                                                    modifier = Modifier
+                                                        .weight(1f)
+                                                        .padding(start = 10.dp)
+                                                        .height(44.dp),
+                                                    shape = RoundedCornerShape(22.dp),
+                                                    colors = ButtonDefaults.buttonColors(containerColor = Gold),
+                                                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
+                                                ) {
+                                                    Text(
+                                                        text = "Begin Your Journey".translate(displayLanguage),
+                                                        color = Color.White,
+                                                        fontWeight = FontWeight.ExtraBold,
+                                                        fontSize = 14.sp
+                                                    )
+                                                    Spacer(Modifier.width(4.dp))
+                                                    Icon(
+                                                        imageVector = Icons.Default.ArrowForward,
+                                                        contentDescription = null,
+                                                        tint = Color.White,
+                                                        modifier = Modifier.size(16.dp)
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(48.dp),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Box(
+                                                modifier = Modifier.width(44.dp),
+                                                contentAlignment = Alignment.CenterStart
+                                            ) {
+                                                if (currentSlideIndex > 0) {
+                                                    Surface(
+                                                        onClick = {
+                                                            currentSlideIndex--
+                                                            customMascotStateOverride = slides[currentSlideIndex].mascotState
+                                                        },
+                                                        shape = CircleShape,
+                                                        color = if (isLight) Color.White.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.08f),
+                                                        border = BorderStroke(1.dp, if (isLight) Color.Black.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.20f)),
+                                                        modifier = Modifier.size(44.dp)
+                                                    ) {
+                                                        Box(contentAlignment = Alignment.Center) {
+                                                            Icon(
+                                                                imageVector = Icons.Default.ArrowBack,
+                                                                contentDescription = "Previous".translate(displayLanguage),
+                                                                tint = if (isLight) Primary else Color.White.copy(alpha = 0.85f),
+                                                                modifier = Modifier.size(18.dp)
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                            }
+
+                                            Column(
+                                                horizontalAlignment = Alignment.CenterHorizontally,
+                                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                                            ) {
+                                                Row(
+                                                    horizontalArrangement = Arrangement.spacedBy(5.dp),
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    repeat(slides.size) { i ->
+                                                        val isActive = currentSlideIndex == i
+                                                        val dotWidth by animateDpAsState(
+                                                            targetValue = if (isActive) 20.dp else 5.dp,
+                                                            animationSpec = spring(stiffness = 400f),
+                                                            label = "dot_width"
+                                                        )
+                                                        Box(
+                                                            modifier = Modifier
+                                                                .height(5.dp)
+                                                                .width(dotWidth)
+                                                                .clip(CircleShape)
+                                                                .background(
+                                                                    if (isActive) currentSlide.accentColor
+                                                                    else if (isLight) Color.Black.copy(alpha = 0.15f)
+                                                                    else Color.White.copy(alpha = 0.25f)
+                                                                )
+                                                        )
+                                                    }
+                                                }
+                                                Surface(
+                                                    shape = RoundedCornerShape(100.dp),
+                                                    color = if (isLight) Color.White.copy(alpha = 0.90f) else Color(0xFF121212).copy(alpha = 0.90f),
+                                                    border = BorderStroke(1.dp, currentSlide.accentColor.copy(alpha = 0.4f))
+                                                ) {
+                                                    Text(
+                                                        text = "${currentSlideIndex + 1} / ${slides.size}",
+                                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                                        color = currentSlide.accentColor.copy(alpha = 1.0f),
+                                                        fontSize = 11.sp,
+                                                        fontWeight = FontWeight.Bold
+                                                    )
+                                                }
+                                            }
+
+                                            Surface(
+                                                onClick = {
+                                                    currentSlideIndex++
+                                                    customMascotStateOverride = slides[currentSlideIndex].mascotState
+                                                },
+                                                shape = CircleShape,
+                                                color = Gold,
+                                                modifier = Modifier.size(44.dp)
+                                            ) {
+                                                Box(contentAlignment = Alignment.Center) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.ArrowForward,
+                                                        contentDescription = "Next".translate(displayLanguage),
+                                                        tint = Color.White,
+                                                        modifier = Modifier.size(18.dp)
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                // ── PORTRAIT MODE: info card + navigation buttons docked at bottom ──
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Bottom
+                ) {
+
+                    if (slideAlpha > 0f) {
+                        Spacer(Modifier.height(8.dp))
+                        
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(200.dp)
+                                .alpha(slideAlpha)
+                                .padding(vertical = 4.dp),
+                            shape = RoundedCornerShape(32.dp),
+                            color = if (isLight) Color.White.copy(alpha = 0.45f) else Color(0xFF1E222B).copy(alpha = 0.88f),
+                            border = BorderStroke(
+                                width = 1.dp, 
+                                color = if (isLight) Color.White.copy(alpha = 0.50f) else Color.White.copy(alpha = 0.20f)
+                            )
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(horizontal = 12.dp, vertical = 12.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                // Content Area
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    modifier = Modifier.weight(1f, fill = false)
+                                ) {
+                                    Spacer(Modifier.height(10.dp))
+                                    Text(
+                                        text = currentSlide.heading,
+                                        fontSize = 22.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = primaryText.copy(alpha = 1.0f), 
+                                        textAlign = TextAlign.Center,
+                                        maxLines = 1
+                                    )
+                                    Spacer(Modifier.height(8.dp))
+                                    Text(
+                                        text = currentSlide.body,
+                                        fontSize = 13.5.sp,
+                                        lineHeight = 20.sp,
+                                        color = secondaryText.copy(alpha = 0.88f),
+                                        textAlign = TextAlign.Center,
+                                        maxLines = 4
+                                    )
+                                }
+                            }
+                        }
+              
+                        Spacer(Modifier.height(4.dp))
+
+                        // Bottom Navigation Area with adaptive compact height
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .alpha(slideAlpha)
+                                .padding(bottom = 12.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (isLastSlide) {
+                                // Final slide: "Begin Your Journey" button on top + dots & counter below
+                                Column(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    // Centered dots + counter for final slide
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.spacedBy(4.dp)
                                     ) {
-                                        Box(contentAlignment = Alignment.Center) {
-                                            Icon(
-                                                imageVector = Icons.Default.ArrowBack,
-                                                contentDescription = "Previous".translate(displayLanguage),
-                                                tint = if (isLight) Primary else Color.White.copy(alpha = 0.85f),
-                                                modifier = Modifier.size(20.dp)
+                                        Row(
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            repeat(slides.size) { i ->
+                                                val isActive = currentSlideIndex == i
+                                                val dotWidth by animateDpAsState(
+                                                    targetValue = if (isActive) 24.dp else 7.dp,
+                                                    animationSpec = spring(stiffness = 400f),
+                                                    label = "dot_width"
+                                                )
+                                                Box(
+                                                    modifier = Modifier
+                                                        .height(6.dp)
+                                                        .width(dotWidth)
+                                                        .clip(CircleShape)
+                                                        .background(
+                                                            if (isActive) currentSlide.accentColor 
+                                                            else if (isLight) Color.Black.copy(alpha = 0.15f) 
+                                                            else Color.White.copy(alpha = 0.25f)
+                                                        )
+                                                )
+                                            }
+                                        }
+                                        Surface(
+                                            shape = RoundedCornerShape(100.dp),
+                                            color = if (isLight) Color.White.copy(alpha = 0.90f) else Color(0xFF121212).copy(alpha = 0.90f),
+                                            border = BorderStroke(1.dp, currentSlide.accentColor.copy(alpha = 0.4f))
+                                        ) {
+                                            Text(
+                                                text = "${currentSlideIndex + 1} / ${slides.size}",
+                                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp),
+                                                color = currentSlide.accentColor.copy(alpha = 1.0f),
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold
                                             )
                                         }
                                     }
-
-                                    // Full width Begin button
-                                    Button(
-                                        onClick = onContinue,
+                                    Row(
                                         modifier = Modifier
-                                            .weight(1f)
-                                            .padding(start = 12.dp)
-                                            .height(48.dp),
-                                        shape = RoundedCornerShape(24.dp),
-                                        colors = ButtonDefaults.buttonColors(containerColor = Gold),
-                                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
+                                            .fillMaxWidth()
+                                            .height(52.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Text(
-                                            text = "Begin Your Journey".translate(displayLanguage),
-                                            color = Color.White,
-                                            fontWeight = FontWeight.ExtraBold,
-                                            fontSize = 15.sp
-                                        )
-                                        Spacer(Modifier.width(6.dp))
-                                        Icon(
-                                            imageVector = Icons.Default.ArrowForward,
-                                            contentDescription = null,
-                                            tint = Color.White,
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                    }
-                                }
-
-                                
-                            }
-                        } else {
-                            // Slides 1 to N-1: Single compact horizontal row (Prev - Middle Indicators - Next)
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(52.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                // ── LEFT: Previous Button ──
-                                Box(
-                                    modifier = Modifier.width(48.dp),
-                                    contentAlignment = Alignment.CenterStart
-                                ) {
-                                    if (currentSlideIndex > 0) {
+                                        // Previous button
                                         Surface(
                                             onClick = {
                                                 currentSlideIndex--
@@ -2494,72 +2680,141 @@ fun FinalSetupPage(
                                                 )
                                             }
                                         }
-                                    }
-                                }
 
-                                // ── MIDDLE: Compact Stacked Dots + Slide Counter Badge ──
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    Row(
-                                        horizontalArrangement = Arrangement.spacedBy(5.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        repeat(slides.size) { i ->
-                                            val isActive = currentSlideIndex == i
-                                            val dotWidth by animateDpAsState(
-                                                targetValue = if (isActive) 22.dp else 6.dp,
-                                                animationSpec = spring(stiffness = 400f),
-                                                label = "dot_width"
+                                        // Full width Begin button
+                                        Button(
+                                            onClick = onContinue,
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .padding(start = 12.dp)
+                                                .height(48.dp),
+                                            shape = RoundedCornerShape(24.dp),
+                                            colors = ButtonDefaults.buttonColors(containerColor = Gold),
+                                            elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
+                                        ) {
+                                            Text(
+                                                text = "Begin Your Journey".translate(displayLanguage),
+                                                color = Color.White,
+                                                fontWeight = FontWeight.ExtraBold,
+                                                fontSize = 15.sp
                                             )
-                                            Box(
-                                                modifier = Modifier
-                                                    .height(5.dp)
-                                                    .width(dotWidth)
-                                                    .clip(CircleShape)
-                                                    .background(
-                                                        if (isActive) currentSlide.accentColor 
-                                                        else if (isLight) Color.Black.copy(alpha = 0.15f) 
-                                                        else Color.White.copy(alpha = 0.25f)
-                                                    )
+                                            Spacer(Modifier.width(6.dp))
+                                            Icon(
+                                                imageVector = Icons.Default.ArrowForward,
+                                                contentDescription = null,
+                                                tint = Color.White,
+                                                modifier = Modifier.size(18.dp)
                                             )
                                         }
                                     }
-                                                        Spacer(Modifier.height(4.dp))
 
-                                    Surface(
-                                        shape = RoundedCornerShape(100.dp),
-                                        color = if (isLight) Color.White.copy(alpha = 0.90f) else Color(0xFF121212).copy(alpha = 0.90f),
-                                        border = BorderStroke(1.dp, currentSlide.accentColor.copy(alpha = 0.4f))
-                                    ) {
-                                        Text(
-                                            text = "${currentSlideIndex + 1} / ${slides.size}",
-                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp),
-                                            color = currentSlide.accentColor.copy(alpha = 1.0f),
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    }
+                                    
                                 }
-
-                                // ── RIGHT: Next Button ──
-                                Surface(
-                                    onClick = {
-                                        currentSlideIndex++
-                                        customMascotStateOverride = slides[currentSlideIndex].mascotState
-                                    },
-                                    shape = CircleShape,
-                                    color = Gold,
-                                    modifier = Modifier.size(48.dp)
+                            } else {
+                                // Slides 1 to N-1: Single compact horizontal row (Prev - Middle Indicators - Next)
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(52.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Icon(
-                                            imageVector = Icons.Default.ArrowForward,
-                                            contentDescription = "Next".translate(displayLanguage),
-                                            tint = Color.White,
-                                            modifier = Modifier.size(20.dp)
-                                        )
+                                    // ── LEFT: Previous Button ──
+                                    Box(
+                                        modifier = Modifier.width(48.dp),
+                                        contentAlignment = Alignment.CenterStart
+                                    ) {
+                                        if (currentSlideIndex > 0) {
+                                            Surface(
+                                                onClick = {
+                                                    currentSlideIndex--
+                                                    customMascotStateOverride = slides[currentSlideIndex].mascotState
+                                                },
+                                                shape = CircleShape,
+                                                color = if (isLight) Color.White.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.08f),
+                                                border = BorderStroke(1.dp, if (isLight) Color.Black.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.20f)),
+                                                modifier = Modifier.size(48.dp)
+                                            ) {
+                                                Box(contentAlignment = Alignment.Center) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.ArrowBack,
+                                                        contentDescription = "Previous".translate(displayLanguage),
+                                                        tint = if (isLight) Primary else Color.White.copy(alpha = 0.85f),
+                                                        modifier = Modifier.size(20.dp)
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    // ── MIDDLE: Compact Stacked Dots + Slide Counter Badge ──
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        Row(
+                                            horizontalArrangement = Arrangement.spacedBy(5.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            repeat(slides.size) { i ->
+                                                val isActive = currentSlideIndex == i
+                                                val dotWidth by animateDpAsState(
+                                                    targetValue = if (isActive) 22.dp else 6.dp,
+                                                    animationSpec = spring(stiffness = 400f),
+                                                    label = "dot_width"
+                                                )
+                                                Box(
+                                                    modifier = Modifier
+                                                        .height(5.dp)
+                                                        .width(dotWidth)
+                                                        .clip(CircleShape)
+                                                        .background(
+                                                            if (isActive) currentSlide.accentColor 
+                                                            else if (isLight) Color.Black.copy(alpha = 0.15f) 
+                                                            else Color.White.copy(alpha = 0.25f)
+                                                        )
+                                                )
+                                            }
+                                        }
+                                                            Spacer(Modifier.height(4.dp))
+
+                                        Surface(
+                                            shape = RoundedCornerShape(100.dp),
+                                            color = if (isLight) Color.White.copy(alpha = 0.90f) else Color(0xFF121212).copy(alpha = 0.90f),
+                                            border = BorderStroke(1.dp, currentSlide.accentColor.copy(alpha = 0.4f))
+                                        ) {
+                                            Text(
+                                                text = "${currentSlideIndex + 1} / ${slides.size}",
+                                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp),
+                                                color = currentSlide.accentColor.copy(alpha = 1.0f),
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                    }
+
+                                    // ── RIGHT: Next / Finish Button ──
+                                    Surface(
+                                        onClick = {
+                                            if (isLastSlide) {
+                                                onContinue()
+                                            } else {
+                                                currentSlideIndex++
+                                                customMascotStateOverride = slides[currentSlideIndex].mascotState
+                                            }
+                                        },
+                                        shape = CircleShape,
+                                        color = Gold,
+                                        modifier = Modifier.size(48.dp)
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Icon(
+                                                imageVector = if (isLastSlide) Icons.Default.Check else Icons.Default.ArrowForward,
+                                                contentDescription = if (isLastSlide) "Finish".translate(displayLanguage) else "Next".translate(displayLanguage),
+                                                tint = Color.White,
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                        }
                                     }
                                 }
                             }

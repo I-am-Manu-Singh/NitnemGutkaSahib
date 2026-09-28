@@ -80,7 +80,8 @@ class WidgetConfigurationActivity : ComponentActivity() {
         val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
         scope.launch {
             try {
-                val settingsRepository = com.creativeblisslabs.nitnemguktasteek.data.preferences.SettingsRepository(applicationContext)
+                val appPrefs = com.creativeblisslabs.nitnemguktasteek.data.preferences.AppPreferences(applicationContext)
+                val settingsRepository = com.creativeblisslabs.nitnemguktasteek.data.preferences.SettingsRepository(applicationContext, appPrefs)
                 settingsRepository.setWidgetTheme(widgetTheme)
                 settingsRepository.setWidgetContent(widgetContent)
             } catch (e: Exception) {

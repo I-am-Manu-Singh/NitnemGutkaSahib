@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.first
 import com.creativeblisslabs.nitnemguktasteek.data.HukamnamaProvider
 import com.creativeblisslabs.nitnemguktasteek.data.preferences.LocalPreferences
 import com.creativeblisslabs.nitnemguktasteek.data.preferences.SettingsRepository
+import com.creativeblisslabs.nitnemguktasteek.data.preferences.AppPreferences
 import java.util.Calendar
 
 class PrayerReminderWorker(
@@ -40,6 +41,22 @@ class PrayerReminderWorker(
                 AndroidNotificationBridge(
                     applicationContext
                 )
+
+            val isSnooze = inputData.getBoolean("is_snooze", false)
+            if (isSnooze) {
+                val snoozeBaniId = inputData.getString("snooze_bani_id")
+                val baniTitle = when (snoozeBaniId) {
+                    "japji-sahib" -> "Japji Sahib"
+                    "rehras-sahib" -> "Rehras Sahib"
+                    "kirtan-sohila" -> "Kirtan Sohila"
+                    else -> "Nitnem"
+                }
+                bridge.sendReminderNotification(
+                    title = "Reminder: $baniTitle",
+                    message = "Your 15-minute snooze is complete. Begin your recitation with focus and love."
+                )
+                return Result.success()
+            }
 
             /*
              * MORNING
@@ -78,32 +95,32 @@ class PrayerReminderWorker(
                 )
             }
 
-            /*
-             * MIDDAY
-             */
+            // /*
+            //  * MIDDAY
+            //  */
 
-            else if (
+            // else if (
 
-                hour in 12..15 &&
+            //     hour in 12..15 &&
 
-                completedToday.size < 3 &&
+            //     completedToday.size < 3 &&
 
-                !prefs.wasReminderSent(
-                    "midday_simran"
-                )
-            ) {
+            //     !prefs.wasReminderSent(
+            //         "midday_simran"
+            //     )
+            // ) {
 
-                bridge.sendReminderNotification(
+            //     bridge.sendReminderNotification(
 
-                    "Midday Reflection",
+            //         "Midday Reflection",
 
-                    "Pause for a few peaceful moments with Gurbani."
-                )
+            //         "Pause for a few peaceful moments with Gurbani."
+            //     )
 
-                prefs.markReminderSent(
-                    "midday_simran"
-                )
-            }
+            //     prefs.markReminderSent(
+            //         "midday_simran"
+            //     )
+            // }
 
             /*
              * EVENING
@@ -180,7 +197,8 @@ class PrayerReminderWorker(
 
                 val settings =
                     SettingsRepository(
-                        applicationContext
+                        applicationContext,
+                        AppPreferences(applicationContext)
                     )
 
                 val streak =

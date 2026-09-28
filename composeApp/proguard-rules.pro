@@ -15,6 +15,13 @@
 -keepclassmembers class * {
     @kotlinx.serialization.Serializable *;
 }
+-keepclassmembers class * {
+    public static final ** Companion;
+    public static final ** INSTANCE;
+}
+-keep class * implements kotlinx.serialization.KSerializer {
+    <init>(...);
+}
 -keep class kotlinx.serialization.** { *; }
 -dontwarn kotlinx.serialization.**
 
@@ -86,3 +93,11 @@
     public void print(long);
 }
 
+# ==============================================================================
+# REVENUECAT KMP & KOTLIN TIME FIXES
+# ==============================================================================
+-keep class kotlin.time.Instant { *; }
+-keep class kotlin.time.Instant$* { *; }
+
+-keep class com.revenuecat.purchases.kmp.** { *; }
+-dontwarn com.revenuecat.purchases.kmp.**

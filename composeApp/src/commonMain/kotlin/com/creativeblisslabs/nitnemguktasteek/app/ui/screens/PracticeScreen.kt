@@ -54,11 +54,6 @@ enum class PracticeTab(
 }
 
 
-/*
- * ─────────────────────────────────────────────────────────────
- * MAIN SCREEN
- * ─────────────────────────────────────────────────────────────
- */
 @Composable
 fun PracticeScreen(
     audioController: StreamAudioController,
@@ -67,12 +62,8 @@ fun PracticeScreen(
     uiState: NitnemUiState,
     viewModel: NitnemViewModel
 ) {
-
-    val context =
-        LocalContext.current
-
-    val colors =
-        practiceColors()
+    val context = LocalContext.current
+    val colors = practiceColors()
 
     var tab by rememberSaveable {
         mutableStateOf(
@@ -102,293 +93,392 @@ fun PracticeScreen(
      */
 
     val headerTitle = when (tab) {
-
         PracticeTab.Quiz -> {
             tab.title
         }
-
         PracticeTab.Meditate -> {
             tab.title
         }
     }
 
     val headerSubtitle = when (tab) {
-
         PracticeTab.Quiz -> {
             "Practice Gurbani Through Interactive Questions"
         }
-
         PracticeTab.Meditate -> {
             "Naam Simran • Breath • Stillness"
         }
     }
 
-    Box(
-
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Transparent)
     ) {
+        val isLandscape = maxWidth > maxHeight && maxWidth > 600.dp
 
-        Column(
-            modifier = Modifier.fillMaxSize()
-        ) {
-
-            /*
-             * ─────────────────────────────────────────────
-             * PREMIUM HEADER
-             * ─────────────────────────────────────────────
-             */
-
-            AnimatedVisibility(
-                visible = showLocalChrome,
-                enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.slideInVertically { -it },
-                exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.slideOutVertically { -it }
+        if (isLandscape) {
+            // ── LANDSCAPE DUAL-PANE SPLIT ──
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-
-            Surface(
-
-    modifier = Modifier.fillMaxWidth(),
-
-    shape = RoundedCornerShape(
-        bottomStart = 28.dp,
-        bottomEnd = 28.dp
-    ),
-
-    color = SurfaceColor.copy(alpha = 0.96f),
-
-    tonalElevation = 6.dp,
-
-    shadowElevation = 0.dp
-){
-
+                // Left Pane: Title, Subtitle, Stats, and Vertical Tab Switcher
                 Column(
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .weight(0.36f)
+                        .fillMaxHeight(),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-
-                    /*
-                     * HEADER CONTENT
-                     */
-
+                    // Single Row containing Header Texts on the left and Stats on the right
                     Row(
-
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                compactHeader =
-                                    !compactHeader
-                            }
-                            .padding(
-                                horizontal = 18.dp,
-                                vertical = 14.dp
-                            ),
-
-                        verticalAlignment =
-                            Alignment.CenterVertically
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        val activeSession = uiState.activeQuizSession
-
+                        // 1. Header Texts (Takes up remaining horizontal space dynamically)
                         Column(
                             modifier = Modifier.weight(1f)
                         ) {
                             Text(
                                 text = headerTitle.translate(displayLanguage),
                                 color = Primary,
-                                fontSize = if (compactHeader) 17.sp else 25.sp,
+                                fontSize = 24.sp,
                                 fontWeight = FontWeight.Bold
                             )
-
-                            AnimatedVisibility(
-                                visible = !compactHeader
-                            ) {
-                                Text(
-                                    text = headerSubtitle.translate(displayLanguage),
-                                    color = TextSecondary,
-                                    fontSize = 12.sp,
-                                    lineHeight = 18.sp,
-                                    modifier = Modifier.padding(top = 2.dp, end = 6.dp)
-                                )
-                            }
+                            Text(
+                                text = headerSubtitle.translate(displayLanguage),
+                                color = TextSecondary,
+                                fontSize = 12.sp,
+                                lineHeight = 17.sp,
+                                modifier = Modifier.padding(top = 3.dp)
+                            )
                         }
 
-                        // Hearts and XP overlay for AI Quiz top bar
-                        if (tab == PracticeTab.Quiz && activeSession != null && !activeSession.quizFinished) {
+                        Spacer(modifier = Modifier.width(16.dp)) // Safe spacing between text and stats
+
+                        // 2. Hearts and XP stats (Clean, single-row badge wrapper)
+                        val activeSession = uiState.activeQuizSession
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = Primary.copy(alpha = 0.05f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Gold.copy(alpha = 0.2f))
+                        ) {
                             Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(end = 12.dp),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                // Hearts
+                                // Hearts Container
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                                    horizontalArrangement = Arrangement.spacedBy(3.dp)
                                 ) {
+                                    val currentHearts = activeSession?.hearts ?: 5
                                     repeat(5) { index ->
                                         Icon(
                                             imageVector = Icons.Default.Favorite,
                                             contentDescription = null,
-                                            tint = if (index < activeSession.hearts) Color(0xFFE53935) else colors.textSecondary.copy(alpha = 0.22f),
+                                            tint = if (index < currentHearts) Color(0xFFE53935) else colors.textSecondary.copy(alpha = 0.22f),
                                             modifier = Modifier.size(16.dp)
                                         )
                                     }
                                 }
-
-                                // XP Badge
-                                Surface(
-                                    shape = RoundedCornerShape(100.dp),
-                                    color = Color.Transparent
-                                ) {
-                                    Text(
-                                        text = "${uiState.totalXp} XP",
-                                        color = colors.accent,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 11.sp,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                    )
-                                }
-                            }
-                        }
-
-                        Surface(
-                            shape = CircleShape,
-                            color = Gold.copy(alpha = 0.12f)
-                        ) {
-                            Box(
-                                modifier = Modifier.size(34.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = if (compactHeader) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp,
-                                    contentDescription = null,
-                                    tint = Gold,
-                                    modifier = Modifier.size(20.dp)
+                                
+                                // XP Text Counter
+                                Text(
+                                    text = "${uiState.totalXp} XP",
+                                    color = colors.accent,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp
                                 )
                             }
                         }
                     }
 
-                    /*
-                     * TAB SWITCHER
-                     */
+                    Spacer(Modifier.height(4.dp))
 
-                    AnimatedVisibility(
-                        visible = !compactHeader
-                    ) {
+                    // Vertical Tab Selector
+                    PracticeTab.entries.forEach { practiceTab ->
+                        val selected = tab == practiceTab
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            color = if (selected) Gold.copy(alpha = 0.16f) else SurfaceColor,
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.dp,
+                                if (selected) Gold.copy(alpha = 0.45f) else Gold.copy(alpha = 0.08f)
+                            ),
+                            onClick = { tab = practiceTab }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Icon(
+                                    imageVector = practiceTab.icon,
+                                    contentDescription = null,
+                                    tint = if (selected) Gold else TextPrimary.copy(alpha = 0.6f),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Text(
+                                    text = practiceTab.title.translate(displayLanguage),
+                                    color = if (selected) Gold else TextPrimary,
+                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                    fontSize = 14.sp
+                                )
+                            }
+                        }
+                    }
+                }
 
-                        Column {
-
-                            PracticeTabSwitcher(
-
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(
-                                        horizontal = 12.dp
-                                    ),
-
-                                selectedTab = tab,
-
-                                colors = colors,
-
-                                displayLanguage = displayLanguage,
-
-                                onTabSelected = {
-                                    tab = it
-                                }
+                // Right Pane: Active Tab Content
+                Box(
+                    modifier = Modifier
+                        .weight(0.64f)
+                        .fillMaxHeight()
+                ) {
+                    AnimatedContent(
+                        targetState = tab,
+                        modifier = Modifier.fillMaxSize(),
+                        transitionSpec = {
+                            fadeIn(animationSpec = tween(durationMillis = 220)).togetherWith(
+                                fadeOut(animationSpec = tween(durationMillis = 180))
                             )
-
-                            Spacer(
-                                Modifier.height(14.dp)
-                            )
+                        },
+                        label = "PracticeTabsLandscape"
+                    ) { selected ->
+                        when (selected) {
+                            PracticeTab.Quiz -> {
+                                AiGurbaniQuizTab(
+                                    bani = bani,
+                                    colors = colors,
+                                    displayLanguage = displayLanguage,
+                                    uiState = uiState,
+                                    viewModel = viewModel
+                                )
+                            }
+                            PracticeTab.Meditate -> {
+                                SimranAbhyasTab(
+                                    colors = colors,
+                                    displayLanguage = displayLanguage,
+                                    uiState = uiState,
+                                    viewModel = viewModel
+                                )
+                            }
                         }
                     }
                 }
             }
-            } // end AnimatedVisibility (top header)
+        } else {
+            // ── PORTRAIT LAYOUT ──
+            Column(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                /*
+                 * ─────────────────────────────────────────────
+                 * PREMIUM HEADER
+                 * ─────────────────────────────────────────────
+                 */
 
-           Spacer(
-    Modifier.height(8.dp)
-)
+                AnimatedVisibility(
+                    visible = showLocalChrome,
+                    enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.slideInVertically { -it },
+                    exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.slideOutVertically { -it }
+                ) {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(
+                            bottomStart = 28.dp,
+                            bottomEnd = 28.dp
+                        ),
+                        color = SurfaceColor.copy(alpha = 0.96f),
+                        tonalElevation = 6.dp,
+                        shadowElevation = 0.dp
+                    ) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            /*
+                             * HEADER CONTENT
+                             */
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { compactHeader = !compactHeader }
+                                    .padding(horizontal = 18.dp, vertical = 14.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                val activeSession = uiState.activeQuizSession
 
-            /*
-             * ─────────────────────────────────────────────
-             * TAB CONTENT
-             * ─────────────────────────────────────────────
-             */
+                                Column(
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text(
+                                        text = headerTitle.translate(displayLanguage),
+                                        color = Primary,
+                                        fontSize = if (compactHeader) 17.sp else 25.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
 
-            AnimatedContent(
+                                    AnimatedVisibility(
+                                        visible = !compactHeader
+                                    ) {
+                                        Text(
+                                            text = headerSubtitle.translate(displayLanguage),
+                                            color = TextSecondary,
+                                            fontSize = 12.sp,
+                                            lineHeight = 18.sp,
+                                            modifier = Modifier.padding(top = 2.dp, end = 6.dp)
+                                        )
+                                    }
+                                }
 
-                targetState = tab,
+                                // Hearts and XP overlay for AI Quiz top bar
+                                if (tab == PracticeTab.Quiz && activeSession != null && !activeSession.quizFinished) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.padding(end = 12.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        // Hearts
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(2.dp)
+                                        ) {
+                                            repeat(5) { index ->
+                                                Icon(
+                                                    imageVector = Icons.Default.Favorite,
+                                                    contentDescription = null,
+                                                    tint = if (index < activeSession.hearts) Color(0xFFE53935) else colors.textSecondary.copy(alpha = 0.22f),
+                                                    modifier = Modifier.size(16.dp)
+                                                )
+                                            }
+                                        }
 
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                    .pointerInput(uiState.fullScreenReadingMode, tab) {
-                        if (uiState.fullScreenReadingMode && tab == PracticeTab.Meditate) {
-                            awaitPointerEventScope {
-                                while (true) {
-                                    awaitPointerEvent()
-                                    localInteractionTick++
+                                        // XP Badge
+                                        Surface(
+                                            shape = RoundedCornerShape(100.dp),
+                                            color = Color.Transparent
+                                        ) {
+                                            Text(
+                                                text = "${uiState.totalXp} XP",
+                                                color = colors.accent,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 11.sp,
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                            )
+                                        }
+                                    }
+                                }
+
+                                Surface(
+                                    shape = CircleShape,
+                                    color = Gold.copy(alpha = 0.12f)
+                                ) {
+                                    Box(
+                                        modifier = Modifier.size(34.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = if (compactHeader) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp,
+                                            contentDescription = null,
+                                            tint = Gold,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                }
+                            }
+
+                            /*
+                             * TAB SWITCHER
+                             */
+                            AnimatedVisibility(
+                                visible = !compactHeader
+                            ) {
+                                Column {
+                                    PracticeTabSwitcher(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 12.dp),
+                                        selectedTab = tab,
+                                        colors = colors,
+                                        displayLanguage = displayLanguage,
+                                        onTabSelected = { tab = it }
+                                    )
+
+                                    Spacer(Modifier.height(14.dp))
                                 }
                             }
                         }
-                    },
-transitionSpec = {
+                    }
+                }
 
-    fadeIn(
-        animationSpec = tween(
-            durationMillis = 220
-        )
-    ).togetherWith(
+                Spacer(Modifier.height(8.dp))
 
-        fadeOut(
-            animationSpec = tween(
-                durationMillis = 180
-            )
-        )
-    )
-},
-
-                label = "PracticeTabs"
-
-            ) { selected ->
-
-                Box(
-
+                /*
+                 * ─────────────────────────────────────────────
+                 * TAB CONTENT
+                 * ─────────────────────────────────────────────
+                 */
+                AnimatedContent(
+                    targetState = tab,
                     modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Transparent)
-                ) {
-
-                    when (selected) {
-
-                        PracticeTab.Quiz -> {
-
-                            AiGurbaniQuizTab(
-                                bani = bani,
-                                colors = colors,
-                                displayLanguage = displayLanguage,
-                                uiState = uiState,
-                                viewModel = viewModel
-                            )
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .pointerInput(uiState.fullScreenReadingMode, tab) {
+                            if (uiState.fullScreenReadingMode && tab == PracticeTab.Meditate) {
+                                awaitPointerEventScope {
+                                    while (true) {
+                                        awaitPointerEvent()
+                                        localInteractionTick++
+                                    }
+                                }
+                            }
+                        },
+                    transitionSpec = {
+                        fadeIn(
+                            animationSpec = tween(durationMillis = 220)
+                        ).togetherWith(
+                            fadeOut(animationSpec = tween(durationMillis = 180))
+                        )
+                    },
+                    label = "PracticeTabs"
+                ) { selected ->
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Transparent)
+                    ) {
+                        when (selected) {
+                            PracticeTab.Quiz -> {
+                                AiGurbaniQuizTab(
+                                    bani = bani,
+                                    colors = colors,
+                                    displayLanguage = displayLanguage,
+                                    uiState = uiState,
+                                    viewModel = viewModel
+                                )
+                            }
+                            PracticeTab.Meditate -> {
+                                SimranAbhyasTab(
+                                    colors = colors,
+                                    displayLanguage = displayLanguage,
+                                    uiState = uiState,
+                                    viewModel = viewModel
+                                )
+                            }
                         }
-
-                        PracticeTab.Meditate -> {
-
-                            SimranAbhyasTab(
-                                colors = colors,
-                                displayLanguage =
-                                    displayLanguage,
-                                uiState = uiState,
-                                viewModel = viewModel
-                            )
-                        }
-
                     }
                 }
             }
         }
     }
 }
+    
 @Composable
 fun PracticeTabSwitcher(
     modifier: Modifier = Modifier,

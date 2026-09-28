@@ -19,25 +19,19 @@ object BillingEntitlements {
 enum class PremiumTier(
     val entitlementId: String
 ) {
-    Free(""),
-    Supporter(BillingEntitlements.SUPPORTER),
-    Premium(BillingEntitlements.PREMIUM)
+    Freemium(""),
+    SevaSupporter(BillingEntitlements.SUPPORTER),
+    SevaPatron(BillingEntitlements.PREMIUM)
 }
 
 /**
  * Google Play / RevenueCat product IDs.
  */
 object BillingProducts {
-    const val FREE_TIER = "free_forever"
-    const val SUPPORTER_MONTHLY = "supporter_monthly"
-    const val PREMIUM_ANNUAL = "premium_annual"
-    const val LIFETIME_PATRON = "lifetime_patron"
-
-    // Legacy backwards compatibility constants
-    const val SUPPORTER_49 = "supporter_49"
-    const val FOUNDING_SUPPORTER_49 = "founding_supporter_49"
-    const val PREMIUM_99 = "premium_99"
-    const val LIFETIME_199 = "lifetime_199"
+    const val FREEMIUM_00 = "freemium_00"
+    const val SEVA_SUPPORTER_49 = "seva_supporter_49"
+    const val SEVA_PATRON_99 = "seva_patron_99"
+    const val LIFETIME_PATRON_199 = "lifetime_patron_199"
 }
 
 /**
@@ -57,10 +51,10 @@ data class InAppProductPlan(
 )
 
 val FREE_TIER_PLAN = InAppProductPlan(
-    id = BillingProducts.FREE_TIER,
+    id = BillingProducts.FREEMIUM_00,
     entitlement = "",
-    title = "Keep Free Forever",
-    formattedPriceInr = "Free",
+    title = "Freemium",
+    formattedPriceInr = "₹0",
     formattedPriceUsd = "$0",
     badge = "Active by Default",
     isFreeTier = true,
@@ -78,12 +72,12 @@ val DEFAULT_APP_PLANS = listOf(
     FREE_TIER_PLAN,
 
     InAppProductPlan(
-        id = BillingProducts.SUPPORTER_MONTHLY,
+        id = BillingProducts.SEVA_SUPPORTER_49,
         entitlement = BillingEntitlements.SUPPORTER,
         title = "Seva Supporter",
         formattedPriceInr = "₹49",
         formattedPriceUsd = "$0.99",
-        badge = "Seva",
+        badge = "Monthly Charged",
         description = "Support ongoing server hosting, audio CDN costs, and continuous app development with a small recurring seva.",
         features = listOf(
             "Golden Seva Supporter Badge",
@@ -94,12 +88,12 @@ val DEFAULT_APP_PLANS = listOf(
     ),
 
     InAppProductPlan(
-        id = BillingProducts.PREMIUM_ANNUAL,
+        id = BillingProducts.SEVA_PATRON_99,
         entitlement = BillingEntitlements.PREMIUM,
         title = "Seva Patron",
-        formattedPriceInr = "₹299",
-        formattedPriceUsd = "$4.99",
-        badge = "Most Popular • 50% Off",
+        formattedPriceInr = "₹99",
+        formattedPriceUsd = "$1.99",
+        badge = "Yearly Charged",
         isLaunchOffer = true,
         description = "Unlock the ultimate Gurbani focus experience with advanced typography, ambient effects, and full-screen reading.",
         features = listOf(
@@ -112,12 +106,12 @@ val DEFAULT_APP_PLANS = listOf(
     ),
 
     InAppProductPlan(
-        id = BillingProducts.LIFETIME_PATRON,
+        id = BillingProducts.LIFETIME_PATRON_199,
         entitlement = BillingEntitlements.PREMIUM,
-        title = "Lifetime Sangat Patron",
-        formattedPriceInr = "₹599",
-        formattedPriceUsd = "$9.99",
-        badge = "Lifetime • Best Value",
+        title = "Lifetime Patron",
+        formattedPriceInr = "₹199",
+        formattedPriceUsd = "$3.99",
+        badge = "One Time Charged, Lifetime",
         description = "One-time contribution for lifetime full access. Keep all current and all future Premium features forever.",
         features = listOf(
             "Permanent Lifetime Access to All Features",

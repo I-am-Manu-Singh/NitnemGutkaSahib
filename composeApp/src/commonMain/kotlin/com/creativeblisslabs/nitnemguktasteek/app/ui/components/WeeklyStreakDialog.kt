@@ -3,7 +3,6 @@ package com.creativeblisslabs.nitnemguktasteek.app.ui.components
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -12,12 +11,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.LocalFireDepartment
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
@@ -75,16 +74,19 @@ fun WeeklyStreakDialog(
             dismissOnClickOutside = true
         )
     ) {
-        Box(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 20.dp, vertical = 24.dp),
             contentAlignment = Alignment.Center
         ) {
+            // Determine if the screen is wide enough for a side-by-side layout (e.g., Landscape or Tablet)
+            val isWideScreen = maxWidth > 600.dp
+
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .widthIn(max = 420.dp)
+                    .widthIn(max = if (isWideScreen) 720.dp else 440.dp)
                     .wrapContentHeight(),
                 shape = RoundedCornerShape(28.dp),
                 color = Color(0xFF171513),
@@ -99,6 +101,7 @@ fun WeeklyStreakDialog(
                             .align(Alignment.TopEnd)
                             .padding(12.dp)
                             .size(32.dp)
+                            .zIndex(1f)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Close,
@@ -115,251 +118,336 @@ fun WeeklyStreakDialog(
                             .verticalScroll(rememberScrollState())
                             .padding(horizontal = 24.dp, vertical = 28.dp)
                     ) {
-                        // ── CELEBRATION GLOW & EMBLEM ──
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier.size(130.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(90.dp)
-                                    .scale(glowScale)
-                                    .alpha(glowAlpha)
-                                    .background(
-                                        Brush.radialGradient(
-                                            listOf(Gold.copy(alpha = 0.45f), Color.Transparent)
-                                        ),
-                                        CircleShape
-                                    )
-                            )
-
-                            NitnemLogo(
-                                baseSize = 105.dp,
-                                showShimmer = true,
-                                showGlow = false
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(14.dp))
-
-                        // ── TITLE ──
-                        Text(
-                            text = if (streakDays >= 7) "Weekly Milestone!".translate(displayLanguage) else "Daily Nitnem Streak".translate(displayLanguage),
-                            color = Gold,
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            textAlign = TextAlign.Center
-                        )
-
-                        Spacer(modifier = Modifier.height(4.dp))
-
-                        Text(
-                            text = if (streakDays > 0) "You've stayed consistent for".translate(displayLanguage) else "Start your spiritual streak today!".translate(displayLanguage),
-                            color = Color.White.copy(alpha = 0.75f),
-                            fontSize = 14.sp,
-                            textAlign = TextAlign.Center
-                        )
-
-                        // ── STREAK COUNT DISPLAY ──
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center,
-                            modifier = Modifier.padding(vertical = 10.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.LocalFireDepartment,
-                                contentDescription = null,
-                                tint = Color(0xFFFF7043),
-                                modifier = Modifier.size(32.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            RollingNumberText(
-                                value = streakDays.toString().translateDigits(displayLanguage),
-                                color = Color.White,
-                                fontSize = 42.sp,
-                                fontWeight = FontWeight.Black
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Days".translate(displayLanguage),
-                                color = Gold,
-                                fontSize = 22.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-
-                        // ── CURRENT WEEK DAYS (Mon - Sun) ──
-                        Surface(
-                            shape = RoundedCornerShape(18.dp),
-                            color = Color.White.copy(alpha = 0.04f),
-                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
+                        if (isWideScreen) {
+                            // ── WIDE / LANDSCAPE LAYOUT (Two Columns) ──
                             Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 8.dp, vertical = 12.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(24.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                val daysOfWeek = listOf(
-                                    DayOfWeek.MONDAY to "M",
-                                    DayOfWeek.TUESDAY to "T",
-                                    DayOfWeek.WEDNESDAY to "W",
-                                    DayOfWeek.THURSDAY to "T",
-                                    DayOfWeek.FRIDAY to "F",
-                                    DayOfWeek.SATURDAY to "S",
-                                    DayOfWeek.SUNDAY to "S"
-                                )
-
-                                val currentDayIndex = currentDayOfWeek.ordinal // Monday = 0 .. Sunday = 6
-                                daysOfWeek.forEachIndexed { index, (dayEnum, label) ->
-                                    val isToday = dayEnum == currentDayOfWeek
-                                    // A day in the current week is completed if:
-                                    // 1. It is today and streakDays > 0
-                                    // 2. It is earlier this week and within the active consecutive streak window
-                                    val daysAgo = currentDayIndex - index
-                                    val isCompleted = if (daysAgo == 0) {
-                                        streakDays > 0
-                                    } else if (daysAgo > 0) {
-                                        daysAgo < streakDays
-                                    } else {
-                                        false
-                                    }
-
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        verticalArrangement = Arrangement.Center
-                                    ) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(36.dp)
-                                                .clip(CircleShape)
-                                                .background(
-                                                    when {
-                                                        isToday -> Gold
-                                                        isCompleted -> Gold.copy(alpha = 0.35f)
-                                                        else -> Color.White.copy(alpha = 0.06f)
-                                                    }
-                                                ),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Text(
-                                                text = label,
-                                                color = if (isToday) Color.Black else (if (isCompleted) Gold else Color.White.copy(alpha = 0.4f)),
-                                                fontSize = 13.sp,
-                                                fontWeight = FontWeight.Bold
-                                            )
-                                        }
-                                        Spacer(Modifier.height(3.dp))
-                                        if (isToday) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(4.dp)
-                                                    .background(Gold, CircleShape)
-                                            )
-                                        } else {
-                                            Spacer(Modifier.size(4.dp))
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(14.dp))
-
-                        // ── 30-DAY NITNEM ACTIVITY HEATMAP ──
-                        Surface(
-                            shape = RoundedCornerShape(18.dp),
-                            color = Color.White.copy(alpha = 0.04f),
-                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Column(modifier = Modifier.padding(14.dp)) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
+                                // Left Column: Emblem, Title, Counter, Action Button
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    modifier = Modifier.weight(1f)
                                 ) {
-                                    Text(
-                                        text = "30-Day Activity Heatmap".translate(displayLanguage),
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color.White.copy(alpha = 0.85f)
-                                    )
-                                    Text(
-                                        text = "${streakDays.coerceAtMost(30)} / 30 " + "Days".translate(displayLanguage),
-                                        fontSize = 11.5.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Gold
-                                    )
+                                    CelebrationEmblem(glowScale, glowAlpha)
+
+                                    Spacer(modifier = Modifier.height(12.dp))
+
+                                    StreakTitleSection(streakDays, displayLanguage)
+
+                                    Spacer(modifier = Modifier.height(8.dp))
+
+                                    StreakCounterDisplay(streakDays, displayLanguage)
+
+                                   
                                 }
 
-                                Spacer(modifier = Modifier.height(10.dp))
+                                // Right Column: Weekly Tracker, Heatmap, Insight
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    WeeklyTrackerSection(currentDayOfWeek, streakDays, displayLanguage)
 
-                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    for (row in 0 until 5) {
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceBetween
-                                        ) {
-                                            for (col in 0 until 6) {
-                                                val dayIndex = (row * 6) + col
-                                                val isHeatmapActive = dayIndex >= (30 - streakDays.coerceIn(0, 30))
-                                                val cellAlpha = if (isHeatmapActive) 0.85f else 0.08f
-                                                Box(
-                                                    modifier = Modifier
-                                                        .weight(1f)
-                                                        .padding(horizontal = 2.dp)
-                                                        .height(14.dp)
-                                                        .clip(RoundedCornerShape(4.dp))
-                                                        .background(
-                                                            if (isHeatmapActive) Gold.copy(alpha = cellAlpha)
-                                                            else Color.White.copy(alpha = cellAlpha)
-                                                        )
-                                                )
-                                            }
-                                        }
-                                    }
+                                    Spacer(modifier = Modifier.height(12.dp))
+
+                                    HeatmapSection(streakDays, displayLanguage)
+
+                                    Spacer(modifier = Modifier.height(12.dp))
+
+                                    InsightText(displayLanguage)
+
+                                     Spacer(modifier = Modifier.height(16.dp))
+
+                                    PrimaryActionButton(displayLanguage, onDismiss)
                                 }
                             }
+                        } else {
+                            // ── PORTRAIT / COMPACT LAYOUT (Single Column) ──
+                            CelebrationEmblem(glowScale, glowAlpha)
+
+                            Spacer(modifier = Modifier.height(14.dp))
+
+                            StreakTitleSection(streakDays, displayLanguage)
+
+                            Spacer(modifier = Modifier.height(4.dp))
+
+                            StreakCounterDisplay(streakDays, displayLanguage)
+
+                            Spacer(modifier = Modifier.height(14.dp))
+
+                            WeeklyTrackerSection(currentDayOfWeek, streakDays, displayLanguage)
+
+                            Spacer(modifier = Modifier.height(14.dp))
+
+                            HeatmapSection(streakDays, displayLanguage)
+
+                            Spacer(modifier = Modifier.height(14.dp))
+
+                            InsightText(displayLanguage)
+
+                            Spacer(modifier = Modifier.height(20.dp))
+
+                            PrimaryActionButton(displayLanguage, onDismiss)
                         }
+                    }
+                }
+            }
+        }
+    }
+}
 
-                        Spacer(modifier = Modifier.height(14.dp))
+@Composable
+private fun CelebrationEmblem(glowScale: Float, glowAlpha: Float) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier.size(130.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(90.dp)
+                .scale(glowScale)
+                .alpha(glowAlpha)
+                .background(
+                    Brush.radialGradient(
+                        listOf(Gold.copy(alpha = 0.45f), Color.Transparent)
+                    ),
+                    CircleShape
+                )
+        )
 
-                        // ── INSIGHT TEXT ──
-                        Text(
-                            text = "Keep up the daily Nitnem to grow your streak, sync today's count, and earn more XP.".translate(displayLanguage),
-                            color = Color.White.copy(alpha = 0.65f),
-                            fontSize = 12.sp,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(horizontal = 8.dp),
-                            lineHeight = 16.sp
-                        )
+        NitnemLogo(
+            baseSize = 105.dp,
+            showShimmer = true,
+            showGlow = false
+        )
+    }
+}
 
-                        Spacer(modifier = Modifier.height(20.dp))
+@Composable
+private fun StreakTitleSection(streakDays: Int, displayLanguage: DisplayLanguage) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = if (streakDays >= 7) "Weekly Milestone!".translate(displayLanguage) else "Daily Nitnem Streak".translate(displayLanguage),
+            color = Gold,
+            fontSize = 24.sp,
+            fontWeight = FontWeight.ExtraBold,
+            textAlign = TextAlign.Center
+        )
 
-                        // ── PRIMARY ACTION BUTTON ──
-                        Button(
-                            onClick = onDismiss,
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Gold,
-                                contentColor = Color.Black
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Text(
+            text = if (streakDays > 0) "You've stayed consistent for".translate(displayLanguage) else "Start your spiritual streak today!".translate(displayLanguage),
+            color = Color.White.copy(alpha = 0.75f),
+            fontSize = 14.sp,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+@Composable
+private fun StreakCounterDisplay(streakDays: Int, displayLanguage: DisplayLanguage) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+        modifier = Modifier.padding(vertical = 6.dp)
+    ) {
+        Icon(
+            imageVector = Icons.Default.LocalFireDepartment,
+            contentDescription = null,
+            tint = Color(0xFFFF7043),
+            modifier = Modifier.size(32.dp)
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        RollingNumberText(
+            value = streakDays.toString().translateDigits(displayLanguage),
+            color = Color.White,
+            fontSize = 42.sp,
+            fontWeight = FontWeight.Black
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = "Days".translate(displayLanguage),
+            color = Gold,
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+@Composable
+private fun WeeklyTrackerSection(
+    currentDayOfWeek: DayOfWeek,
+    streakDays: Int,
+    displayLanguage: DisplayLanguage
+) {
+    Surface(
+        shape = RoundedCornerShape(18.dp),
+        color = Color.White.copy(alpha = 0.04f),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            val daysOfWeek = listOf(
+                DayOfWeek.MONDAY to "M",
+                DayOfWeek.TUESDAY to "T",
+                DayOfWeek.WEDNESDAY to "W",
+                DayOfWeek.THURSDAY to "T",
+                DayOfWeek.FRIDAY to "F",
+                DayOfWeek.SATURDAY to "S",
+                DayOfWeek.SUNDAY to "S"
+            )
+
+            val currentDayIndex = currentDayOfWeek.ordinal
+            daysOfWeek.forEachIndexed { index, (dayEnum, label) ->
+                val isToday = dayEnum == currentDayOfWeek
+                val daysAgo = currentDayIndex - index
+                val isCompleted = if (daysAgo == 0) {
+                    streakDays > 0
+                } else if (daysAgo > 0) {
+                    daysAgo < streakDays
+                } else {
+                    false
+                }
+
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(
+                                when {
+                                    isToday -> Gold
+                                    isCompleted -> Gold.copy(alpha = 0.35f)
+                                    else -> Color.White.copy(alpha = 0.06f)
+                                }
                             ),
-                            shape = RoundedCornerShape(16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = label,
+                            color = if (isToday) Color.Black else (if (isCompleted) Gold else Color.White.copy(alpha = 0.4f)),
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Spacer(Modifier.height(3.dp))
+                    if (isToday) {
+                        Box(
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .height(48.dp)
-                        ) {
-                            Text(
-                                text = "Continue".translate(displayLanguage),
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold
+                                .size(4.dp)
+                                .background(Gold, CircleShape)
+                        )
+                    } else {
+                        Spacer(Modifier.size(4.dp))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HeatmapSection(streakDays: Int, displayLanguage: DisplayLanguage) {
+    Surface(
+        shape = RoundedCornerShape(18.dp),
+        color = Color.White.copy(alpha = 0.04f),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "30-Day Activity Heatmap".translate(displayLanguage),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White.copy(alpha = 0.85f)
+                )
+                Text(
+                    text = "${streakDays.coerceAtMost(30)} / 30 " + "Days".translate(displayLanguage),
+                    fontSize = 11.5.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Gold
+                )
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                for (row in 0 until 5) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        for (col in 0 until 6) {
+                            val dayIndex = (row * 6) + col
+                            val isHeatmapActive = dayIndex >= (30 - streakDays.coerceIn(0, 30))
+                            val cellAlpha = if (isHeatmapActive) 0.85f else 0.08f
+                            Box(
+                                modifier = Modifier
+                                    .width(22.dp)
+                                    .height(14.dp)
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(
+                                        if (isHeatmapActive) Gold.copy(alpha = cellAlpha)
+                                        else Color.White.copy(alpha = cellAlpha)
+                                    )
                             )
                         }
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun InsightText(displayLanguage: DisplayLanguage) {
+    Text(
+        text = "Keep up the daily Nitnem to grow your streak, sync today's count, and earn more XP.".translate(displayLanguage),
+        color = Color.White.copy(alpha = 0.65f),
+        fontSize = 12.sp,
+        textAlign = TextAlign.Center,
+        modifier = Modifier.padding(horizontal = 8.dp),
+        lineHeight = 16.sp
+    )
+}
+
+@Composable
+private fun PrimaryActionButton(displayLanguage: DisplayLanguage, onDismiss: () -> Unit) {
+    Button(
+        onClick = onDismiss,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = Gold,
+            contentColor = Color.Black
+        ),
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(48.dp)
+    ) {
+        Text(
+            text = "Continue".translate(displayLanguage),
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold
+        )
     }
 }

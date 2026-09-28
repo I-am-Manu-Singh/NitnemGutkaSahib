@@ -153,16 +153,11 @@ import androidx.compose.ui.input.pointer.pointerInput
             mutableStateOf(false)
         }
 
+        var showLocalChrome by remember { mutableStateOf(true) }
+        val isActualMiniPlayerVisible = uiState.miniPlayerVisible && (!uiState.fullScreenReadingMode || showLocalChrome)
         val fabBottomPadding by animateDpAsState(
-
-            targetValue =
-
-                if (uiState.miniPlayerVisible)
-                    80.dp
-                else
-                    8.dp,
-
-            label = ""
+            targetValue = if (isActualMiniPlayerVisible) 80.dp else 8.dp,
+            label = "fab_bottom_padding"
         )
 
         var timingLoadState by remember {
@@ -170,130 +165,73 @@ import androidx.compose.ui.input.pointer.pointerInput
         }
 
         val syncedLines by produceState(
-
             initialValue = emptyList<BaniLine>(),
-
             key1 = bani?.id,
-
             key2 = currentActiveTrackId
-
         ) {
-
             if (bani == null) {
-
                 timingLoadState = null
                 value = emptyList()
-
                 return@produceState
             }
 
             /*
              * GET ACTUAL ACTIVE AUDIO URL
              */
-
-            val activeAudioUrl =
-                audioController.getActiveAudioUrl(
-                    bani.id
-                )
+            val activeAudioUrl = audioController.getActiveAudioUrl(bani.id)
 
             /*
              * RESOLVE TRACK USING ACTIVE TRACK ID
              */
-
             val remoteAssetTrack = com.creativeblisslabs.nitnemguktasteek.data.RemoteAssetCatalog.getTrackById(currentActiveTrackId)
                 ?: com.creativeblisslabs.nitnemguktasteek.data.RemoteAssetCatalog.currentAssets.firstOrNull { it.id == currentActiveTrackId }
 
-            val track =
-                (
-                                audioController.getCustomTracks(bani.id)
-                                    + CuratedAudioCatalog.getTracksForBani(bani.id)
-                        ).firstOrNull {
-                        it.id == currentActiveTrackId
-                    }
+            val track = (audioController.getCustomTracks(bani.id) + CuratedAudioCatalog.getTracksForBani(bani.id)).firstOrNull {
+                it.id == currentActiveTrackId
+            }
 
             /*
-             * RESOLVE TIMING KEY
+             * RESOLVE TIMING KEY (Strictly match currently active track/artist)
              */
-
             val remoteTimingFile = remoteAssetTrack?.timingFileName
             val timingKey = when {
                 remoteTimingFile != null -> {
                     remoteTimingFile.removeSuffix(".json")
                 }
-
                 track != null -> {
                     track.timingKey()
                 }
-
-                activeAudioUrl
-                    ?.contains("audio/") == true -> {
-
-                    activeAudioUrl
-                        .substringAfterLast("/")
-                        .substringBeforeLast(".")
+                currentActiveTrackId != "default" -> {
+                    currentActiveTrackId.removePrefix("curated_").replace("-", "_")
                 }
-
-                activeAudioUrl
-                    ?.startsWith("raw/") == true -> {
-
-                    activeAudioUrl
-                        .removePrefix("raw/")
-                        .substringBeforeLast(".")
+                activeAudioUrl?.contains("audio/") == true -> {
+                    activeAudioUrl.substringAfterLast("/").substringBeforeLast(".")
                 }
-
+                activeAudioUrl?.startsWith("raw/") == true -> {
+                    activeAudioUrl.removePrefix("raw/").substringBeforeLast(".")
+                }
                 else -> {
-                    currentActiveTrackId
-                        .replace("-", "_")
+                    bani.id.replace("-", "_")
                 }
             }
 
-            println(
-                "TIMING DEBUG -> " +
-                        "bani=${bani.id}, " +
-                        "track=$currentActiveTrackId, " +
-                        "timingKey=$timingKey, " +
-                        "audioUrl=$activeAudioUrl"
-            )
-            println(
-                "TIMING DEBUG -> " +
-                        "bani=${bani.id}, " +
-                        "uiTrack=${uiState.activeTrackId}, " +
-                        "controllerTrack=${audioController.getActiveTrackId(bani.id)}, " +
-                        "resolvedTrack=$currentActiveTrackId, " +
-                        "timingKey=$timingKey, " +
-                        "audioUrl=$activeAudioUrl"
-            )
-            val hasTimingFile =
-                audioController.hasTimingFile(
-                    bani.id,
-                    currentActiveTrackId
-                )
-
-            println(
-                "TIMING CHECK -> " +
-                        "bani=${bani.id}, " +
-                        "track=$currentActiveTrackId, " +
-                        "timingKey=$timingKey, " +
-                        "hasTimingFile=$hasTimingFile"
-            )
             val timings = TimingLoader.loadTimings(
                 context,
                 timingKey
             )
 
-            println(
-                "TIMING LOAD -> " +
-                        "timingKey=$timingKey, " +
-                        "count=${timings.size}"
-            )
+            // Strictly check whether this track is the default primary track before falling back to embedded baseline timings
+            val isPrimaryTrack = currentActiveTrackId == "default" || currentActiveTrackId == bani.id ||
+                    (track?.id == bani.id) || (remoteAssetTrack?.id == bani.id)
+            val hasEmbeddedTimings = isPrimaryTrack && bani.lines.any { it.startsAtMs > 0L || it.endsAtMs > 0L }
 
-            val hasEmbeddedTimings = bani.lines.any { it.startsAtMs > 0L || it.endsAtMs > 0L }
             timingLoadState = timings.isNotEmpty() || hasEmbeddedTimings
 
             if (timings.isEmpty()) {
                 if (hasEmbeddedTimings) {
                     value = bani.lines
                 } else {
+                    // Do NOT fall back to embedded timings for different artists!
                     value = bani.lines.map { it.copy(startsAtMs = 0L, endsAtMs = 0L) }
                 }
                 return@produceState
@@ -447,14 +385,20 @@ import androidx.compose.ui.input.pointer.pointerInput
             }
         }
 
+        val isCurrentBaniAlreadyCompleted = remember(bani?.id, uiState.completedBanis) {
+            bani != null && uiState.completedBanis.contains(bani.id)
+        }
+
         LaunchedEffect(
             bani?.id,
             readingProgressPercent,
-            activeTab
+            activeTab,
+            isCurrentBaniAlreadyCompleted
         ) {
 
             if (
                 bani != null &&
+                !isCurrentBaniAlreadyCompleted &&
                 readingProgressPercent in 1..100
             ) {
 
@@ -855,7 +799,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 
         }
         // --- Auto-hide top header and controls when fullScreenReadingMode or blackAndWhiteAodMode is enabled ---
-        var showLocalChrome by remember { mutableStateOf(true) }
         var localInteractionTick by remember { mutableStateOf(0) }
         val isImmersiveMode = uiState.fullScreenReadingMode || uiState.blackAndWhiteAodMode
         val isScrolling by remember { derivedStateOf { lazyListState.isScrollInProgress } }
@@ -1041,6 +984,14 @@ import androidx.compose.ui.input.pointer.pointerInput
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
+                                if (playback.isLoading && !playback.isReady) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(20.dp),
+                                        color = Gold,
+                                        strokeWidth = 2.dp
+                                    )
+                                }
+
                                 Surface(
                                     shape = CircleShape,
                                     color = Gold.copy(alpha = 0.12f),
@@ -1547,30 +1498,32 @@ import androidx.compose.ui.input.pointer.pointerInput
             }
         }
 
-        /*
-         * AUTO SCROLL MANUAL SPEED SLIDER
-         */
-        if (showAutoscrollSlider && showSpeedSlider) {
-            Surface(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(start = 52.dp, end = 52.dp, bottom = fabBottomPadding + 8.dp)
-                    .fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                color = SurfaceColor.copy(alpha = 0.95f),
-                tonalElevation = 6.dp,
-                shadowElevation = 6.dp,
-                border = BorderStroke(1.dp, Accent.copy(alpha = 0.15f))
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically
+            /*
+            * AUTO SCROLL MANUAL SPEED SLIDER
+            */
+            if (showAutoscrollSlider && showSpeedSlider) {
+                Surface(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(start = 52.dp, end = 52.dp, bottom = fabBottomPadding + 8.dp)
+                        // Caps the width on wide screens, but fills available space on narrow screens
+                        .widthIn(max = 600.dp)
+                        .fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    color = SurfaceColor.copy(alpha = 0.95f),
+                    tonalElevation = 6.dp,
+                    shadowElevation = 6.dp,
+                    border = BorderStroke(1.dp, Accent.copy(alpha = 0.15f))
                 ) {
-                       Surface(
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
                             onClick = { viewModel.setAutoScroll(!uiState.autoScroll) },
                             shape = CircleShape,
                             color = Accent.copy(alpha = 0.10f)
-                       ) {
+                        ) {
                             Box(
                                 modifier = Modifier.size(42.dp),
                                 contentAlignment = Alignment.Center
@@ -1581,16 +1534,16 @@ import androidx.compose.ui.input.pointer.pointerInput
                                     tint = Accent
                                 )
                             }
-                       }
-                       Text(
-                           text = "Auto Scroll".translate(uiState.displayLanguage),
-                           color = TextPrimary,
-                           fontSize = 10.sp,
-                           fontWeight = FontWeight.Bold,
-                           modifier = Modifier.width(75.dp)
-                       )
-                    Spacer(Modifier.width(4.dp))
-                  androidx.compose.material3.Slider(
+                        }
+                        Text(
+                            text = "Auto Scroll".translate(uiState.displayLanguage),
+                            color = TextPrimary,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.width(75.dp)
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        androidx.compose.material3.Slider(
                             value = uiState.autoScrollSpeed,
 
                             onValueChange = {
@@ -1609,17 +1562,17 @@ import androidx.compose.ui.input.pointer.pointerInput
                                 thumbColor = Accent
                             )
                         )
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        text = String.format("%.1f", uiState.autoScrollSpeed),
-                        color = TextSecondary,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.width(30.dp)
-                    )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            text = String.format("%.1f", uiState.autoScrollSpeed),
+                            color = TextSecondary,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.width(30.dp)
+                        )
+                    }
                 }
             }
-        }
 
         /*
          * MEANING SHEET
