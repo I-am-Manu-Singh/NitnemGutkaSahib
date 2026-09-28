@@ -141,15 +141,17 @@ fun NitnemRoot(
     // Auto-hide chrome (BottomBar + headers) when fullScreenReadingMode is enabled
     // and the user is on a reading/meditation tab.
     val autoHideTabs = setOf(AppTab.Experience, AppTab.Practice)
-    LaunchedEffect(uiState.selectedTab, uiState.fullScreenReadingMode, interactionTick) {
-        if (uiState.fullScreenReadingMode && uiState.selectedTab in autoHideTabs) {
-            showChrome = true   // always show briefly on interaction / tab switch
-            delay(4_000L)
-            showChrome = false
-        } else {
-            showChrome = true
-        }
+  LaunchedEffect(uiState.selectedTab, uiState.fullScreenReadingMode, interactionTick, isPaywallOpen, isAssistantOpen) {
+    if (isPaywallOpen || isAssistantOpen) {
+        showChrome = false // Instantly hide the bottom bar/nav rail if an overlay is open
+    } else if (uiState.fullScreenReadingMode && uiState.selectedTab in autoHideTabs) {
+        showChrome = true   
+        delay(4_000L)
+        showChrome = false
+    } else {
+        showChrome = true
     }
+}
 
     /*
      * WIDGET
@@ -307,7 +309,7 @@ fun NitnemRoot(
     
     // Remember initial set to identify new completions correctly across initial load and runtime
     var previousCompletedBanis by remember { mutableStateOf<Set<String>?>(null) }
-
+    var isPaywallOpen by remember { mutableStateOf(false) }
     LaunchedEffect(
         uiState.completedBanis
     ) {
@@ -671,16 +673,16 @@ fun NitnemRoot(
                     }
                 }
 
-                AppTab.Settings -> {
-
-                    SettingsScreen(
-
-                        viewModel = viewModel,
-
-                        audioController =
-                            audioController
-                    )
-                }
+        AppTab.Settings -> {
+    SettingsScreen(
+        viewModel = viewModel,
+        audioController = audioController,
+        // ADD THIS CALLBACK HERE:
+        onPaywallVisibilityChanged = { isOpen ->
+            isPaywallOpen = isOpen
+        }
+    )
+}
             }
         }
     }

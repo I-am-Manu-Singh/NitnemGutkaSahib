@@ -26,6 +26,7 @@ import com.revenuecat.purchases.kmp.configure
  * - Firestore offline persistence
  * - RevenueCat KMP Billing
  */
+
 class NitnemApplication : Application() {
 
     override fun onCreate() {

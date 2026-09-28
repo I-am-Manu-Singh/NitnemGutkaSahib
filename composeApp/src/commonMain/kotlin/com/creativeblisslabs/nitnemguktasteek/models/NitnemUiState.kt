@@ -290,7 +290,7 @@ val totalListeningMinutes: Int = 0,
     val widgetTheme: String = "Classic Gold",
 
     val widgetContent: String = "Next Bani",
-   
+    val shouldShowPaywall: Boolean = false,
 
 val hukamnama: Hukamnama? = null,
     val activeTrackId: String = "default",

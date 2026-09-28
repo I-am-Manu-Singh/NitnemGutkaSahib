@@ -2203,86 +2203,104 @@ private fun GroupItemRow(
         else -> Color.White.copy(alpha = 0.2f)
     }
 
-    Surface(
-        shape = RoundedCornerShape(18.dp),
-        color = if (isMyGroup) Gold.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.04f),
-        border = BorderStroke(
-            if (isMyGroup) 1.5.dp else 1.dp,
-            if (isMyGroup) Gold.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.08f)
-        ),
-        modifier = Modifier.fillMaxWidth()
+   Surface(
+    shape = RoundedCornerShape(18.dp),
+    color = if (isMyGroup) Gold.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.04f),
+    border = BorderStroke(
+        if (isMyGroup) 1.5.dp else 1.dp,
+        if (isMyGroup) Gold.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.08f)
+    ),
+    // 1. Force the container to wrap its content height instead of expanding
+    modifier = Modifier
+        .fillMaxWidth()
+        .wrapContentHeight() 
+) {
+    Row(
+        modifier = Modifier.padding(14.dp),
+        verticalAlignment = Alignment.CenterVertically // Keeps badge and XP vertically centered
     ) {
-        Row(
-            modifier = Modifier.padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically
+        // Rank Badge
+        Surface(
+            shape = CircleShape,
+            color = rankBadgeColor.copy(alpha = if (rank <= 3) 0.25f else 0.1f),
+            border = BorderStroke(1.dp, rankBadgeColor),
+            modifier = Modifier.size(36.dp)
         ) {
-            Surface(
-                shape = CircleShape,
-                color = rankBadgeColor.copy(alpha = if (rank <= 3) 0.25f else 0.1f),
-                border = BorderStroke(1.dp, rankBadgeColor),
-                modifier = Modifier.size(36.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text(
-                        text = "#$rank",
-                        fontWeight = FontWeight.ExtraBold,
-                        fontSize = 13.sp,
-                        color = if (rank <= 3) rankBadgeColor else Color.White
-                    )
-                }
+            Box(contentAlignment = Alignment.Center) {
+                Text(
+                    text = "#$rank",
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 13.sp,
+                    color = if (rank <= 3) rankBadgeColor else Color.White
+                )
             }
+        }
 
-            Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(12.dp))
 
-            Column(modifier = Modifier.weight(1f)) {
-
-
-                Spacer(Modifier.height(4.dp))
-
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("${group.members.size} members", fontSize = 11.sp, color = Color.White.copy(alpha = 0.6f))
-                    Text("${group.groupTotalStreak}D Streak", fontSize = 11.sp, color = Color(0xFFFF7043), fontWeight = FontWeight.SemiBold)
-                    Text(
-                        text = group.groupName,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isMyGroup) Gold else Color.White
-                    )
-                    if (isMyGroup) {
-                        Spacer(Modifier.width(6.dp))
-                        Surface(
-                            shape = RoundedCornerShape(100.dp),
-                            color = Gold.copy(alpha = 0.2f)
-                        ) {
-                            Text(
-                                text = "Your Family".translate(displayLanguage),
-                                fontSize = 9.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Gold,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                            )
-                        }
+        // Center Content Area
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.Center
+        ) {
+            // 2. Put the Group Name first on its own line so it has room to breathe/wrap
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    text = group.groupName,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (isMyGroup) Gold else Color.White,
+                    modifier = Modifier.weight(1f, fill = false) // Allows text to wrap or truncate instead of pushing components
+                )
+                
+                if (isMyGroup) {
+                    Surface(
+                        shape = RoundedCornerShape(100.dp),
+                        color = Gold.copy(alpha = 0.2f)
+                    ) {
+                        Text(
+                            text = "Your Family".translate(displayLanguage),
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Gold,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
                     }
                 }
             }
 
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = Gold.copy(alpha = 0.15f),
-                border = BorderStroke(1.dp, Gold.copy(alpha = 0.3f))
-            ) {
-                Box(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)) {
-                    RollingNumberText(
-                        value = group.groupTotalXp,
-                        suffix = " XP",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp,
-                        color = Gold
-                    )
-                }
+            Spacer(Modifier.height(4.dp))
+
+            // 3. Keep stats together on the bottom line
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("${group.members.size} members", fontSize = 11.sp, color = Color.White.copy(alpha = 0.6f))
+                Text("${group.groupTotalStreak}D Streak", fontSize = 11.sp, color = Color(0xFFFF7043), fontWeight = FontWeight.SemiBold)
+            }
+        }
+
+        Spacer(Modifier.width(12.dp))
+
+        // XP Badge
+        Surface(
+            shape = RoundedCornerShape(12.dp),
+            color = Gold.copy(alpha = 0.15f),
+            border = BorderStroke(1.dp, Gold.copy(alpha = 0.3f))
+        ) {
+            Box(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)) {
+                RollingNumberText(
+                    value = group.groupTotalXp,
+                    suffix = " XP",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp,
+                    color = Gold
+                )
             }
         }
     }
+}
 }
 
 @Composable

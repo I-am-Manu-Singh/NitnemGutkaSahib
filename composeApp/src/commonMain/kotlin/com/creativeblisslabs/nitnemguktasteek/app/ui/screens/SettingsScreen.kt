@@ -104,15 +104,15 @@ import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.material3.TimePicker
 import com.creativeblisslabs.nitnemguktasteek.domain.billing.RevenueCatBillingManager
 import com.revenuecat.purchases.kmp.ui.revenuecatui.Paywall
-// import com.revenuecat.purchases.kmp.ui.revenuecatui.PaywallDialog
 import com.revenuecat.purchases.kmp.ui.revenuecatui.PaywallOptions
 import com.revenuecat.purchases.kmp.ui.revenuecatui.PaywallListener
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
+    onPaywallVisibilityChanged: (Boolean) -> Unit, 
     viewModel: NitnemViewModel,
     audioController: StreamAudioController,
-    initialCategory: SettingsCategory = SettingsCategory.Reading
+    initialCategory: SettingsCategory = SettingsCategory.Reading,
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val haptics = LocalHapticFeedback.current
@@ -249,6 +249,19 @@ fun SettingsScreen(
 
     var showSyncEditor by remember { mutableStateOf(false) }
     var syncEditorTrackId by remember { mutableStateOf<String?>(null) }
+    var isPaywallOpen by remember { mutableStateOf(false) }
+val autoHideTabs = setOf(AppTab.Experience, AppTab.Practice)
+
+    val shouldShowPaywall = viewModel.uiState.collectAsState().value.shouldShowPaywall 
+
+    // 2. The Bridge Effect (Tells the parent shell when the paywall opens/closes)
+    DisposableEffect(shouldShowPaywall) {
+        onPaywallVisibilityChanged(shouldShowPaywall)
+        onDispose {
+            // Safe check: If user leaves this tab entirely, restore chrome visibility
+            onPaywallVisibilityChanged(false)
+        }
+    }
 
     if (showSyncEditor) {
         val currentBani = selectedBaniForAudio ?: uiState.banis.firstOrNull()
@@ -667,18 +680,18 @@ Row(
             onDismiss = { showSevaModal = false }
         )
     }
-if (shouldShowPaywall) {
-    val paywallOptions = remember {
-        PaywallOptions(
-            dismissRequest = { 
-                revenueCatBillingManager.dismissPaywall() 
+   if (shouldShowPaywall) {
+        val paywallOptions = remember {
+            PaywallOptions(
+                dismissRequest = { 
+                    revenueCatBillingManager.dismissPaywall() 
+                }
+            ) {
+                shouldDisplayDismissButton = true
             }
-        ) {
-            shouldDisplayDismissButton = true
         }
+        Paywall(options = paywallOptions)
     }
-    Paywall(options = paywallOptions)
-}
 
 activeLegalDoc?.let { docType ->
     LegalDocumentDialog(

@@ -503,7 +503,6 @@ fun GurbaniLineCard(
                                     isMediumPause -> Color(0xFFD97706) // Warm amber medium vishram
                                     else -> effectiveWordColor
                                 }
-
                                 Text(
                                     text = rawWord,
                                     color = displayWordColor,

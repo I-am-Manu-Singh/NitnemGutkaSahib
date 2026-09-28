@@ -68,4 +68,4 @@ We may update this policy periodically to reflect evolving app features or regul
 If you have questions, feedback, or data privacy requests, please reach out to:  
 **Creative Bliss Labs**  
 Email: [creativeblisslabs@gmail.com](mailto:creativeblisslabs@gmail.com)  
-Website: [https://github.com/I-am-Manu-Singh/NitnemGutkaSahib](https://github.com/I-am-Manu-Singh/NitnemGutkaSahib)
+Website: [https://www.creativeblisslabs.com](https://www.creativeblisslabs.com)

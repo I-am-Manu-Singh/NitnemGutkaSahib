@@ -69,4 +69,4 @@ We reserve the right to amend or update these terms at our sole discretion. Any 
 For any questions regarding these Terms or the application, please contact:  
 **Creative Bliss Labs**  
 Email: [creativeblisslabs@gmail.com](mailto:creativeblisslabs@gmail.com)  
-Website: [https://github.com/I-am-Manu-Singh/NitnemGutkaSahib](https://github.com/I-am-Manu-Singh/NitnemGutkaSahib)
+Website: [https://www.creativeblisslabs.com](https://www.creativeblisslabs.com/)
