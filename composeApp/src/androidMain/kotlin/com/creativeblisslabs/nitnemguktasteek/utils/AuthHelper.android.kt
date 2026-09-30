@@ -128,6 +128,8 @@ actual fun rememberAuthLauncher(
                     email = profile.email,
                     totalXp = profile.totalXp,
                     streakDays = profile.streakDays,
+                    weeklyStreak = profile.weeklyStreak,
+                    monthlyStreak = profile.monthlyStreak,
                     completedBanisCount = profile.completedBanisCount,
                     completedBanisToday = profile.completedBanisToday,
                     totalRecitationMinutes = profile.totalRecitationMinutes,

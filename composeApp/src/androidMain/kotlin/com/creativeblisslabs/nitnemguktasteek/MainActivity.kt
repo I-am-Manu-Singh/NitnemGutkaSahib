@@ -92,6 +92,11 @@ class MainActivity : ComponentActivity() {
         NitnemNotificationChannels
             .createAudioChannel(this)
 
+        /*
+         * BILLING INITIALIZATION
+         */
+        com.creativeblisslabs.nitnemguktasteek.domain.billing.RevenueCatBillingManager.instance.initialize()
+
         requestNotificationPermissionIfNeeded()
 
         setContent {
@@ -159,15 +164,15 @@ private fun MainRoot() {
      * REACTIVE ONBOARDING ROUTING STATE:
      * Collects onboarding status safely from AppPreferences flow.
      */
-    val onboardingCompleted by appPreferences.onboardingCompleted.collectAsState(initial = false)
+    val onboardingCompleted by appPreferences.onboardingCompleted.collectAsState(initial = null)
     
     var currentRoute by androidx.compose.runtime.saveable.rememberSaveable {
         mutableStateOf(AppRoute.Splash)
     }
 
     LaunchedEffect(onboardingCompleted) {
-        if (onboardingCompleted && currentRoute == AppRoute.Splash) {
-            // If onboarding is already completed, allow natural flow or default to Home
+        if (onboardingCompleted == true && currentRoute == AppRoute.Splash) {
+            // Already handled by SplashRoute timer, but this ensures consistency if the timer finishes after state loads
         }
     }
 
@@ -177,6 +182,12 @@ private fun MainRoot() {
             val action = intent.getStringExtra("action")
             val baniId = intent.getStringExtra("bani_id")
             val targetTab = intent.getStringExtra("target_tab")
+
+            // Only proceed if this is actually a notification intent with relevant extras.
+            // A normal launch intent will have null for these extras.
+            if (action == null && baniId == null && targetTab == null) {
+                return@LaunchedEffect
+            }
 
             if (action == "SNOOZE_15") {
                 val notificationManager = context.getSystemService(android.content.Context.NOTIFICATION_SERVICE) as? android.app.NotificationManager

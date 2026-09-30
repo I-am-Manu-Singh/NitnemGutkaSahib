@@ -12,9 +12,6 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -44,29 +41,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.creativeblisslabs.nitnemguktasteek.app.ui.components.RollingNumberText
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.clickable
 import com.creativeblisslabs.nitnemguktasteek.app.models.AppTab
 import com.creativeblisslabs.nitnemguktasteek.app.models.DisplayLanguage
-import com.creativeblisslabs.nitnemguktasteek.app.ui.components.BaniCard
-import com.creativeblisslabs.nitnemguktasteek.app.ui.components.HeroCard
-import com.creativeblisslabs.nitnemguktasteek.app.ui.components.MascotBani
-import com.creativeblisslabs.nitnemguktasteek.app.ui.components.MascotState
-import com.creativeblisslabs.nitnemguktasteek.app.ui.components.WeeklyStreakDialog
 import com.creativeblisslabs.nitnemguktasteek.app.ui.theme.*
-import com.creativeblisslabs.nitnemguktasteek.viewmodel.NitnemViewModel
-import com.creativeblisslabs.nitnemguktasteek.app.ui.practice.BaniAiAssistantTab
-import com.creativeblisslabs.nitnemguktasteek.app.ui.practice.practiceColors
-import com.creativeblisslabs.nitnemguktasteek.utils.translate
-import com.creativeblisslabs.nitnemguktasteek.utils.translateDigits
-import com.creativeblisslabs.nitnemguktasteek.utils.translateAng
 import androidx.compose.ui.text.style.TextAlign
 import com.creativeblisslabs.nitnemguktasteek.models.Bani
-import com.creativeblisslabs.nitnemguktasteek.models.BaniLine
-import androidx.compose.runtime.LaunchedEffect
-import com.creativeblisslabs.nitnemguktasteek.data.HukamnamaProvider
-import com.creativeblisslabs.nitnemguktasteek.audio.StreamAudioController
 import androidx.compose.ui.draw.scale
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
@@ -208,7 +189,8 @@ fun PremiumAnalyticsCard(
 
     type: AnalyticsCardType,
 
-    progress: Float
+    progress: Float,
+    isPremium: Boolean = false
 ) {
 
     val infinite =
@@ -298,7 +280,13 @@ val scale by animateFloatAsState(
 
 )
         Card(
-        modifier = modifier.scale(scale),
+        modifier = modifier
+            .scale(scale)
+            .clickable {
+                if (!isPremium) {
+                    com.creativeblisslabs.nitnemguktasteek.domain.billing.RevenueCatBillingManager.instance.showPaywall()
+                }
+            },
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
             containerColor = Color.Transparent
@@ -665,20 +653,29 @@ Gold.copy(alpha = 0.22f)
      * VALUE
      */
 
-    RollingNumberText(
-        value = value,
-        color =
-            if (
-                AppTheme.themeMode ==
-                ThemeMode.Light
-            ) {
-                Color(0xFF1F1B16)
-            } else {
-                Color.White
-            },
-        fontSize = 18.sp,
-        fontWeight = FontWeight.Bold
-    )
+    if (isPremium) {
+        RollingNumberText(
+            value = value,
+            color =
+                if (
+                    AppTheme.themeMode ==
+                    ThemeMode.Light
+                ) {
+                    Color(0xFF1F1B16)
+                } else {
+                    Color.White
+                },
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold
+        )
+    } else {
+        Icon(
+            imageVector = Icons.Default.Lock,
+            contentDescription = "Premium Feature",
+            tint = Gold,
+            modifier = Modifier.size(18.dp)
+        )
+    }
 
 
     Text(

@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Nitnem Gutka Steek</string>
+    <string name="app_name">Bani: Nitnem \&amp; Steek Companion</string>
     <string name="notification_channel_reminders">Prayer Reminders &amp; Alarms</string>
     <string name="notification_channel_reminders_description">Peaceful Nitnem reminders and full-screen prayer alerts.</string>
     <string name="notification_channel_playback">Audio Playback</string>

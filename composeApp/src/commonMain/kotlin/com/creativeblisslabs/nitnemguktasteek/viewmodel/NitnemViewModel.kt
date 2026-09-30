@@ -44,7 +44,17 @@ class NitnemViewModel(
     private var lastSavedPlaybackBucket = -1L
     private var lastTrackedMinute = -1
     private var restoredBaniId: String? = null
+    fun showBaniInfo(bani: Bani) {
+        _uiState.update {
+            it.copy(selectedInfoBani = bani)
+        }
+    }
 
+    fun dismissBaniInfo() {
+        _uiState.update {
+            it.copy(selectedInfoBani = null)
+        }
+    }
     private val _uiState =
         MutableStateFlow(
             NitnemUiState()
@@ -65,6 +75,23 @@ class NitnemViewModel(
         observePlayback()
 
         observeBookmarks()
+
+        observePremiumStatus()
+    }
+
+    private fun observePremiumStatus() {
+        viewModelScope.launch {
+            com.creativeblisslabs.nitnemguktasteek.domain.billing.PremiumBillingManager.instance.billingState
+                .collect { billingState ->
+                    _uiState.update { it.copy(isPremium = billingState.isPremium) }
+                }
+        }
+        viewModelScope.launch {
+            com.creativeblisslabs.nitnemguktasteek.domain.billing.RevenueCatBillingManager.instance.shouldShowPaywall
+                .collect { shouldShow ->
+                    _uiState.update { it.copy(shouldShowPaywall = shouldShow) }
+                }
+        }
     }
    fun setHukamnama(
     data: Hukamnama
@@ -155,6 +182,8 @@ class NitnemViewModel(
     fun restoreFromCloudUserData(
         xp: Int,
         streak: Int,
+        weeklyStreak: Int,
+        monthlyStreak: Int,
         completedBanisCount: Int,
         completedToday: List<String>,
         totalMinutes: Int,
@@ -166,6 +195,8 @@ class NitnemViewModel(
             state.copy(
                 totalXp = maxOf(state.totalXp, xp),
                 streakDays = maxOf(state.streakDays, streak),
+                weeklyCompleted = maxOf(state.weeklyCompleted, weeklyStreak),
+                monthlyConsistencyDays = maxOf(state.monthlyConsistencyDays, monthlyStreak),
                 completedBanis = updatedCompleted,
                 totalListeningMinutes = maxOf(state.totalListeningMinutes, totalMinutes),
                 quizHighscore = maxOf(state.quizHighscore, quizScore),
@@ -597,7 +628,6 @@ sohilaTime =
             )
         }
     }
-
     /*
      * BANI
      */

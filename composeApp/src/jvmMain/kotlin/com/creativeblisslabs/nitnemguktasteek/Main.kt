@@ -7,7 +7,7 @@ import com.creativeblisslabs.nitnemguktasteek.app.NitnemApp
 fun main() = application {
     Window(
         onCloseRequest = ::exitApplication,
-        title = "Nitnem Gutka Steek"
+        title = "Bani: Nitnem & Steek Companion"
     ) {
         NitnemApp()
     }

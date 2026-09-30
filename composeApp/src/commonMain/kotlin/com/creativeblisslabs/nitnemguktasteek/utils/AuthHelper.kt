@@ -16,6 +16,8 @@ data class NitnemCloudProfile(
     val email: String,
     val totalXp: Int = 0,
     val streakDays: Int = 0,
+    val weeklyStreak: Int = 0,
+    val monthlyStreak: Int = 0,
     val completedBanisCount: Int = 0,
     val completedBanisToday: List<String> = emptyList(),
     val totalRecitationMinutes: Int = 0,

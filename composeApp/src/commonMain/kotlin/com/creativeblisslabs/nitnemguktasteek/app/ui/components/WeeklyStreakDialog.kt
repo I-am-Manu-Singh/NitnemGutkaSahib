@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.creativeblisslabs.nitnemguktasteek.app.models.DisplayLanguage
+import com.creativeblisslabs.nitnemguktasteek.app.ui.theme.AppTheme
 import com.creativeblisslabs.nitnemguktasteek.app.ui.theme.Gold
 import com.creativeblisslabs.nitnemguktasteek.utils.translate
 import com.creativeblisslabs.nitnemguktasteek.utils.translateDigits
@@ -74,6 +75,7 @@ fun WeeklyStreakDialog(
             dismissOnClickOutside = true
         )
     ) {
+        val colors = AppTheme.colors
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
@@ -89,8 +91,8 @@ fun WeeklyStreakDialog(
                     .widthIn(max = if (isWideScreen) 720.dp else 440.dp)
                     .wrapContentHeight(),
                 shape = RoundedCornerShape(28.dp),
-                color = Color(0xFF171513),
-                border = BorderStroke(1.2.dp, Gold.copy(alpha = 0.35f)),
+                color = colors.surface,
+                border = BorderStroke(1.2.dp, colors.gold.copy(alpha = 0.35f)),
                 shadowElevation = 16.dp
             ) {
                 Box(modifier = Modifier.fillMaxWidth()) {
@@ -106,7 +108,7 @@ fun WeeklyStreakDialog(
                         Icon(
                             imageVector = Icons.Default.Close,
                             contentDescription = "Close",
-                            tint = Color.White.copy(alpha = 0.6f),
+                            tint = colors.textPrimary.copy(alpha = 0.6f),
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -130,15 +132,15 @@ fun WeeklyStreakDialog(
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                     modifier = Modifier.weight(1f)
                                 ) {
-                                    CelebrationEmblem(glowScale, glowAlpha)
+                                    CelebrationEmblem(glowScale, glowAlpha, colors.gold)
 
                                     Spacer(modifier = Modifier.height(12.dp))
 
-                                    StreakTitleSection(streakDays, displayLanguage)
+                                    StreakTitleSection(streakDays, displayLanguage, colors.gold, colors.textPrimary)
 
                                     Spacer(modifier = Modifier.height(8.dp))
 
-                                    StreakCounterDisplay(streakDays, displayLanguage)
+                                    StreakCounterDisplay(streakDays, displayLanguage, colors.textPrimary, colors.gold)
 
                                    
                                 }
@@ -148,48 +150,48 @@ fun WeeklyStreakDialog(
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                     modifier = Modifier.weight(1f)
                                 ) {
-                                    WeeklyTrackerSection(currentDayOfWeek, streakDays, displayLanguage)
+                                    WeeklyTrackerSection(currentDayOfWeek, streakDays, displayLanguage, colors.gold, colors.background, colors.surfaceVariant, colors.textPrimary)
 
                                     Spacer(modifier = Modifier.height(12.dp))
 
-                                    HeatmapSection(streakDays, displayLanguage)
+                                    HeatmapSection(streakDays, displayLanguage, colors.gold, colors.textPrimary)
 
                                     Spacer(modifier = Modifier.height(12.dp))
 
-                                    InsightText(displayLanguage)
+                                    InsightText(displayLanguage, colors.textPrimary)
 
                                      Spacer(modifier = Modifier.height(16.dp))
 
-                                    PrimaryActionButton(displayLanguage, onDismiss)
+                                    PrimaryActionButton(displayLanguage, colors.gold, colors.background, onDismiss)
                                 }
                             }
                         } else {
                             // ── PORTRAIT / COMPACT LAYOUT (Single Column) ──
-                            CelebrationEmblem(glowScale, glowAlpha)
+                            CelebrationEmblem(glowScale, glowAlpha, colors.gold)
 
                             Spacer(modifier = Modifier.height(14.dp))
 
-                            StreakTitleSection(streakDays, displayLanguage)
+                            StreakTitleSection(streakDays, displayLanguage, colors.gold, colors.textPrimary)
 
                             Spacer(modifier = Modifier.height(4.dp))
 
-                            StreakCounterDisplay(streakDays, displayLanguage)
+                            StreakCounterDisplay(streakDays, displayLanguage, colors.textPrimary, colors.gold)
 
                             Spacer(modifier = Modifier.height(14.dp))
 
-                            WeeklyTrackerSection(currentDayOfWeek, streakDays, displayLanguage)
+                            WeeklyTrackerSection(currentDayOfWeek, streakDays, displayLanguage, colors.gold, colors.background, colors.surfaceVariant, colors.textPrimary)
 
                             Spacer(modifier = Modifier.height(14.dp))
 
-                            HeatmapSection(streakDays, displayLanguage)
+                            HeatmapSection(streakDays, displayLanguage, colors.gold, colors.textPrimary)
 
                             Spacer(modifier = Modifier.height(14.dp))
 
-                            InsightText(displayLanguage)
+                            InsightText(displayLanguage, colors.textPrimary)
 
                             Spacer(modifier = Modifier.height(20.dp))
 
-                            PrimaryActionButton(displayLanguage, onDismiss)
+                            PrimaryActionButton(displayLanguage, colors.gold, colors.background, onDismiss)
                         }
                     }
                 }
@@ -199,7 +201,7 @@ fun WeeklyStreakDialog(
 }
 
 @Composable
-private fun CelebrationEmblem(glowScale: Float, glowAlpha: Float) {
+private fun CelebrationEmblem(glowScale: Float, glowAlpha: Float, goldColor: Color) {
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier.size(130.dp)
@@ -211,7 +213,7 @@ private fun CelebrationEmblem(glowScale: Float, glowAlpha: Float) {
                 .alpha(glowAlpha)
                 .background(
                     Brush.radialGradient(
-                        listOf(Gold.copy(alpha = 0.45f), Color.Transparent)
+                        listOf(goldColor.copy(alpha = 0.45f), Color.Transparent)
                     ),
                     CircleShape
                 )
@@ -226,11 +228,11 @@ private fun CelebrationEmblem(glowScale: Float, glowAlpha: Float) {
 }
 
 @Composable
-private fun StreakTitleSection(streakDays: Int, displayLanguage: DisplayLanguage) {
+private fun StreakTitleSection(streakDays: Int, displayLanguage: DisplayLanguage, goldColor: Color, textPrimaryColor: Color) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = if (streakDays >= 7) "Weekly Milestone!".translate(displayLanguage) else "Daily Nitnem Streak".translate(displayLanguage),
-            color = Gold,
+            color = goldColor,
             fontSize = 24.sp,
             fontWeight = FontWeight.ExtraBold,
             textAlign = TextAlign.Center
@@ -240,7 +242,7 @@ private fun StreakTitleSection(streakDays: Int, displayLanguage: DisplayLanguage
 
         Text(
             text = if (streakDays > 0) "You've stayed consistent for".translate(displayLanguage) else "Start your spiritual streak today!".translate(displayLanguage),
-            color = Color.White.copy(alpha = 0.75f),
+            color = textPrimaryColor.copy(alpha = 0.75f),
             fontSize = 14.sp,
             textAlign = TextAlign.Center
         )
@@ -248,7 +250,7 @@ private fun StreakTitleSection(streakDays: Int, displayLanguage: DisplayLanguage
 }
 
 @Composable
-private fun StreakCounterDisplay(streakDays: Int, displayLanguage: DisplayLanguage) {
+private fun StreakCounterDisplay(streakDays: Int, displayLanguage: DisplayLanguage, textPrimaryColor: Color, goldColor: Color) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center,
@@ -263,14 +265,14 @@ private fun StreakCounterDisplay(streakDays: Int, displayLanguage: DisplayLangua
         Spacer(modifier = Modifier.width(6.dp))
         RollingNumberText(
             value = streakDays.toString().translateDigits(displayLanguage),
-            color = Color.White,
+            color = textPrimaryColor,
             fontSize = 42.sp,
             fontWeight = FontWeight.Black
         )
         Spacer(modifier = Modifier.width(8.dp))
         Text(
             text = "Days".translate(displayLanguage),
-            color = Gold,
+            color = goldColor,
             fontSize = 22.sp,
             fontWeight = FontWeight.Bold
         )
@@ -281,12 +283,16 @@ private fun StreakCounterDisplay(streakDays: Int, displayLanguage: DisplayLangua
 private fun WeeklyTrackerSection(
     currentDayOfWeek: DayOfWeek,
     streakDays: Int,
-    displayLanguage: DisplayLanguage
+    displayLanguage: DisplayLanguage,
+    goldColor: Color,
+    backgroundColor: Color,
+    surfaceVariantColor: Color,
+    textPrimaryColor: Color
 ) {
     Surface(
         shape = RoundedCornerShape(18.dp),
-        color = Color.White.copy(alpha = 0.04f),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+        color = surfaceVariantColor.copy(alpha = 0.4f),
+        border = BorderStroke(1.dp, textPrimaryColor.copy(alpha = 0.08f)),
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
@@ -328,16 +334,16 @@ private fun WeeklyTrackerSection(
                             .clip(CircleShape)
                             .background(
                                 when {
-                                    isToday -> Gold
-                                    isCompleted -> Gold.copy(alpha = 0.35f)
-                                    else -> Color.White.copy(alpha = 0.06f)
+                                    isToday -> goldColor
+                                    isCompleted -> goldColor.copy(alpha = 0.35f)
+                                    else -> textPrimaryColor.copy(alpha = 0.06f)
                                 }
                             ),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = label,
-                            color = if (isToday) Color.Black else (if (isCompleted) Gold else Color.White.copy(alpha = 0.4f)),
+                            color = if (isToday) backgroundColor else (if (isCompleted) goldColor else textPrimaryColor.copy(alpha = 0.4f)),
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -347,7 +353,7 @@ private fun WeeklyTrackerSection(
                         Box(
                             modifier = Modifier
                                 .size(4.dp)
-                                .background(Gold, CircleShape)
+                                .background(goldColor, CircleShape)
                         )
                     } else {
                         Spacer(Modifier.size(4.dp))
@@ -359,11 +365,11 @@ private fun WeeklyTrackerSection(
 }
 
 @Composable
-private fun HeatmapSection(streakDays: Int, displayLanguage: DisplayLanguage) {
+private fun HeatmapSection(streakDays: Int, displayLanguage: DisplayLanguage, goldColor: Color, textPrimaryColor: Color) {
     Surface(
         shape = RoundedCornerShape(18.dp),
-        color = Color.White.copy(alpha = 0.04f),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+        color = textPrimaryColor.copy(alpha = 0.04f),
+        border = BorderStroke(1.dp, textPrimaryColor.copy(alpha = 0.08f)),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
@@ -376,13 +382,13 @@ private fun HeatmapSection(streakDays: Int, displayLanguage: DisplayLanguage) {
                     text = "30-Day Activity Heatmap".translate(displayLanguage),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White.copy(alpha = 0.85f)
+                    color = textPrimaryColor.copy(alpha = 0.85f)
                 )
                 Text(
                     text = "${streakDays.coerceAtMost(30)} / 30 " + "Days".translate(displayLanguage),
                     fontSize = 11.5.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Gold
+                    color = goldColor
                 )
             }
 
@@ -407,8 +413,8 @@ private fun HeatmapSection(streakDays: Int, displayLanguage: DisplayLanguage) {
                                     .height(14.dp)
                                     .clip(RoundedCornerShape(4.dp))
                                     .background(
-                                        if (isHeatmapActive) Gold.copy(alpha = cellAlpha)
-                                        else Color.White.copy(alpha = cellAlpha)
+                                        if (isHeatmapActive) goldColor.copy(alpha = cellAlpha)
+                                        else textPrimaryColor.copy(alpha = cellAlpha)
                                     )
                             )
                         }
@@ -420,10 +426,10 @@ private fun HeatmapSection(streakDays: Int, displayLanguage: DisplayLanguage) {
 }
 
 @Composable
-private fun InsightText(displayLanguage: DisplayLanguage) {
+private fun InsightText(displayLanguage: DisplayLanguage, textPrimaryColor: Color) {
     Text(
         text = "Keep up the daily Nitnem to grow your streak, sync today's count, and earn more XP.".translate(displayLanguage),
-        color = Color.White.copy(alpha = 0.65f),
+        color = textPrimaryColor.copy(alpha = 0.65f),
         fontSize = 12.sp,
         textAlign = TextAlign.Center,
         modifier = Modifier.padding(horizontal = 8.dp),
@@ -432,12 +438,12 @@ private fun InsightText(displayLanguage: DisplayLanguage) {
 }
 
 @Composable
-private fun PrimaryActionButton(displayLanguage: DisplayLanguage, onDismiss: () -> Unit) {
+private fun PrimaryActionButton(displayLanguage: DisplayLanguage, goldColor: Color, backgroundColor: Color, onDismiss: () -> Unit) {
     Button(
         onClick = onDismiss,
         colors = ButtonDefaults.buttonColors(
-            containerColor = Gold,
-            contentColor = Color.Black
+            containerColor = goldColor,
+            contentColor = backgroundColor
         ),
         shape = RoundedCornerShape(16.dp),
         modifier = Modifier

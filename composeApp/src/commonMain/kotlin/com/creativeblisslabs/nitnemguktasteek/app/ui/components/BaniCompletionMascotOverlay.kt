@@ -1,9 +1,7 @@
 package com.creativeblisslabs.nitnemguktasteek.app.ui.components
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -11,27 +9,18 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
-import kotlinx.datetime.Clock
-import kotlinx.datetime.DayOfWeek
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.todayIn
 import com.creativeblisslabs.nitnemguktasteek.app.models.DisplayLanguage
 import com.creativeblisslabs.nitnemguktasteek.app.ui.theme.Accent
 import com.creativeblisslabs.nitnemguktasteek.app.ui.theme.AppTheme
@@ -103,11 +92,6 @@ val DAILY_NITNEM_STEPS = listOf(
     )
 )
 
-/**
- * Full-screen edge-to-edge Snake & Ladder Spiritual Journey overlay.
- * Animates Mascot smoothly progressing along a winding celestial track
- * from 0 (Amrit Vela) to Kirtan Sohila (Victory/Completed).
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BaniCompletionMascotOverlay(
@@ -138,6 +122,7 @@ fun BaniCompletionMascotOverlay(
     val completedStepsCount = actualCompletedCount
     val isAllNitnemDone = completedStepsCount >= 7
 
+    // Animate the step index smoothly when the user finishes a step
     val animatedMascotStep by animateFloatAsState(
         targetValue = completedStepsCount.toFloat(),
         animationSpec = spring(
@@ -148,19 +133,9 @@ fun BaniCompletionMascotOverlay(
     )
 
     val infiniteTransition = rememberInfiniteTransition(label = "board_ambient")
-    val auraScale by infiniteTransition.animateFloat(
-        initialValue = 0.95f,
-        targetValue = 1.15f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1800, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "aura_pulse"
-    )
-
     val mascotFloatY by infiniteTransition.animateFloat(
-        initialValue = -5f,
-        targetValue = 5f,
+        initialValue = -3f,
+        targetValue = 3f,
         animationSpec = infiniteRepeatable(
             animation = tween(1600, easing = EaseInOutSine),
             repeatMode = RepeatMode.Reverse
@@ -168,13 +143,15 @@ fun BaniCompletionMascotOverlay(
         label = "mascot_float"
     )
 
+    val sheetBgColor = if (isLight) Color(0xFFFFFDF9) else Color(0xFF13110F)
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = if (isLight) Color(0xFFFFFBF5) else Color(0xFF0F0E0D),
-        dragHandle = { BottomSheetDefaults.DragHandle() }
+        containerColor = sheetBgColor,
+        dragHandle = { BottomSheetDefaults.DragHandle() },
+        properties = ModalBottomSheetDefaults.properties()
     ) {
         BoxWithConstraints(
             modifier = Modifier
@@ -182,364 +159,92 @@ fun BaniCompletionMascotOverlay(
                 .background(
                     Brush.verticalGradient(
                         colors = if (isLight) listOf(
-                            Color(0xFFFFFBF5),
-                            Color(0xFFF5EFEB),
-                            Color(0xFFEDE3D8)
+                            Color(0xFFFFFDF9),
+                            Color(0xFFF7F2EC),
+                            Color(0xFFEFE8DE)
                         ) else listOf(
-                            Color(0xFF0F0E0D),
-                            Color(0xFF171412),
-                            Color(0xFF0A0908)
+                            Color(0xFF13110F),
+                            Color(0xFF1A1715),
+                            Color(0xFF0E0C0B)
                         )
                     )
-                ),
-            contentAlignment = Alignment.Center
+                )
         ) {
-            val isWideScreen = maxWidth > 680.dp
-            val maxContentWidth = if (isWideScreen) 680.dp else Dp.Unspecified
+            val isLandscapeOrWide = maxWidth > 640.dp || (maxWidth > maxHeight && maxWidth > 500.dp)
 
-            Box(
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .widthIn(max = maxContentWidth)
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                contentAlignment = Alignment.TopCenter
+                    .padding(
+                        start = if (isLandscapeOrWide) 20.dp else 16.dp,
+                        end = if (isLandscapeOrWide) 20.dp else 16.dp,
+                        bottom = 12.dp
+                    ),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Background celestial constellation particles
-                Canvas(modifier = Modifier.fillMaxSize()) {
-                    val w = size.width
-                    val h = size.height
-                    val stars = listOf(
-                        Offset(w * 0.12f, h * 0.15f),
-                        Offset(w * 0.88f, h * 0.18f),
-                        Offset(w * 0.20f, h * 0.40f),
-                        Offset(w * 0.82f, h * 0.45f),
-                        Offset(w * 0.15f, h * 0.70f),
-                        Offset(w * 0.85f, h * 0.75f),
-                        Offset(w * 0.50f, h * 0.10f),
-                        Offset(w * 0.50f, h * 0.85f)
-                    )
-                    stars.forEach { pos ->
-                        drawCircle(
-                            color = Gold.copy(alpha = 0.25f),
-                            radius = 2.5.dp.toPx(),
-                            center = pos
+                // Top Header Bar
+                HeaderBar(
+                    isAllNitnemDone = isAllNitnemDone,
+                    completedStepsCount = completedStepsCount,
+                    displayLanguage = displayLanguage,
+                    isLight = isLight,
+                    onDismiss = onDismiss
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                if (isLandscapeOrWide) {
+
+
+                    // Landscape / Tablet Split Layout
+                    Box(modifier = Modifier.weight(1f)) {
+                        CelebrationHeroBanner(
+                            isStreakCelebration = isStreakCelebration,
+                            isAllNitnemDone = isAllNitnemDone,
+                            streakDayCount = streakDayCount,
+                            baniTitle = baniTitle,
+                            mascotFloatY = mascotFloatY,
+                            isLight = isLight,
+                            displayLanguage = displayLanguage
                         )
-                        drawCircle(
-                            color = Gold.copy(alpha = 0.08f),
-                            radius = 8.dp.toPx() * auraScale,
-                            center = pos
-                        )
                     }
-                }
-
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    // ── 1. TOP APP BAR ──
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 6.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            Surface(
-                                shape = CircleShape,
-                                color = Gold.copy(alpha = 0.18f),
-                                modifier = Modifier.size(40.dp),
-                                border = BorderStroke(1.dp, Gold.copy(alpha = 0.35f))
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = if (isAllNitnemDone) Icons.Default.EmojiEvents else Icons.Default.AutoAwesome,
-                                        contentDescription = null,
-                                        tint = Gold,
-                                        modifier = Modifier.size(22.dp)
-                                    )
-                                }
-                            }
-
-                            Column {
-                                Text(
-                                    text = if (isAllNitnemDone) "Nitnem Completed! 🎉".translate(displayLanguage)
-                                    else "Nitnem Daily Journey".translate(displayLanguage),
-                                    fontSize = 18.sp,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = if (isLight) Color(0xFF2C1E14) else Color.White
-                                )
-                                Text(
-                                    text = "${completedStepsCount}/7 " + "Banis Completed".translate(displayLanguage),
-                                    fontSize = 12.sp,
-                                    color = Accent,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
-
-                        IconButton(
-                            onClick = onDismiss,
-                            modifier = Modifier
-                                .size(38.dp)
-                                .clip(CircleShape)
-                                .background(if (isLight) Color.Black.copy(alpha = 0.06f) else Color.White.copy(alpha = 0.08f))
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Close",
-                                tint = if (isLight) Color(0xFF4E342E) else Color.White,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    }
-
-                    // ── 2. CELEBRATION HERO BANNER ──
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        shape = RoundedCornerShape(22.dp),
-                        color = if (isAllNitnemDone) Gold.copy(alpha = 0.16f) else Accent.copy(alpha = 0.09f),
-                        border = BorderStroke(1.dp, if (isAllNitnemDone) Gold.copy(alpha = 0.45f) else Accent.copy(alpha = 0.22f))
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(54.dp)
-                                    .offset(y = mascotFloatY.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Surface(
-                                    shape = CircleShape,
-                                    color = Gold.copy(alpha = 0.25f),
-                                    border = BorderStroke(1.5.dp, Gold),
-                                    modifier = Modifier.size(50.dp)
-                                ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Icon(
-                                            imageVector = if (isAllNitnemDone) Icons.Default.EmojiEvents else if (isStreakCelebration) Icons.Default.LocalFireDepartment else Icons.Default.Stars,
-                                            contentDescription = null,
-                                            tint = Gold,
-                                            modifier = Modifier.size(28.dp)
-                                        )
-                                    }
-                                }
-                            }
-
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = when {
-                                        isStreakCelebration -> "🔥 ${streakDayCount} Day Streak Active!".translate(displayLanguage)
-                                        isAllNitnemDone -> "Waheguru Ji! You Won Today's Journey!".translate(displayLanguage)
-                                        baniTitle != null -> "${baniTitle.translate(displayLanguage)} Completed!"
-                                        else -> "Advancing on Spiritual Ladder".translate(displayLanguage)
-                                    },
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (isLight) Color(0xFF3E2723) else Color.White
-                                )
-                                Text(
-                                    text = if (isAllNitnemDone) "All 7 Banis recited today. Blissful peace & blessings!".translate(displayLanguage)
-                                    else "Climb the Nitnem path step by step towards peace.".translate(displayLanguage),
-                                    fontSize = 11.5.sp,
-                                    color = if (isLight) Color(0xFF5D4037).copy(alpha = 0.85f) else Color(0xFFB0BEC5),
-                                    lineHeight = 15.sp
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(Modifier.height(8.dp))
-
-                    // ── 3. FULL-SCREEN SNAKE & LADDER SPIRITUAL PROGRESS BOARD ──
-                    BoxWithConstraints(
+                    // Horizontal Rail Board View for Landscape
+                    Box(
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(26.dp))
-                            .background(
-                                Brush.verticalGradient(
-                                    if (isLight) listOf(Color(0xFFFAF6EE), Color(0xFFF1EADB))
-                                    else listOf(Color(0xFF141210), Color(0xFF221F1B))
-                                )
-                            )
-                            .border(
-                                1.dp,
-                                if (isLight) Color(0xFFE0D8C8) else Color(0xFF38332E),
-                                RoundedCornerShape(26.dp)
-                            )
-                            .padding(horizontal = 14.dp, vertical = 10.dp)
                     ) {
-                        val boardWidth = maxWidth
-                        val boardHeight = maxHeight
-
-                        Canvas(modifier = Modifier.fillMaxSize()) {
-                            val w = size.width
-                            val h = size.height
-                            val stepHeight = h / 7f
-
-                            for (i in 0 until 6) {
-                                val isStepDone = isStepCompleted(DAILY_NITNEM_STEPS[i].id)
-                                val y1 = h - (i + 0.5f) * stepHeight
-                                val y2 = h - (i + 1.5f) * stepHeight
-
-                                val x1 = if (i % 2 == 0) w * 0.22f else w * 0.78f
-                                val x2 = if (i % 2 == 0) w * 0.78f else w * 0.22f
-
-                                val path = Path().apply {
-                                    moveTo(x1, y1)
-                                    cubicTo(
-                                        x1, y1 - (stepHeight * 0.45f),
-                                        x2, y2 + (stepHeight * 0.45f),
-                                        x2, y2
-                                    )
-                                }
-
-                                drawPath(
-                                    path = path,
-                                    color = if (isStepDone) Gold.copy(alpha = 0.55f) else Color.Gray.copy(alpha = 0.22f),
-                                    style = Stroke(
-                                        width = 7.dp.toPx(),
-                                        cap = StrokeCap.Round,
-                                        pathEffect = if (!isStepDone) PathEffect.dashPathEffect(floatArrayOf(14f, 14f), 0f) else null
-                                    )
-                                )
-
-                                if (isStepDone) {
-                                    drawPath(
-                                        path = path,
-                                        color = Accent,
-                                        style = Stroke(
-                                            width = 3.5.dp.toPx(),
-                                            cap = StrokeCap.Round
-                                        )
-                                    )
-                                }
-                            }
-                        }
-
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .verticalScroll(rememberScrollState()),
-                            verticalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            DAILY_NITNEM_STEPS.reversed().forEach { step ->
-                                val stepIdx = step.targetIndex
-                                val isDone = isStepCompleted(step.id)
-                                val nextTargetStep = DAILY_NITNEM_STEPS.firstOrNull { !isStepCompleted(it.id) }
-                                val isCurrentTarget = nextTargetStep?.id == step.id
-                                val isAlignRight = (stepIdx % 2 == 0)
-
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 5.dp),
-                                    horizontalArrangement = if (isAlignRight) Arrangement.End else Arrangement.Start,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    StationTile(
-                                        step = step,
-                                        isDone = isDone,
-                                        isCurrentTarget = isCurrentTarget,
-                                        isLight = isLight,
-                                        displayLanguage = displayLanguage
-                                    )
-                                }
-                            }
-                        }
-
-                        if (boardHeight > 0.dp && boardWidth > 0.dp) {
-                            val currentStepProgress = animatedMascotStep.coerceIn(0f, 6.99f)
-                            val lowerIndex = currentStepProgress.toInt()
-                            val segmentT = (currentStepProgress - lowerIndex).coerceIn(0f, 1f)
-
-                            val stepHeightVal = boardHeight.value / 7f
-                            val y1 = boardHeight.value - (lowerIndex + 0.5f) * stepHeightVal
-                            val y2 = boardHeight.value - (lowerIndex + 1.5f) * stepHeightVal
-                            val x1 = if (lowerIndex % 2 == 0) boardWidth.value * 0.22f else boardWidth.value * 0.78f
-                            val x2 = if (lowerIndex % 2 == 0) boardWidth.value * 0.78f else boardWidth.value * 0.22f
-
-                            val t = segmentT
-                            val oneMinusT = 1f - t
-                            val cy1 = y1 - (stepHeightVal * 0.45f)
-                            val cy2 = y2 + (stepHeightVal * 0.45f)
-
-                            val mascotX = (oneMinusT * oneMinusT * oneMinusT * x1) +
-                                    (3 * oneMinusT * oneMinusT * t * x1) +
-                                    (3 * oneMinusT * t * t * x2) +
-                                    (t * t * t * x2)
-                            val mascotY = (oneMinusT * oneMinusT * oneMinusT * y1) +
-                                    (3 * oneMinusT * oneMinusT * t * cy1) +
-                                    (3 * oneMinusT * t * t * cy2) +
-                                    (t * t * t * y2)
-
-                            Box(
-                                modifier = Modifier
-                                    .offset(
-                                        x = (mascotX - 22).dp,
-                                        y = (mascotY - 22 + mascotFloatY).dp
-                                    )
-                                    .size(44.dp)
-                                    .clip(CircleShape)
-                                    .background(Gold.copy(alpha = 0.20f))
-                                    .border(1.5.dp, Gold, CircleShape),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                MascotBani(
-                                    state = if (isAllNitnemDone) MascotState.Celebrating else MascotState.Walking,
-                                    modifier = Modifier.size(38.dp)
-                                )
-                            }
-                        }
+                        HorizontalSpiritualBoard(
+                            isStepCompleted = ::isStepCompleted,
+                            animatedMascotStep = animatedMascotStep,
+                            isAllNitnemDone = isAllNitnemDone,
+                            mascotFloatY = mascotFloatY,
+                            isLight = isLight,
+                            displayLanguage = displayLanguage
+                        )
                     }
+                    Spacer(modifier = Modifier.height(22.dp))
 
-                    Spacer(Modifier.height(10.dp))
-
-                    // ── 4. FOOTER: Quick Progress Summary & Close ──
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp),
+                        // FIX: This forces the spaced items to cluster in the absolute center of the Row
+                        horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Surface(
-                            shape = RoundedCornerShape(14.dp),
-                            color = Accent.copy(alpha = 0.12f),
-                            border = BorderStroke(1.dp, Accent.copy(alpha = 0.25f))
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Star,
-                                    contentDescription = null,
-                                    tint = Gold,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Text(
-                                    text = "${completedStepsCount * 100} XP " + "Earned Today".translate(displayLanguage),
-                                    fontSize = 12.5.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (isLight) Color(0xFF2C1E14) else Color.White
-                                )
-                            }
-                        }
+
+                        ProgressXpCardCompact(
+                            completedStepsCount = completedStepsCount,
+                            displayLanguage = displayLanguage,
+                            isLight = isLight
+                        )
 
                         Button(
                             onClick = onDismiss,
                             colors = ButtonDefaults.buttonColors(containerColor = Accent),
                             shape = RoundedCornerShape(14.dp),
-                            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp)
+                            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp)
                         ) {
                             Text(
                                 text = if (isAllNitnemDone) "Waheguru 🙏".translate(displayLanguage) else "Continue Paath".translate(displayLanguage),
@@ -549,6 +254,46 @@ fun BaniCompletionMascotOverlay(
                             )
                         }
                     }
+
+
+                } else {
+                    // Mobile Portrait Layout
+                    CelebrationHeroBanner(
+                        isStreakCelebration = isStreakCelebration,
+                        isAllNitnemDone = isAllNitnemDone,
+                        streakDayCount = streakDayCount,
+                        baniTitle = baniTitle,
+                        mascotFloatY = mascotFloatY,
+                        isLight = isLight,
+                        displayLanguage = displayLanguage
+                    )
+
+                    Spacer(Modifier.height(8.dp))
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                    ) {
+                        VerticalSpiritualBoard(
+                            isStepCompleted = ::isStepCompleted,
+                            animatedMascotStep = animatedMascotStep,
+                            isAllNitnemDone = isAllNitnemDone,
+                            mascotFloatY = mascotFloatY,
+                            isLight = isLight,
+                            displayLanguage = displayLanguage
+                        )
+                    }
+
+                    Spacer(Modifier.height(10.dp))
+
+                    FooterBar(
+                        completedStepsCount = completedStepsCount,
+                        isAllNitnemDone = isAllNitnemDone,
+                        displayLanguage = displayLanguage,
+                        isLight = isLight,
+                        onDismiss = onDismiss
+                    )
                 }
             }
         }
@@ -556,7 +301,486 @@ fun BaniCompletionMascotOverlay(
 }
 
 /**
- * High-polish station tile on the spiritual board.
+ * Top App Header Bar
+ */
+@Composable
+private fun HeaderBar(
+    isAllNitnemDone: Boolean,
+    completedStepsCount: Int,
+    displayLanguage: DisplayLanguage,
+    isLight: Boolean,
+    onDismiss: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Surface(
+                shape = CircleShape,
+                color = Gold.copy(alpha = 0.20f),
+                modifier = Modifier.size(38.dp),
+                border = BorderStroke(1.dp, Gold.copy(alpha = 0.45f))
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = if (isAllNitnemDone) Icons.Default.EmojiEvents else Icons.Default.AutoAwesome,
+                        contentDescription = null,
+                        tint = Gold,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+
+            Column {
+                Text(
+                    text = if (isAllNitnemDone) "Nitnem Completed! 🎉".translate(displayLanguage)
+                    else "Nitnem Daily Journey".translate(displayLanguage),
+                    fontSize = 16.5.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = if (isLight) Color(0xFF2C1E14) else Color.White
+                )
+                Text(
+                    text = "${completedStepsCount}/7 " + "Banis Completed".translate(displayLanguage),
+                    fontSize = 11.5.sp,
+                    color = Accent,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+
+        IconButton(
+            onClick = onDismiss,
+            modifier = Modifier
+                .size(34.dp)
+                .clip(CircleShape)
+                .background(if (isLight) Color.Black.copy(alpha = 0.05f) else Color.White.copy(alpha = 0.09f))
+        ) {
+            Icon(
+                imageVector = Icons.Default.Close,
+                contentDescription = "Close",
+                tint = if (isLight) Color(0xFF4E342E) else Color.White,
+                modifier = Modifier.size(18.dp)
+            )
+        }
+    }
+}
+
+/**
+ * Top celebration status banner.
+ */
+@Composable
+private fun CelebrationHeroBanner(
+    isStreakCelebration: Boolean,
+    isAllNitnemDone: Boolean,
+    streakDayCount: Int?,
+    baniTitle: String?,
+    mascotFloatY: Float,
+    isLight: Boolean,
+    displayLanguage: DisplayLanguage
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = if (isAllNitnemDone) Gold.copy(alpha = 0.16f) else Accent.copy(alpha = 0.08f),
+        border = BorderStroke(
+            1.dp,
+            if (isAllNitnemDone) Gold.copy(alpha = 0.45f) else Accent.copy(alpha = 0.22f)
+        )
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .offset(y = mascotFloatY.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Surface(
+                    shape = CircleShape,
+                    color = Gold.copy(alpha = 0.22f),
+                    border = BorderStroke(1.2.dp, Gold),
+                    modifier = Modifier.size(40.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = when {
+                                isAllNitnemDone -> Icons.Default.EmojiEvents
+                                isStreakCelebration -> Icons.Default.LocalFireDepartment
+                                else -> Icons.Default.Stars
+                            },
+                            contentDescription = null,
+                            tint = Gold,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+            }
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = when {
+                        isStreakCelebration -> "🔥 ${streakDayCount} Day Streak Active!".translate(displayLanguage)
+                        isAllNitnemDone -> "Waheguru Ji! You Won Today's Journey!".translate(displayLanguage)
+                        baniTitle != null -> "${baniTitle.translate(displayLanguage)} Completed!"
+                        else -> "Advancing on Spiritual Ladder".translate(displayLanguage)
+                    },
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (isLight) Color(0xFF3E2723) else Color.White
+                )
+                Text(
+                    text = if (isAllNitnemDone) "All 7 Banis recited today. Blissful peace & blessings!".translate(displayLanguage)
+                    else "Climb the Nitnem path step by step towards peace.".translate(displayLanguage),
+                    fontSize = 11.sp,
+                    color = if (isLight) Color(0xFF6D4C41) else Color(0xFFB0BEC5),
+                    lineHeight = 14.sp
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Landscape / Wide horizontal track:
+ * Cards are laid out along a horizontally winding dotted path with the mascot animating along the curves.
+ */
+@Composable
+private fun HorizontalSpiritualBoard(
+    isStepCompleted: (String) -> Boolean,
+    animatedMascotStep: Float,
+    isAllNitnemDone: Boolean,
+    mascotFloatY: Float,
+    isLight: Boolean,
+    displayLanguage: DisplayLanguage
+) {
+    val density = LocalDensity.current
+    val totalSteps = 7
+    val cardWidth = 190.dp
+    val cardSpacing = 24.dp
+
+    val scrollState = rememberScrollState()
+
+    BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxSize()
+            .clip(RoundedCornerShape(20.dp))
+            .background(
+                Brush.verticalGradient(
+                    if (isLight) listOf(Color(0xFFFAF7F2), Color(0xFFF1ECE4))
+                    else listOf(Color(0xFF181513), Color(0xFF221F1C))
+                )
+            )
+            .border(
+                1.dp,
+                if (isLight) Color(0xFFE2DCD2) else Color(0xFF36322E),
+                RoundedCornerShape(20.dp)
+            )
+    ) {
+        val boardHeightPx = constraints.maxHeight.toFloat()
+        val cardWidthPx = with(density) { cardWidth.toPx() }
+        val cardSpacingPx = with(density) { cardSpacing.toPx() }
+        val totalTrackWidthPx = totalSteps * cardWidthPx + (totalSteps - 1) * cardSpacingPx + with(density) { 32.dp.toPx() }
+
+        // Compute coordinate centers for horizontal layout
+        val stepAnchors = remember(boardHeightPx, totalTrackWidthPx) {
+            val startXPx = with(density) { 16.dp.toPx() } + cardWidthPx / 2f
+            List(totalSteps) { idx ->
+                val x = startXPx + idx * (cardWidthPx + cardSpacingPx)
+                // Alternate height slightly to create a wave path
+                val y = if (idx % 2 == 0) boardHeightPx * 0.35f else boardHeightPx * 0.65f
+                Offset(x, y)
+            }
+        }
+
+        Box(
+            modifier = Modifier
+                .fillMaxHeight()
+                .width(with(density) { totalTrackWidthPx.toDp() })
+                .horizontalScroll(scrollState)
+        ) {
+            // Draw continuous dotted / filled curves connecting the cards
+            Canvas(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .width(with(density) { totalTrackWidthPx.toDp() })
+            ) {
+                for (i in 0 until totalSteps - 1) {
+                    val p0 = stepAnchors[i]
+                    val p3 = stepAnchors[i + 1]
+                    val isStepDone = isStepCompleted(DAILY_NITNEM_STEPS[i].id)
+
+                    val midX = (p0.x + p3.x) / 2f
+                    val path = Path().apply {
+                        moveTo(p0.x, p0.y)
+                        cubicTo(
+                            midX, p0.y,
+                            midX, p3.y,
+                            p3.x, p3.y
+                        )
+                    }
+
+                    // Background dashed line
+                    drawPath(
+                        path = path,
+                        color = if (isStepDone) Gold.copy(alpha = 0.5f) else (if (isLight) Color(0xFFD3C8BA) else Color(0xFF453F3A)),
+                        style = Stroke(
+                            width = 4.dp.toPx(),
+                            cap = StrokeCap.Round,
+                            pathEffect = if (!isStepDone) PathEffect.dashPathEffect(floatArrayOf(12f, 12f), 0f) else null
+                        )
+                    )
+
+                    // Active completed path
+                    if (isStepDone) {
+                        drawPath(
+                            path = path,
+                            color = Accent,
+                            style = Stroke(
+                                width = 3.dp.toPx(),
+                                cap = StrokeCap.Round
+                            )
+                        )
+                    }
+                }
+            }
+
+            // Cards positioned horizontally along the wave
+            DAILY_NITNEM_STEPS.forEachIndexed { idx, step ->
+                val isDone = isStepCompleted(step.id)
+                val nextTargetStep = DAILY_NITNEM_STEPS.firstOrNull { !isStepCompleted(it.id) }
+                val isCurrentTarget = nextTargetStep?.id == step.id
+                val anchor = stepAnchors[idx]
+
+                Box(
+                    modifier = Modifier
+                        .offset(
+                            x = with(density) { (anchor.x - cardWidthPx / 2f).toDp() },
+                            y = with(density) { (anchor.y - 36.dp.toPx()).toDp() }
+                        )
+                        .width(cardWidth)
+                ) {
+                    StationTile(
+                        step = step,
+                        isDone = isDone,
+                        isCurrentTarget = isCurrentTarget,
+                        isLight = isLight,
+                        displayLanguage = displayLanguage
+                    )
+                }
+            }
+
+            // Animated mascot gliding along the horizontal spline
+            if (stepAnchors.isNotEmpty()) {
+                val currentProgress = animatedMascotStep.coerceIn(0f, (totalSteps - 1).toFloat() - 0.001f)
+                val lowerIndex = currentProgress.toInt()
+                val t = currentProgress - lowerIndex
+
+                val p0 = stepAnchors[lowerIndex]
+                val p3 = stepAnchors[lowerIndex + 1]
+                val midX = (p0.x + p3.x) / 2f
+                val p1 = Offset(midX, p0.y)
+                val p2 = Offset(midX, p3.y)
+
+                // Cubic Bezier formula: B(t) = (1-t)^3*p0 + 3(1-t)^2*t*p1 + 3(1-t)*t^2*p2 + t^3*p3
+                val oneMinusT = 1f - t
+                val mascotX = (oneMinusT * oneMinusT * oneMinusT * p0.x) +
+                        (3f * oneMinusT * oneMinusT * t * p1.x) +
+                        (3f * oneMinusT * t * t * p2.x) +
+                        (t * t * t * p3.x)
+                val mascotY = (oneMinusT * oneMinusT * oneMinusT * p0.y) +
+                        (3f * oneMinusT * oneMinusT * t * p1.y) +
+                        (3f * oneMinusT * t * t * p2.y) +
+                        (t * t * t * p3.y)
+
+                Box(
+                    modifier = Modifier
+                        .offset(
+                            x = with(density) { (mascotX - 20.dp.toPx()).toDp() },
+                            y = with(density) { (mascotY - 20.dp.toPx() + mascotFloatY.dp.toPx()).toDp() }
+                        )
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(Gold.copy(alpha = 0.25f))
+                        .border(1.5.dp, Gold, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    MascotBani(
+                        state = if (isAllNitnemDone) MascotState.Celebrating else MascotState.Walking,
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Mobile Portrait snake-and-ladder layout with the mascot gliding along the vertical curves.
+ */
+@Composable
+private fun VerticalSpiritualBoard(
+    isStepCompleted: (String) -> Boolean,
+    animatedMascotStep: Float,
+    isAllNitnemDone: Boolean,
+    mascotFloatY: Float,
+    isLight: Boolean,
+    displayLanguage: DisplayLanguage
+) {
+    val density = LocalDensity.current
+    val totalSteps = 7
+
+    BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxSize()
+            .clip(RoundedCornerShape(20.dp))
+            .background(
+                Brush.verticalGradient(
+                    if (isLight) listOf(Color(0xFFFAF7F2), Color(0xFFF1ECE4))
+                    else listOf(Color(0xFF181513), Color(0xFF221F1C))
+                )
+            )
+            .border(
+                1.dp,
+                if (isLight) Color(0xFFE2DCD2) else Color(0xFF36322E),
+                RoundedCornerShape(20.dp)
+            )
+            .padding(10.dp)
+    ) {
+        val boardWidthPx = constraints.maxWidth.toFloat()
+        val boardHeightPx = constraints.maxHeight.toFloat()
+        val stepHeightPx = boardHeightPx / totalSteps.toFloat()
+
+        // Card center anchors
+        val stepAnchors = remember(boardWidthPx, boardHeightPx) {
+            List(totalSteps) { idx ->
+                val isAlignRight = (idx + 1) % 2 == 0
+                val x = if (isAlignRight) boardWidthPx - with(density) { 34.dp.toPx() }
+                else with(density) { 34.dp.toPx() }
+                val y = boardHeightPx - (idx + 0.5f) * stepHeightPx
+                Offset(x, y)
+            }
+        }
+
+        // Draw curved dotted track connecting card anchors
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            for (i in 0 until totalSteps - 1) {
+                val start = stepAnchors[i]
+                val end = stepAnchors[i + 1]
+                val isStepDone = isStepCompleted(DAILY_NITNEM_STEPS[i].id)
+
+                val controlYOffset = stepHeightPx * 0.45f
+                val path = Path().apply {
+                    moveTo(start.x, start.y)
+                    cubicTo(
+                        start.x, start.y - controlYOffset,
+                        end.x, end.y + controlYOffset,
+                        end.x, end.y
+                    )
+                }
+
+                drawPath(
+                    path = path,
+                    color = if (isStepDone) Gold.copy(alpha = 0.55f) else (if (isLight) Color(0xFFD3C8BA) else Color(0xFF453F3A)),
+                    style = Stroke(
+                        width = 4.5.dp.toPx(),
+                        cap = StrokeCap.Round,
+                        pathEffect = if (!isStepDone) PathEffect.dashPathEffect(floatArrayOf(12f, 12f), 0f) else null
+                    )
+                )
+
+                if (isStepDone) {
+                    drawPath(
+                        path = path,
+                        color = Accent,
+                        style = Stroke(
+                            width = 2.5.dp.toPx(),
+                            cap = StrokeCap.Round
+                        )
+                    )
+                }
+            }
+        }
+
+        // Card node hierarchy
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            DAILY_NITNEM_STEPS.reversed().forEach { step ->
+                val isDone = isStepCompleted(step.id)
+                val nextTargetStep = DAILY_NITNEM_STEPS.firstOrNull { !isStepCompleted(it.id) }
+                val isCurrentTarget = nextTargetStep?.id == step.id
+                val isAlignRight = (step.targetIndex % 2 == 0)
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = if (isAlignRight) Arrangement.End else Arrangement.Start,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    StationTile(
+                        step = step,
+                        isDone = isDone,
+                        isCurrentTarget = isCurrentTarget,
+                        isLight = isLight,
+                        displayLanguage = displayLanguage
+                    )
+                }
+            }
+        }
+
+        // Animated mascot sliding along the vertical path
+        if (boardHeightPx > 0 && boardWidthPx > 0 && stepAnchors.isNotEmpty()) {
+            val currentProgress = animatedMascotStep.coerceIn(0f, (totalSteps - 1).toFloat() - 0.001f)
+            val lowerIndex = currentProgress.toInt()
+            val t = currentProgress - lowerIndex
+
+            val p0 = stepAnchors[lowerIndex]
+            val p3 = stepAnchors[lowerIndex + 1]
+            val cyOffset = stepHeightPx * 0.45f
+            val p1 = Offset(p0.x, p0.y - cyOffset)
+            val p2 = Offset(p3.x, p3.y + cyOffset)
+
+            val oneMinusT = 1f - t
+            val mascotX = (oneMinusT * oneMinusT * oneMinusT * p0.x) +
+                    (3f * oneMinusT * oneMinusT * t * p1.x) +
+                    (3f * oneMinusT * t * t * p2.x) +
+                    (t * t * t * p3.x)
+            val mascotY = (oneMinusT * oneMinusT * oneMinusT * p0.y) +
+                    (3f * oneMinusT * oneMinusT * t * p1.y) +
+                    (3f * oneMinusT * t * t * p2.y) +
+                    (t * t * t * p3.y)
+
+            Box(
+                modifier = Modifier
+                    .offset(
+                        x = with(density) { (mascotX - 20.dp.toPx()).toDp() },
+                        y = with(density) { (mascotY - 20.dp.toPx() + mascotFloatY.dp.toPx()).toDp() }
+                    )
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(Gold.copy(alpha = 0.25f))
+                    .border(1.5.dp, Gold, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                MascotBani(
+                    state = if (isAllNitnemDone) MascotState.Celebrating else MascotState.Walking,
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Spiritual Station Tile Card.
  */
 @Composable
 private fun StationTile(
@@ -569,7 +793,7 @@ private fun StationTile(
     val infiniteTransition = rememberInfiniteTransition(label = "tile_target_anim")
     val pulseScale by infiniteTransition.animateFloat(
         initialValue = 1f,
-        targetValue = 1.05f,
+        targetValue = 1.03f,
         animationSpec = infiniteRepeatable(
             animation = tween(900, easing = EaseInOutCubic),
             repeatMode = RepeatMode.Reverse
@@ -578,38 +802,38 @@ private fun StationTile(
     )
 
     Surface(
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(16.dp),
         color = when {
-            isDone -> Gold.copy(alpha = if (isLight) 0.64f else 0.70f)
-            isCurrentTarget -> Accent.copy(alpha = if (isLight) 0.58f else 0.64f)
-            else -> if (isLight) Color.White.copy(alpha = 0.90f) else Color(0xFF282522)
+            isDone -> if (isLight) Color(0xFFF9EED9) else Color(0xFF33291F)
+            isCurrentTarget -> if (isLight) Color(0xFFE8F3FD) else Color(0xFF1E2833)
+            else -> if (isLight) Color.White.copy(alpha = 0.95f) else Color(0xFF262320)
         },
         border = BorderStroke(
-            width = if (isCurrentTarget) 2.dp else 1.dp,
+            width = if (isCurrentTarget) 1.6.dp else 1.dp,
             color = when {
-                isDone -> Gold
+                isDone -> Gold.copy(alpha = 0.85f)
                 isCurrentTarget -> Accent
-                else -> if (isLight) Color(0xFFD7CCC8) else Color(0xFF423D38)
+                else -> if (isLight) Color(0xFFDED8CE) else Color(0xFF3D3833)
             }
         ),
         modifier = Modifier
-            .widthIn(min = 200.dp, max = 260.dp)
+            .widthIn(min = 175.dp, max = 220.dp)
             .scale(if (isCurrentTarget) pulseScale else 1f)
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .size(40.dp)
+                    .size(32.dp)
                     .clip(CircleShape)
                     .background(
                         when {
                             isDone -> Gold
-                            isCurrentTarget -> Accent.copy(alpha = 0.28f)
-                            else -> if (isLight) Color(0xFFEFEBE9) else Color(0xFF3A3530)
+                            isCurrentTarget -> Accent.copy(alpha = 0.25f)
+                            else -> if (isLight) Color(0xFFECE6DD) else Color(0xFF36322E)
                         }
                     ),
                 contentAlignment = Alignment.Center
@@ -619,14 +843,14 @@ private fun StationTile(
                         imageVector = Icons.Default.Check,
                         contentDescription = "Done",
                         tint = Color.Black,
-                        modifier = Modifier.size(22.dp)
+                        modifier = Modifier.size(18.dp)
                     )
                 } else {
                     Icon(
                         imageVector = step.icon,
                         contentDescription = null,
                         tint = if (isCurrentTarget) Accent else (if (isLight) Color(0xFF8D6E63) else Color(0xFF9E9E9E)),
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(16.dp)
                     )
                 }
             }
@@ -638,24 +862,116 @@ private fun StationTile(
                 ) {
                     Text(
                         text = "#${step.targetIndex}".translateDigits(displayLanguage),
-                        fontSize = 11.sp,
+                        fontSize = 10.5.sp,
                         fontWeight = FontWeight.Bold,
                         color = if (isDone) Gold else Accent
                     )
                     Text(
                         text = "• ${step.period.translate(displayLanguage)}",
-                        fontSize = 10.sp,
+                        fontSize = 9.5.sp,
                         color = if (isLight) Color(0xFF795548) else Color(0xFFB0BEC5)
                     )
                 }
 
                 Text(
                     text = step.title.translate(displayLanguage),
-                    fontSize = 13.5.sp,
+                    fontSize = 12.5.sp,
                     fontWeight = FontWeight.Bold,
                     color = if (isLight) Color(0xFF3E2723) else Color.White
                 )
             }
+        }
+    }
+}
+
+/**
+ * Compact XP display card for landscape mode.
+ */
+@Composable
+private fun ProgressXpCardCompact(
+    completedStepsCount: Int,
+    displayLanguage: DisplayLanguage,
+    isLight: Boolean
+) {
+    Surface(
+        shape = RoundedCornerShape(14.dp),
+        color = Accent.copy(alpha = 0.12f),
+        border = BorderStroke(1.dp, Accent.copy(alpha = 0.28f))
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Star,
+                contentDescription = null,
+                tint = Gold,
+                modifier = Modifier.size(18.dp)
+            )
+            Text(
+                text = "${completedStepsCount * 100} XP " + "Earned Today".translate(displayLanguage),
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                color = if (isLight) Color(0xFF2C1E14) else Color.White
+            )
+        }
+    }
+}
+
+/**
+ * Portrait bottom sheet footer with quick summary & dismiss button.
+ */
+@Composable
+private fun FooterBar(
+    completedStepsCount: Int,
+    isAllNitnemDone: Boolean,
+    displayLanguage: DisplayLanguage,
+    isLight: Boolean,
+    onDismiss: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Surface(
+            shape = RoundedCornerShape(14.dp),
+            color = Accent.copy(alpha = 0.12f),
+            border = BorderStroke(1.dp, Accent.copy(alpha = 0.25f))
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Star,
+                    contentDescription = null,
+                    tint = Gold,
+                    modifier = Modifier.size(18.dp)
+                )
+                Text(
+                    text = "${completedStepsCount * 100} XP " + "Earned Today".translate(displayLanguage),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (isLight) Color(0xFF2C1E14) else Color.White
+                )
+            }
+        }
+
+        Button(
+            onClick = onDismiss,
+            colors = ButtonDefaults.buttonColors(containerColor = Accent),
+            shape = RoundedCornerShape(14.dp),
+            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp)
+        ) {
+            Text(
+                text = if (isAllNitnemDone) "Waheguru 🙏".translate(displayLanguage) else "Continue Paath".translate(displayLanguage),
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                fontSize = 13.sp
+            )
         }
     }
 }

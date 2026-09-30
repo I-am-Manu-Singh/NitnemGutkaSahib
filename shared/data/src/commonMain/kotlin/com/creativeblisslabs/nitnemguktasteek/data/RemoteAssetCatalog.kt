@@ -58,7 +58,7 @@ object RemoteAssetCatalog {
     ): RemoteAssetTrack {
         val cleanName = audioFileName.removeSuffix(".opus").removeSuffix(".mp3").removeSuffix(".m4a")
 
-        val (baniId, baniTitle, isPrimary) = when {
+        val (baniId, baniTitle, isPrimaryCandidate) = when {
             cleanName.startsWith("japji_sahib") || cleanName.startsWith("japji") ->
                 Triple("japji-sahib", "Japji Sahib", true)
             cleanName.startsWith("jaap_sahib") || cleanName.startsWith("jaap") ->
@@ -102,6 +102,15 @@ object RemoteAssetCatalog {
             else ->
                 Triple(cleanName.replace('_', '-'), cleanName.replace('_', ' '), false)
         }
+
+        // Only mark as primary if it's the designated default reciter for that Bani
+        // For Nitnem, we typically treat Bhai Harinder Singh Ji or Bhai Hari Singh Ji as the "standard" baseline.
+        val isPrimary = isPrimaryCandidate && (
+            cleanName.endsWith("hari_singh") || 
+            cleanName.endsWith("harinder_singh") ||
+            // Fallback for cases where there is only one track for a Nitnem bani
+            (baniId == "japji-sahib" && cleanName == "japji_sahib_hari_singh")
+        )
 
         val rawArtistSlug = cleanName.substringAfterLast("${cleanName.substringBeforeLast('_')}_", "")
             .ifBlank { cleanName.substringAfterLast('_') }

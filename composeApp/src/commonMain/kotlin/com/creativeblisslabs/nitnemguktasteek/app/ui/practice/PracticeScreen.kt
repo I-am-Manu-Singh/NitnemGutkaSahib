@@ -1,10 +1,10 @@
 
-package com.creativeblisslabs.nitnemguktasteek.app.ui.screens
+// package com.creativeblisslabs.nitnemguktasteek.app.ui.screens
+package com.creativeblisslabs.nitnemguktasteek.app.ui.practice
 
 import com.creativeblisslabs.nitnemguktasteek.app.ui.practice.SimranAbhyasTab
 import com.creativeblisslabs.nitnemguktasteek.app.ui.practice.AiGurbaniQuizTab
 import com.creativeblisslabs.nitnemguktasteek.app.ui.practice.BaniAiAssistantTab
-import com.creativeblisslabs.nitnemguktasteek.app.ui.practice.FamilyLeaderboardTab
 import com.creativeblisslabs.nitnemguktasteek.app.ui.practice.practiceColors
 import com.creativeblisslabs.nitnemguktasteek.app.ui.practice.PracticeColors
 import androidx.compose.animation.AnimatedContent

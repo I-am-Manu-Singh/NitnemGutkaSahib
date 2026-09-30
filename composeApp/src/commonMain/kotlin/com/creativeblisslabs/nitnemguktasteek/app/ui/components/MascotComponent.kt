@@ -635,7 +635,7 @@ val floatAnim by infiniteTransition.animateFloat(
 
                 // 2. Radiating morning rays (divine dawn glow lines)
                 repeat(8) { i ->
-                    val angle = i * (2.0 * PI / 8.0) + (currentAuraScale * 0.2f)
+                    val angle = i * (2.0 * kotlin.math.PI / 8.0) + (currentAuraScale * 0.2f)
                     val cos = kotlin.math.cos(angle).toFloat()
                     val sin = kotlin.math.sin(angle).toFloat()
                     val rayInner = bodyRadius * 1.15f
@@ -650,10 +650,10 @@ val floatAnim by infiniteTransition.animateFloat(
                     )
                 }
 
-                // 3. Floating divine morning dew/sparkle particles moving gently upwards
+                // 3. Floating divine morning dew/sparkle particles
                 repeat(6) { i ->
                     val progress = ((currentAuraScale * (i + 1) * 1.8f) % 1.0f)
-                    val angle = i * (2.0 * PI / 6.0) + progress
+                    val angle = i * (2.0 * kotlin.math.PI / 6.0) + progress
                     val distance = bodyRadius * (1.1f + progress * 0.5f)
                     val alpha = (1f - progress).coerceIn(0f, 1f)
 
@@ -667,16 +667,16 @@ val floatAnim by infiniteTransition.animateFloat(
                     )
                 }
 
-                // 4. Peaceful meditative closed prayer eyes / happy eyes
+                // 4. Authentic Sikh Patka (Properly anchored on the head crown)
+                drawPatkaHeadwear(cx, cy, bodyRadius)
+
+                // 5. Meditative prayer eyes & smile (Now visible below the forehead wrap)
                 if (state == MascotState.Namaste) {
                     drawHappyEyes(cx, cy, eyeOffsetX, eyeOffsetY, eyeRadius, bodyRadius * 0.08f)
                     drawSmile(cx, cy, bodyRadius * 0.26f, bodyRadius * 0.10f, bodyRadius * 0.025f)
                 } else {
                     drawClosedEyes(cx, cy, eyeOffsetX, eyeOffsetY, eyeRadius, bodyRadius * 0.08f)
                 }
-
-                // 5. Authentic Sikh Patka (Properly fitted on head with crown dome, joora top-knot, front V-wrap band)
-                drawPatkaHeadwear(cx, cy, bodyRadius)
 
                 // 6. Joined Prayer Wings (Namaste / Anjali Mudra pose in front of chest)
                 drawNamasteHands(cx, cy, bodyRadius)
@@ -1278,6 +1278,7 @@ private fun DrawScope.drawCaringEyes(
  * - Traditional top Joora (knot) seated firmly on crown with wrap ties
  * - Rich royal saffron/kesri gradient with cloth fold highlights
  */
+
 private fun DrawScope.drawPatkaHeadwear(cx: Float, cy: Float, bodyRadius: Float) {
     val patkaColorTop = Color(0xFFFFB300)    // Saffron Gold
     val patkaColorMid = Color(0xFFFF8F00)    // Warm Kesri
@@ -1285,26 +1286,30 @@ private fun DrawScope.drawPatkaHeadwear(cx: Float, cy: Float, bodyRadius: Float)
     val patkaBorder = Color(0xFFBF360C)      // Trim
     val patkaHighlight = Color(0xFFFFF59D)   // Top Light sheen
 
-    // 1. Top Joora (Hair bun knot on top crown with authentic cloth wrap)
+    // -------------------------------------------------------------
+    // 1. TOP JOORA (Hair bun knot resting flush on top of skull crown)
+    // -------------------------------------------------------------
     val jooraCx = cx
-    val jooraCy = cy - bodyRadius * 1.34f
-    val jooraRadiusX = bodyRadius * 0.30f
-    val jooraRadiusY = bodyRadius * 0.24f
+    val jooraCy = cy - bodyRadius * 1.08f
+    val jooraRadiusX = bodyRadius * 0.22f
+    val jooraRadiusY = bodyRadius * 0.18f
 
-    // Joora Knot Body (Full rounded top dome knot)
     val jooraPath = Path().apply {
-        moveTo(jooraCx - jooraRadiusX, jooraCy + jooraRadiusY * 0.4f)
+        moveTo(jooraCx - jooraRadiusX, jooraCy + jooraRadiusY * 0.3f)
         cubicTo(
-            jooraCx - jooraRadiusX * 1.25f, jooraCy - jooraRadiusY * 0.9f,
-            jooraCx - jooraRadiusX * 0.55f, jooraCy - jooraRadiusY * 1.3f,
+            jooraCx - jooraRadiusX * 1.15f, jooraCy - jooraRadiusY * 0.8f,
+            jooraCx - jooraRadiusX * 0.5f, jooraCy - jooraRadiusY * 1.3f,
             jooraCx, jooraCy - jooraRadiusY * 1.35f
         )
         cubicTo(
-            jooraCx + jooraRadiusX * 0.55f, jooraCy - jooraRadiusY * 1.3f,
-            jooraCx + jooraRadiusX * 1.25f, jooraCy - jooraRadiusY * 0.9f,
-            jooraCx + jooraRadiusX, jooraCy + jooraRadiusY * 0.4f
+            jooraCx + jooraRadiusX * 0.5f, jooraCy - jooraRadiusY * 1.3f,
+            jooraCx + jooraRadiusX * 1.15f, jooraCy - jooraRadiusY * 0.8f,
+            jooraCx + jooraRadiusX, jooraCy + jooraRadiusY * 0.3f
         )
-        quadraticTo(jooraCx, jooraCy + jooraRadiusY * 0.85f, jooraCx - jooraRadiusX, jooraCy + jooraRadiusY * 0.4f)
+        quadraticTo(
+            jooraCx, jooraCy + jooraRadiusY * 0.7f,
+            jooraCx - jooraRadiusX, jooraCy + jooraRadiusY * 0.3f
+        )
         close()
     }
 
@@ -1316,112 +1321,125 @@ private fun DrawScope.drawPatkaHeadwear(cx: Float, cy: Float, bodyRadius: Float)
             radius = jooraRadiusX * 1.4f
         )
     )
-    drawPath(path = jooraPath, color = patkaBorder, style = Stroke(width = bodyRadius * 0.024f))
+    drawPath(
+        path = jooraPath,
+        color = patkaBorder,
+        style = Stroke(width = bodyRadius * 0.02f)
+    )
 
-    // Joora knot spherical highlight fold
+    // Joora knot highlight sheen
     drawArc(
         color = patkaHighlight.copy(alpha = 0.75f),
         startAngle = 190f,
         sweepAngle = 160f,
         useCenter = false,
-        topLeft = Offset(jooraCx - jooraRadiusX * 0.75f, jooraCy - jooraRadiusY * 1.15f),
-        size = Size(jooraRadiusX * 1.5f, jooraRadiusY * 1.2f),
-        style = Stroke(width = bodyRadius * 0.03f, cap = StrokeCap.Round)
+        topLeft = Offset(jooraCx - jooraRadiusX * 0.7f, jooraCy - jooraRadiusY * 1.1f),
+        size = Size(jooraRadiusX * 1.4f, jooraRadiusY * 1.1f),
+        style = Stroke(width = bodyRadius * 0.025f, cap = StrokeCap.Round)
     )
 
     // Joora Base Tie Band (Dori wrap securing joora to head)
     val tiePath = Path().apply {
-        moveTo(jooraCx - jooraRadiusX * 1.05f, jooraCy + jooraRadiusY * 0.5f)
-        quadraticTo(jooraCx, jooraCy + jooraRadiusY * 0.95f, jooraCx + jooraRadiusX * 1.05f, jooraCy + jooraRadiusY * 0.5f)
-        quadraticTo(jooraCx, jooraCy + jooraRadiusY * 0.15f, jooraCx - jooraRadiusX * 1.05f, jooraCy + jooraRadiusY * 0.5f)
+        moveTo(jooraCx - jooraRadiusX * 1.05f, jooraCy + jooraRadiusY * 0.35f)
+        quadraticTo(jooraCx, jooraCy + jooraRadiusY * 0.75f, jooraCx + jooraRadiusX * 1.05f, jooraCy + jooraRadiusY * 0.35f)
+        quadraticTo(jooraCx, jooraCy + jooraRadiusY * 0.10f, jooraCx - jooraRadiusX * 1.05f, jooraCy + jooraRadiusY * 0.35f)
         close()
     }
     drawPath(path = tiePath, brush = Brush.verticalGradient(listOf(patkaColorMid, patkaColorDark)))
-    drawPath(path = tiePath, color = patkaBorder, style = Stroke(width = bodyRadius * 0.02f))
+    drawPath(path = tiePath, color = patkaBorder, style = Stroke(width = bodyRadius * 0.016f))
 
-    // 2. Full Head Patka Cap (Envelops entire upper head down to brow line and temple curves)
+    // -------------------------------------------------------------
+    // 2. PATKA HEAD CAP (Restricted to crown and forehead above eyes)
+    // -------------------------------------------------------------
+    // Brow line stays between cy - 0.38f and cy - 0.46f, safely above eye centers
     val patkaPath = Path().apply {
-        // Starts on left cheek/temple side wrapping fully over head edge
-        moveTo(cx - bodyRadius * 0.82f, cy - bodyRadius * 0.15f)
-        // Wraps around the left skull contour all the way over crown
+        // Left temple anchor
+        moveTo(cx - bodyRadius * 0.88f, cy - bodyRadius * 0.38f)
+
+        // Up along left skull curvature to top crown
         cubicTo(
-            cx - bodyRadius * 0.90f, cy - bodyRadius * 0.75f,
-            cx - bodyRadius * 0.65f, cy - bodyRadius * 1.30f,
-            cx, cy - bodyRadius * 1.30f
+            cx - bodyRadius * 0.95f, cy - bodyRadius * 0.75f,
+            cx - bodyRadius * 0.60f, cy - bodyRadius * 1.05f,
+            cx, cy - bodyRadius * 1.05f
         )
-        // Curves over crown down around the right skull contour
+
+        // Down along right skull curvature to right temple
         cubicTo(
-            cx + bodyRadius * 0.65f, cy - bodyRadius * 1.30f,
-            cx + bodyRadius * 0.90f, cy - bodyRadius * 0.75f,
-            cx + bodyRadius * 0.82f, cy - bodyRadius * 0.15f
+            cx + bodyRadius * 0.60f, cy - bodyRadius * 1.05f,
+            cx + bodyRadius * 0.95f, cy - bodyRadius * 0.75f,
+            cx + bodyRadius * 0.88f, cy - bodyRadius * 0.38f
         )
-        // Front brow hairline contour (natural V-wrap dip between eyes and temples)
+
+        // Front forehead wrap (subtle upward V-dip resting right at brow line)
         quadraticTo(
-            cx + bodyRadius * 0.40f, cy - bodyRadius * 0.28f,
-            cx, cy - bodyRadius * 0.22f
+            cx + bodyRadius * 0.45f, cy - bodyRadius * 0.44f,
+            cx, cy - bodyRadius * 0.46f
         )
         quadraticTo(
-            cx - bodyRadius * 0.40f, cy - bodyRadius * 0.28f,
-            cx - bodyRadius * 0.82f, cy - bodyRadius * 0.15f
+            cx - bodyRadius * 0.45f, cy - bodyRadius * 0.44f,
+            cx - bodyRadius * 0.88f, cy - bodyRadius * 0.38f
         )
         close()
     }
 
-    // 3D volumetric gradient over full head dome
     drawPath(
         path = patkaPath,
         brush = Brush.radialGradient(
             colors = listOf(Color(0xFFFFF59D), patkaColorTop, patkaColorMid, patkaColorDark),
-            center = Offset(cx - bodyRadius * 0.20f, cy - bodyRadius * 0.85f),
-            radius = bodyRadius * 1.35f
+            center = Offset(cx - bodyRadius * 0.20f, cy - bodyRadius * 0.80f),
+            radius = bodyRadius * 1.1f
         )
     )
 
-    // Patka cloth tension folds across skull
+    // Cloth tension folds along the skull
     val fold1 = Path().apply {
-        moveTo(cx - bodyRadius * 0.75f, cy - bodyRadius * 0.35f)
-        quadraticTo(cx, cy - bodyRadius * 0.52f, cx + bodyRadius * 0.75f, cy - bodyRadius * 0.35f)
+        moveTo(cx - bodyRadius * 0.70f, cy - bodyRadius * 0.55f)
+        quadraticTo(cx, cy - bodyRadius * 0.65f, cx + bodyRadius * 0.70f, cy - bodyRadius * 0.55f)
     }
     val fold2 = Path().apply {
-        moveTo(cx - bodyRadius * 0.68f, cy - bodyRadius * 0.70f)
-        quadraticTo(cx, cy - bodyRadius * 0.90f, cx + bodyRadius * 0.68f, cy - bodyRadius * 0.70f)
-    }
-    val fold3 = Path().apply {
-        moveTo(cx - bodyRadius * 0.50f, cy - bodyRadius * 1.05f)
-        quadraticTo(cx, cy - bodyRadius * 1.18f, cx + bodyRadius * 0.50f, cy - bodyRadius * 1.05f)
+        moveTo(cx - bodyRadius * 0.60f, cy - bodyRadius * 0.80f)
+        quadraticTo(cx, cy - bodyRadius * 0.92f, cx + bodyRadius * 0.60f, cy - bodyRadius * 0.80f)
     }
 
-    drawPath(path = fold1, color = patkaHighlight.copy(alpha = 0.55f), style = Stroke(width = bodyRadius * 0.030f, cap = StrokeCap.Round))
-    drawPath(path = fold2, color = patkaHighlight.copy(alpha = 0.45f), style = Stroke(width = bodyRadius * 0.026f, cap = StrokeCap.Round))
-    drawPath(path = fold3, color = patkaColorDark.copy(alpha = 0.40f), style = Stroke(width = bodyRadius * 0.024f, cap = StrokeCap.Round))
+    drawPath(path = fold1, color = patkaHighlight.copy(alpha = 0.5f), style = Stroke(width = bodyRadius * 0.024f, cap = StrokeCap.Round))
+    drawPath(path = fold2, color = patkaColorDark.copy(alpha = 0.4f), style = Stroke(width = bodyRadius * 0.020f, cap = StrokeCap.Round))
 
-    // Front forehead wrap band (Patti band across brow)
+    // Front forehead brow band (Patti band trim across brow line)
     val browBand = Path().apply {
-        moveTo(cx - bodyRadius * 0.82f, cy - bodyRadius * 0.15f)
-        quadraticTo(cx, cy - bodyRadius * 0.22f, cx + bodyRadius * 0.82f, cy - bodyRadius * 0.15f)
-        quadraticTo(cx + bodyRadius * 0.72f, cy - bodyRadius * 0.35f, cx, cy - bodyRadius * 0.38f)
-        quadraticTo(cx - bodyRadius * 0.72f, cy - bodyRadius * 0.35f, cx - bodyRadius * 0.82f, cy - bodyRadius * 0.15f)
+        moveTo(cx - bodyRadius * 0.88f, cy - bodyRadius * 0.38f)
+        quadraticTo(cx, cy - bodyRadius * 0.46f, cx + bodyRadius * 0.88f, cy - bodyRadius * 0.38f)
+        quadraticTo(cx + bodyRadius * 0.80f, cy - bodyRadius * 0.50f, cx, cy - bodyRadius * 0.54f)
+        quadraticTo(cx - bodyRadius * 0.80f, cy - bodyRadius * 0.50f, cx - bodyRadius * 0.88f, cy - bodyRadius * 0.38f)
         close()
     }
-    drawPath(path = browBand, color = patkaColorDark.copy(alpha = 0.30f))
-    drawPath(path = browBand, color = patkaBorder.copy(alpha = 0.60f), style = Stroke(width = bodyRadius * 0.018f))
+    drawPath(path = browBand, color = patkaColorDark.copy(alpha = 0.25f))
+    drawPath(path = browBand, color = patkaBorder.copy(alpha = 0.55f), style = Stroke(width = bodyRadius * 0.016f))
 
-    // Crisp outer contour outline of patka headwear
-    drawPath(path = patkaPath, color = patkaBorder, style = Stroke(width = bodyRadius * 0.030f))
+    // Crisp outer contour outline
+    drawPath(path = patkaPath, color = patkaBorder, style = Stroke(width = bodyRadius * 0.026f))
 
-    // Side Patka String Ties (Larh / strings draped gracefully behind ears)
+    // -------------------------------------------------------------
+    // 3. SIDE TIES (Larh / Strings tucked neatly by the temples/ears)
+    // -------------------------------------------------------------
     val leftTie = Path().apply {
-        moveTo(cx - bodyRadius * 0.78f, cy - bodyRadius * 0.18f)
-        quadraticTo(cx - bodyRadius * 0.95f, cy + bodyRadius * 0.10f, cx - bodyRadius * 0.88f, cy + bodyRadius * 0.45f)
+        moveTo(cx - bodyRadius * 0.86f, cy - bodyRadius * 0.38f)
+        quadraticTo(
+            cx - bodyRadius * 0.96f, cy - bodyRadius * 0.20f,
+            cx - bodyRadius * 0.92f, cy - bodyRadius * 0.02f
+        )
     }
     val rightTie = Path().apply {
-        moveTo(cx + bodyRadius * 0.78f, cy - bodyRadius * 0.18f)
-        quadraticTo(cx + bodyRadius * 0.95f, cy + bodyRadius * 0.10f, cx + bodyRadius * 0.88f, cy + bodyRadius * 0.45f)
+        moveTo(cx + bodyRadius * 0.86f, cy - bodyRadius * 0.38f)
+        quadraticTo(
+            cx + bodyRadius * 0.96f, cy - bodyRadius * 0.20f,
+            cx + bodyRadius * 0.92f, cy - bodyRadius * 0.02f
+        )
     }
-    drawPath(path = leftTie, color = patkaColorDark, style = Stroke(width = bodyRadius * 0.042f, cap = StrokeCap.Round))
-    drawPath(path = leftTie, color = patkaColorMid, style = Stroke(width = bodyRadius * 0.024f, cap = StrokeCap.Round))
-    drawPath(path = rightTie, color = patkaColorDark, style = Stroke(width = bodyRadius * 0.042f, cap = StrokeCap.Round))
-    drawPath(path = rightTie, color = patkaColorMid, style = Stroke(width = bodyRadius * 0.024f, cap = StrokeCap.Round))
+
+    drawPath(path = leftTie, color = patkaColorDark, style = Stroke(width = bodyRadius * 0.032f, cap = StrokeCap.Round))
+    drawPath(path = leftTie, color = patkaColorMid, style = Stroke(width = bodyRadius * 0.018f, cap = StrokeCap.Round))
+    drawPath(path = rightTie, color = patkaColorDark, style = Stroke(width = bodyRadius * 0.032f, cap = StrokeCap.Round))
+    drawPath(path = rightTie, color = patkaColorMid, style = Stroke(width = bodyRadius * 0.018f, cap = StrokeCap.Round))
 }
 
 /**

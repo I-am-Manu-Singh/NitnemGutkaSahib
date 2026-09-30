@@ -319,6 +319,10 @@ object Translations {
             DisplayLanguage.Hindi to "सुविधाजनक पाठ के लिए फ़ॉन्ट, अनुवाद, लिप्यंतरण और थीम समायोजित करें।",
             DisplayLanguage.Punjabi to "ਸੁਖਾਲੇ ਪਾਠ ਲਈ ਅੱਖਰ, ਅਨੁਵਾਦ, ਲਿਪੀਅੰਤਰਨ ਅਤੇ ਥੀਮ ਬਦਲੋ।"
         ),
+             "All Gurbani texts & translations, transliterations are taken from https://www.shabados.com/" to mapOf(
+            DisplayLanguage.Hindi to "सभी गुरबानी पाठ, अनुवाद और लिप्यंतरण https://www.shabados.com/ से लिए गए हैं",
+            DisplayLanguage.Punjabi to "ਸਾਰੇ ਗੁਰਬਾਣੀ ਪਾਠ, ਅਨੁਵਾਦ ਅਤੇ ਲਿਪੀਅੰਤਰਨ https://www.shabados.com/ ਤੋਂ ਲਏ ਗਏ ਹਨ"
+        ),
         "Afternoon" to mapOf(
             DisplayLanguage.Hindi to "दोपहर",
             DisplayLanguage.Punjabi to "ਦੁਪਹਿਰ"
@@ -405,10 +409,7 @@ object Translations {
             DisplayLanguage.Hindi to "ध्यान",
             DisplayLanguage.Punjabi to "ਧਿਆਨ"
         ),
-        "All Gurbani texts & translations, transliterations are taken from https://www.shabados.com/" to mapOf(
-            DisplayLanguage.Hindi to "सभी गुरबानी पाठ, अनुवाद और लिप्यंतरण https://www.shabados.com/ से लिए गए हैं",
-            DisplayLanguage.Punjabi to "ਸਾਰੇ ਗੁਰਬਾਣੀ ਪਾਠ, ਅਨੁਵਾਦ ਅਤੇ ਲਿਪੀਅੰਤਰਨ https://www.shabados.com/ ਤੋਂ ਲਏ ਗਏ ਹਨ"
-        ),
+   
         "Allowed: 2 AM - 8 AM" to mapOf(
             DisplayLanguage.Hindi to "अनुमति: सुबह 2 - 8 बजे",
             DisplayLanguage.Punjabi to "ਮਨਜ਼ੂਰ ਸਮਾਂ: ਸਵੇਰੇ 2 ਤੋਂ 8 ਵਜੇ"

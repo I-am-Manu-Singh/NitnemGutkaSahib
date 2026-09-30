@@ -220,9 +220,10 @@ import androidx.compose.ui.input.pointer.pointerInput
                 timingKey
             )
 
-            // Strictly check whether this track is the default primary track before falling back to embedded baseline timings
+            // Strictly check whether this track is the default primary track before falling back to embedded baseline timings.
+            // A primary track MUST NOT have any artist suffix in its ID or it must be explicitly configured as primary.
             val isPrimaryTrack = currentActiveTrackId == "default" || currentActiveTrackId == bani.id ||
-                    (track?.id == bani.id) || (remoteAssetTrack?.id == bani.id)
+                    (track?.id == bani.id) || (remoteAssetTrack?.id == bani.id) || (remoteAssetTrack?.isPrimaryNitnem == true)
             val hasEmbeddedTimings = isPrimaryTrack && bani.lines.any { it.startsAtMs > 0L || it.endsAtMs > 0L }
 
             timingLoadState = timings.isNotEmpty() || hasEmbeddedTimings
@@ -850,7 +851,10 @@ import androidx.compose.ui.input.pointer.pointerInput
                 .padding(paddingValues)
         ) {
             // Dynamic subtle floating spiritual particles in background
-            if (uiState.ambientParticleEffect != "Disabled") {
+            val isEffectEnabled = uiState.ambientParticleEffect != "Disabled"
+            val isEffectUnlocked = uiState.isPremium || uiState.ambientParticleEffect == "GoldenStardust"
+
+            if (isEffectEnabled && isEffectUnlocked) {
                 Canvas(modifier = Modifier.fillMaxSize()) {
                     val w = size.width
                     val h = size.height

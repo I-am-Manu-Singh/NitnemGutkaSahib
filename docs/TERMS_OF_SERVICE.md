@@ -8,7 +8,7 @@
 ---
 
 ### 1. Agreement to Terms
-By downloading, installing, accessing, or using **Nitnem Gutka Steek**, you agree to be bound by these Terms of Service. If you do not agree with these terms, please do not use the application.
+By downloading, installing, accessing, or using **Bani: Nitnem & Steek Companion**, you agree to be bound by these Terms of Service. If you do not agree with these terms, please do not use the application.
 
 ---
 

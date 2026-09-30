@@ -3,19 +3,12 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.util.Properties
 
 plugins {
-
     alias(libs.plugins.kotlinMultiplatform)
-
     alias(libs.plugins.androidApplication)
-
     alias(libs.plugins.composeMultiplatform)
-
     alias(libs.plugins.composeCompiler)
-
     kotlin("plugin.serialization")
-
     alias(libs.plugins.googleServices)
-
     alias(libs.plugins.firebaseCrashlytics)
 }
 
@@ -31,7 +24,20 @@ kotlin {
     iosSimulatorArm64()
     jvm("desktop")
 
+    // Configure a mobile source set (Android + iOS) for RevenueCat
     sourceSets {
+        val mobileMain by creating {
+            dependsOn(commonMain.get())
+            dependencies {
+                implementation(libs.revenuecat.kmp.core)
+                implementation(libs.revenuecat.kmp.ui)
+            }
+        }
+
+        androidMain.get().dependsOn(mobileMain)
+        iosArm64Main.get().dependsOn(mobileMain)
+        iosSimulatorArm64Main.get().dependsOn(mobileMain)
+
         androidMain.dependencies {
             implementation(libs.androidx.activity.compose)
             implementation("androidx.fragment:fragment-ktx:1.8.5")
@@ -44,17 +50,18 @@ kotlin {
             implementation("androidx.glance:glance-material3:1.1.1")
             implementation("androidx.datastore:datastore-preferences:1.1.1")
 
-            // Firebase Android SDKs via BOM
-            implementation(project.dependencies.platform(libs.firebase.bom))
-            implementation(libs.firebase.analytics)
-            implementation(libs.firebase.crashlytics)
+            // Firebase Android SDKs via BoM (non-KTX artifacts)
+            implementation(project.dependencies.platform("com.google.firebase:firebase-bom:34.19.0"))
+            implementation("com.google.firebase:firebase-crashlytics")
+            implementation("com.google.firebase:firebase-analytics")
             implementation(libs.firebase.firestore)
-            implementation("com.google.firebase:firebase-auth-ktx")
+            implementation("com.google.firebase:firebase-auth")
             implementation("com.google.firebase:firebase-appcheck-playintegrity")
             implementation("com.google.firebase:firebase-appcheck-debug")
             implementation("com.google.android.play:integrity:1.4.0")
             implementation("com.google.android.gms:play-services-auth:21.2.0")
         }
+
         commonMain.dependencies {
             implementation(projects.shared.models)
             implementation(projects.shared.domain)
@@ -79,14 +86,14 @@ kotlin {
             implementation(libs.ktor.client.core)
             implementation(libs.ktor.client.cio)
             implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.0")
-            implementation(libs.revenuecat.kmp.core)
-            implementation(libs.revenuecat.kmp.ui)
             implementation(libs.coil.compose)
             implementation(libs.coil.network.ktor)
         }
+
         commonTest.dependencies {
             implementation(libs.kotlin.test)
         }
+
         val desktopMain by getting {
             dependencies {
                 implementation(compose.desktop.currentOs)
@@ -112,7 +119,7 @@ android {
             if (keyPath.isNotEmpty()) {
                 val resolvedKeyFile = rootProject.file(keyPath).let { if (it.exists()) it else file(keyPath) }
                 storeFile = resolvedKeyFile
-                storePassword = keystoreProperties.getProperty("RELEASE_KEYSTORE_PASSWORD") 
+                storePassword = keystoreProperties.getProperty("RELEASE_KEYSTORE_PASSWORD")
                     ?: keystoreProperties.getProperty("RELEASE_STORE_PASSWORD") ?: ""
                 keyAlias = keystoreProperties.getProperty("RELEASE_KEY_ALIAS") ?: ""
                 keyPassword = keystoreProperties.getProperty("RELEASE_KEY_PASSWORD") ?: ""
@@ -135,8 +142,8 @@ android {
         applicationId = "com.creativeblisslabs.nitnemguktasteek"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.1.1"
         buildConfigField("String", "REVENUECAT_GOOGLE_API_KEY", "\"$revenueCatApiKey\"")
         buildConfigField("String", "SUPPORT_EMAIL", "\"creativeblisslabs@gmail.com\"")
         buildConfigField("String", "CONTACT_EMAIL", "\"creativeblisslabs@gmail.com\"")
@@ -199,7 +206,7 @@ compose.desktop {
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg)
-            packageName = "Nitnem Gutka Steek"
+            packageName = "Bani: Nitnem & Steek Companion"
             packageVersion = "1.0.0"
             description = "A peaceful Nitnem companion for daily reading and listening."
             vendor = "creativeblisslabs"

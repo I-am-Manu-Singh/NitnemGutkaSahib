@@ -201,101 +201,58 @@ fun ReminderEditableRow(
 /*
  * SECTION CARD
  */
-
 @Composable
 fun SettingsSectionCard(
-
-    title: String,
-
-    icon:
-        androidx.compose.ui.graphics.vector
-            .ImageVector,
-
-    content:
-        @Composable ColumnScope.() -> Unit
+    title: String? = null, // Made nullable
+    icon: androidx.compose.ui.graphics.vector.ImageVector? = null, // Made nullable
+    content: @Composable ColumnScope.() -> Unit
 ) {
-
     Surface(
-
-        modifier =
-            Modifier.fillMaxWidth(),
-
-        shape =
-            RoundedCornerShape(22.dp),
-
-        color =
-            SurfaceColor,
-
-        border = BorderStroke(
-
-            1.dp,
-
-            Accent.copy(alpha = 0.08f)
-        )
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(22.dp),
+        color = SurfaceColor,
+        border = BorderStroke(1.dp, Accent.copy(alpha = 0.08f))
     ) {
+        Column(modifier = Modifier.padding(22.dp)) {
+            
+            // Only render the header Row if either title or icon is present
+            if (icon != null || !title.isNullOrEmpty()) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    
+                    if (icon != null) {
+                        Box(
+                            modifier = Modifier
+                                .size(42.dp)
+                                .clip(CircleShape)
+                                .background(Accent.copy(alpha = 0.12f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = icon,
+                                contentDescription = null,
+                                tint = Accent,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
 
-        Column(
+                    if (icon != null && !title.isNullOrEmpty()) {
+                        Spacer(Modifier.width(14.dp))
+                    }
 
-            modifier =
-                Modifier.padding(22.dp)
-        ) {
-
-            Row(
-
-                verticalAlignment =
-                    Alignment.CenterVertically
-            ) {
-
-                Box(
-
-                    modifier =
-                        Modifier
-                            .size(42.dp)
-                            .clip(CircleShape)
-                            .background(
-                                Accent.copy(
-                                    alpha = 0.12f
-                                )
-                            ),
-
-                    contentAlignment =
-                        Alignment.Center
-                ) {
-
-                    Icon(
-
-                        imageVector = icon,
-
-                        contentDescription =
-                            null,
-
-                        tint = Accent,
-
-                        modifier =
-                            Modifier.size(20.dp)
-                    )
+                    if (!title.isNullOrEmpty()) {
+                        Text(
+                            text = title,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 20.sp,
+                            color = Primary
+                        )
+                    }
                 }
 
-                Spacer(
-                    Modifier.width(14.dp)
-                )
-
-                Text(
-
-                    text = title,
-
-                    fontWeight =
-                        FontWeight.Bold,
-
-                    fontSize = 20.sp,
-
-                    color = Primary
-                )
+                // Spacing below the header
+                Spacer(Modifier.height(24.dp))
             }
-
-            Spacer(
-                Modifier.height(24.dp)
-            )
 
             content()
         }
@@ -998,328 +955,412 @@ fun AudioTrackRow(
     onDownload: (() -> Unit)? = null,
     onDelete: (() -> Unit)? = null
 ) {
-    Row(
+    val isLocalAudio = showDelete
+    val hasTiming = synced || isTimingDownloaded
+
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        if (isChecked != null && onCheckedChange != null) {
-            Checkbox(
-                checked = isChecked,
-                onCheckedChange = onCheckedChange,
-                colors = CheckboxDefaults.colors(
-                    checkedColor = Accent,
-                    uncheckedColor = Accent.copy(alpha = 0.5f),
-                    checkmarkColor = Color.White
-                ),
-                modifier = Modifier.padding(end = 2.dp)
-            )
-        }
-
-        RadioButton(
-            selected = selected,
-            onClick = onSelect
+            .padding(vertical = 4.dp),
+        shape = RoundedCornerShape(16.dp),
+        color = if (selected) Accent.copy(alpha = 0.08f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+        border = BorderStroke(
+            width = if (selected) 1.2.dp else 0.6.dp,
+            color = if (selected) Accent.copy(alpha = 0.45f) else TextPrimary.copy(alpha = 0.08f)
         )
+    ) {
+        Box(modifier = Modifier.fillMaxWidth()) {
+            // ── TOP-RIGHT CORNER CHECKMARKS BADGES ──
+            if (isLocalAudio || hasTiming) {
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = 6.dp, end = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (isLocalAudio) {
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = Color(0xFF4CAF50).copy(alpha = 0.16f),
+                            border = BorderStroke(0.6.dp, Color(0xFF4CAF50).copy(alpha = 0.4f))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.5.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(2.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.CheckCircle,
+                                    contentDescription = "Audio Saved",
+                                    tint = Color(0xFF4CAF50),
+                                    modifier = Modifier.size(10.dp)
+                                )
+                                Text(
+                                    text = "Audio ✓",
+                                    fontSize = 8.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF4CAF50)
+                                )
+                            }
+                        }
+                    }
 
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .padding(start = 6.dp),
-            verticalArrangement = Arrangement.Center
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Text(
-                    text = title,
-                    modifier = Modifier.weight(1f, fill = false),
-                    color = TextPrimary,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                if (synced || isTimingDownloaded) {
-                    SyncedBadge()
+                    if (hasTiming) {
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = Gold.copy(alpha = 0.18f),
+                            border = BorderStroke(0.6.dp, Gold.copy(alpha = 0.5f))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.5.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(2.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.CheckCircle,
+                                    contentDescription = "Timing Synced",
+                                    tint = Gold,
+                                    modifier = Modifier.size(10.dp)
+                                )
+                                Text(
+                                    text = "Timing ✓",
+                                    fontSize = 8.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Gold
+                                )
+                            }
+                        }
+                    }
                 }
             }
 
-            Spacer(modifier = Modifier.height(2.dp))
+            // ── MAIN CONTENT ROW ──
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 10.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Multi-select Checkbox
+                if (isChecked != null && onCheckedChange != null) {
+                    Checkbox(
+                        checked = isChecked,
+                        onCheckedChange = onCheckedChange,
+                        colors = CheckboxDefaults.colors(
+                            checkedColor = Accent,
+                            uncheckedColor = Accent.copy(alpha = 0.5f),
+                            checkmarkColor = Color.White
+                        ),
+                        modifier = Modifier
+                            .size(32.dp)
+                            .padding(end = 4.dp)
+                    )
+                }
 
-            Text(
-                text = subtitle,
-                color = TextSecondary,
-                fontSize = 12.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+                // Radio Button for Active Track Selection
+                RadioButton(
+                    selected = selected,
+                    onClick = onSelect,
+                    colors = RadioButtonDefaults.colors(
+                        selectedColor = Accent,
+                        unselectedColor = TextSecondary.copy(alpha = 0.4f)
+                    ),
+                    modifier = Modifier.size(32.dp)
+                )
 
-            if (!audioFileName.isNullOrBlank() || !timingFileName.isNullOrBlank()) {
-                Spacer(modifier = Modifier.height(3.dp))
-                FlowRow(
-                    verticalArrangement = Arrangement.spacedBy(3.dp),
-                    horizontalArrangement = Arrangement.spacedBy(5.dp),
-                    modifier = Modifier.padding(top = 1.dp)
+                // Track Title, Subtitle, & Chips
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 6.dp),
+                    verticalArrangement = Arrangement.Center
                 ) {
-                    // Audio File Chip with tick mark or download button
-                    val audioLabel = when {
-                        audioFileName?.endsWith(".opus", ignoreCase = true) == true -> "Opus Audio"
-                        audioFileName?.endsWith(".mp3", ignoreCase = true) == true -> "MP3 Audio"
-                        audioFileName?.endsWith(".m4a", ignoreCase = true) == true -> "M4A Audio"
-                        else -> "Audio"
-                    }
-                    if (showDelete) {
-                        Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            color = Color(0xFF4CAF50).copy(alpha = 0.15f),
-                            border = BorderStroke(0.6.dp, Color(0xFF4CAF50).copy(alpha = 0.45f))
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(3.dp)
-                            ) {
-                                Icon(Icons.Default.CheckCircle, contentDescription = "Audio Downloaded", tint = Color(0xFF4CAF50), modifier = Modifier.size(11.dp))
-                                Text(
-                                    text = "$audioLabel ✓",
-                                    fontSize = 9.5.sp,
-                                    color = Color(0xFF4CAF50),
-                                    fontWeight = FontWeight.Bold,
-                                    maxLines = 1
-                                )
-                            }
-                        }
-                    } else if (onDownload != null) {
-                        Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            color = Accent.copy(alpha = 0.12f),
-                            border = BorderStroke(0.6.dp, Accent.copy(alpha = 0.35f)),
-                            modifier = Modifier.clickable { onDownload() }
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(3.dp)
-                            ) {
-                                if (downloading) {
-                                    CircularProgressIndicator(modifier = Modifier.size(9.dp), strokeWidth = 1.dp, color = Accent)
-                                    Text(
-                                        text = "Downloading...",
-                                        fontSize = 9.5.sp,
-                                        color = Accent,
-                                        fontWeight = FontWeight.Bold,
-                                        maxLines = 1
-                                    )
-                                } else {
-                                    Icon(Icons.Default.Download, contentDescription = "Download Audio", tint = Accent, modifier = Modifier.size(10.dp))
-                                    Text(
-                                        text = "Download $audioLabel",
-                                        fontSize = 9.5.sp,
-                                        color = Accent,
-                                        fontWeight = FontWeight.Bold,
-                                        maxLines = 1
-                                    )
-                                }
-                            }
-                        }
-                    } else if (!audioFileName.isNullOrBlank()) {
-                        Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            color = Accent.copy(alpha = 0.08f),
-                            border = BorderStroke(0.6.dp, Accent.copy(alpha = 0.2f))
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(3.dp)
-                            ) {
-                                Icon(Icons.Default.GraphicEq, contentDescription = null, tint = Accent, modifier = Modifier.size(10.dp))
-                                Text(
-                                    text = audioLabel,
-                                    fontSize = 9.5.sp,
-                                    color = Accent,
-                                    fontWeight = FontWeight.Medium,
-                                    maxLines = 1
-                                )
-                            }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = title,
+                            modifier = Modifier.weight(1f, fill = false),
+                            color = TextPrimary,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.5.sp,
+                            lineHeight = 17.sp,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+
+                        if (synced || isTimingDownloaded) {
+                            SyncedBadge()
                         }
                     }
 
-                    // Timing File Chip with tick mark or download button
-                    if (!timingFileName.isNullOrBlank() || synced || isTimingDownloaded) {
-                        val hasLocalTiming = synced || isTimingDownloaded
-                        if (hasLocalTiming) {
-                            Surface(
-                                shape = RoundedCornerShape(6.dp),
-                                color = Gold.copy(alpha = 0.16f),
-                                border = BorderStroke(0.6.dp, Gold.copy(alpha = 0.5f))
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(3.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.CheckCircle,
-                                        contentDescription = "Timing Downloaded",
-                                        tint = Gold,
-                                        modifier = Modifier.size(11.dp)
-                                    )
-                                    Text(
-                                        text = "Timing ✓",
-                                        fontSize = 9.5.sp,
-                                        color = Gold,
-                                        fontWeight = FontWeight.Bold,
-                                        maxLines = 1
-                                    )
-                                }
+                    Spacer(modifier = Modifier.height(2.dp))
+
+                    Text(
+                        text = subtitle,
+                        color = TextSecondary,
+                        fontSize = 11.5.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+
+                    // Operational Chips (Download status / Actions)
+                    if (!audioFileName.isNullOrBlank() || !timingFileName.isNullOrBlank()) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        FlowRow(
+                            verticalArrangement = Arrangement.spacedBy(3.dp),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            modifier = Modifier.padding(top = 1.dp)
+                        ) {
+                            val audioLabel = when {
+                                audioFileName?.endsWith(".opus", ignoreCase = true) == true -> "Opus"
+                                audioFileName?.endsWith(".mp3", ignoreCase = true) == true -> "MP3"
+                                audioFileName?.endsWith(".m4a", ignoreCase = true) == true -> "M4A"
+                                else -> "Audio"
                             }
-                        } else if (onDownloadTiming != null) {
-                            Surface(
-                                shape = RoundedCornerShape(6.dp),
-                                color = Gold.copy(alpha = 0.12f),
-                                border = BorderStroke(0.6.dp, Gold.copy(alpha = 0.35f)),
-                                modifier = Modifier.clickable { onDownloadTiming() }
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(3.dp)
+
+                            if (!isLocalAudio && onDownload != null) {
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = Accent.copy(alpha = 0.12f),
+                                    border = BorderStroke(0.6.dp, Accent.copy(alpha = 0.35f)),
+                                    modifier = Modifier.clickable { onDownload() }
                                 ) {
-                                    if (isTimingDownloading) {
-                                        CircularProgressIndicator(modifier = Modifier.size(9.dp), strokeWidth = 1.dp, color = Gold)
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(3.dp)
+                                    ) {
+                                        if (downloading) {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.size(9.dp),
+                                                strokeWidth = 1.dp,
+                                                color = Accent
+                                            )
+                                            Text(
+                                                text = "Downloading...",
+                                                fontSize = 9.sp,
+                                                color = Accent,
+                                                fontWeight = FontWeight.Bold,
+                                                maxLines = 1
+                                            )
+                                        } else {
+                                            Icon(
+                                                imageVector = Icons.Default.Download,
+                                                contentDescription = "Download Audio",
+                                                tint = Accent,
+                                                modifier = Modifier.size(10.dp)
+                                            )
+                                            Text(
+                                                text = "Download $audioLabel",
+                                                fontSize = 9.sp,
+                                                color = Accent,
+                                                fontWeight = FontWeight.Bold,
+                                                maxLines = 1
+                                            )
+                                        }
+                                    }
+                                }
+                            } else if (!isLocalAudio && !audioFileName.isNullOrBlank()) {
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = Accent.copy(alpha = 0.08f),
+                                    border = BorderStroke(0.6.dp, Accent.copy(alpha = 0.2f))
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(3.dp)
+                                    ) {
+                                        Icon(Icons.Default.GraphicEq, contentDescription = null, tint = Accent, modifier = Modifier.size(10.dp))
                                         Text(
-                                            text = "Downloading...",
-                                            fontSize = 9.5.sp,
-                                            color = Gold,
-                                            fontWeight = FontWeight.Bold,
-                                            maxLines = 1
-                                        )
-                                    } else {
-                                        Icon(
-                                            imageVector = Icons.Default.Download,
-                                            contentDescription = "Download Timing",
-                                            tint = Gold,
-                                            modifier = Modifier.size(10.dp)
-                                        )
-                                        Text(
-                                            text = "Get Timing",
-                                            fontSize = 9.5.sp,
-                                            color = Gold,
-                                            fontWeight = FontWeight.Bold,
+                                            text = audioLabel,
+                                            fontSize = 9.sp,
+                                            color = Accent,
+                                            fontWeight = FontWeight.Medium,
                                             maxLines = 1
                                         )
                                     }
                                 }
                             }
-                        } else {
-                            Surface(
-                                shape = RoundedCornerShape(6.dp),
-                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-                                border = BorderStroke(0.6.dp, Accent.copy(alpha = 0.25f)),
-                                modifier = Modifier.clickable { onEdit() }
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(3.dp)
+
+                            if (!hasTiming && onDownloadTiming != null) {
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = Gold.copy(alpha = 0.12f),
+                                    border = BorderStroke(0.6.dp, Gold.copy(alpha = 0.35f)),
+                                    modifier = Modifier.clickable { onDownloadTiming() }
                                 ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(3.dp)
+                                    ) {
+                                        if (isTimingDownloading) {
+                                            CircularProgressIndicator(modifier = Modifier.size(9.dp), strokeWidth = 1.dp, color = Gold)
+                                            Text(
+                                                text = "Downloading...",
+                                                fontSize = 9.sp,
+                                                color = Gold,
+                                                fontWeight = FontWeight.Bold,
+                                                maxLines = 1
+                                            )
+                                        } else {
+                                            Icon(
+                                                imageVector = Icons.Default.Download,
+                                                contentDescription = "Download Timing",
+                                                tint = Gold,
+                                                modifier = Modifier.size(10.dp)
+                                            )
+                                            Text(
+                                                text = "Get Timing",
+                                                fontSize = 9.sp,
+                                                color = Gold,
+                                                fontWeight = FontWeight.Bold,
+                                                maxLines = 1
+                                            )
+                                        }
+                                    }
+                                }
+                            } else if (!hasTiming && !timingFileName.isNullOrBlank()) {
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                                    border = BorderStroke(0.6.dp, Accent.copy(alpha = 0.25f)),
+                                    modifier = Modifier.clickable { onEdit() }
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(3.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Edit,
+                                            contentDescription = "Edit Timing",
+                                            tint = Accent,
+                                            modifier = Modifier.size(10.dp)
+                                        )
+                                        Text(
+                                            text = "Edit Timing",
+                                            fontSize = 9.sp,
+                                            color = Accent,
+                                            fontWeight = FontWeight.Medium,
+                                            maxLines = 1
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // ── ACTION BUTTONS WITH BACKGROUND ACCENTS ──
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(5.dp),
+                    modifier = Modifier.padding(start = 2.dp)
+                ) {
+                    if (downloading) {
+                        Surface(
+                            shape = CircleShape,
+                            color = Accent.copy(alpha = 0.12f),
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    color = Accent,
+                                    strokeWidth = 2.dp
+                                )
+                            }
+                        }
+                    } else {
+                        onDownload?.let {
+                            Surface(
+                                shape = CircleShape,
+                                color = Accent.copy(alpha = 0.12f),
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .clickable { it() }
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
                                     Icon(
-                                        imageVector = Icons.Default.Edit,
-                                        contentDescription = "Edit Timing",
+                                        imageVector = Icons.Default.Download,
+                                        contentDescription = "Download Track",
                                         tint = Accent,
-                                        modifier = Modifier.size(10.dp)
-                                    )
-                                    Text(
-                                        text = "Edit Timing",
-                                        fontSize = 9.5.sp,
-                                        color = Accent,
-                                        fontWeight = FontWeight.Medium,
-                                        maxLines = 1
+                                        modifier = Modifier.size(16.dp)
                                     )
                                 }
+                            }
+                        }
+                    }
+
+                    // Edit Button with Background Accent
+                    Surface(
+                        shape = CircleShape,
+                        color = Accent.copy(alpha = 0.10f),
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .clickable { onEdit() }
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Edit Track",
+                                tint = Accent,
+                                modifier = Modifier.size(15.dp)
+                            )
+                        }
+                    }
+
+                    // Play Button with Filled Accent Background
+                    Surface(
+                        shape = CircleShape,
+                        color = if (selected) Accent else Accent.copy(alpha = 0.16f),
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .clickable { onPlay() }
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.PlayArrow,
+                                contentDescription = "Play Track",
+                                tint = if (selected) Color.Black else Accent,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+
+                    // Delete Button with Subtle Red Background Accent
+                    if (showDelete) {
+                        Surface(
+                            shape = CircleShape,
+                            color = Color(0xFFFF5252).copy(alpha = 0.12f),
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .clickable { onDelete?.invoke() }
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = "Delete Track",
+                                    tint = Color(0xFFFF5252),
+                                    modifier = Modifier.size(15.dp)
+                                )
                             }
                         }
                     }
                 }
             }
         }
-
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(2.dp)
-        ) {
-            if (downloading) {
-                CircularProgressIndicator(
-                    modifier = Modifier
-                        .size(20.dp)
-                        .padding(2.dp),
-                    color = Accent,
-                    strokeWidth = 2.dp
-                )
-            } else {
-                onDownload?.let {
-                    IconButton(
-                        onClick = it,
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Download,
-                            contentDescription = null,
-                            tint = Accent,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                }
-            }
-
-            IconButton(
-                onClick = onEdit,
-                modifier = Modifier.size(36.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Edit,
-                    contentDescription = null,
-                    tint = Accent,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-
-            IconButton(
-                onClick = onPlay,
-                modifier = Modifier.size(36.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.PlayArrow,
-                    contentDescription = null,
-                    tint = Accent,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-
-            if (showDelete) {
-                IconButton(
-                    onClick = {
-                        onDelete?.invoke()
-                    },
-                    modifier = Modifier.size(36.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = null,
-                        tint = Color(0xFFFF5252),
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-            }
-        }
     }
 }
-
-
 data class Quintuple<A, B, C, D, E>(
     val first: A,
     val second: B,

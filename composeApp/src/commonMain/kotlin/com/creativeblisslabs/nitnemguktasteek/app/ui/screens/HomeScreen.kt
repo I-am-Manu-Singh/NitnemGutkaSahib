@@ -10,6 +10,9 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -19,11 +22,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Book
-import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.VolumeUp
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -32,13 +30,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.runtime.derivedStateOf
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.Stroke
-import kotlin.math.sin
-import kotlin.math.cos
-import androidx.compose.ui.graphics.graphicsLayer
-import kotlin.math.PI
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -79,6 +70,7 @@ import androidx.compose.runtime.LaunchedEffect
 import com.creativeblisslabs.nitnemguktasteek.data.HukamnamaProvider
 import com.creativeblisslabs.nitnemguktasteek.audio.StreamAudioController
 import androidx.compose.ui.draw.scale
+import com.creativeblisslabs.nitnemguktasteek.app.ui.components.BaniInfoBottomSheet
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
@@ -313,7 +305,7 @@ fun HomeScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .statusBarsPadding()
+//            .statusBarsPadding()
     ) {
        
 Surface(
@@ -405,7 +397,12 @@ Surface(
                     modifier = Modifier
                         .clip(RoundedCornerShape(50))
                         .clickable {
-                            showXpHistoryDialog = true 
+                            if (state.isPremium) {
+                                showXpHistoryDialog = true
+                            }
+//                            else {
+//                                com.creativeblisslabs.nitnemguktasteek.domain.billing.RevenueCatBillingManager.instance.showPaywall()
+//                            }
                         }
                         .padding(horizontal = 4.dp, vertical = 2.dp)
                 ) {
@@ -437,8 +434,12 @@ Surface(
                     modifier = Modifier
                         .clip(RoundedCornerShape(50))
                         .clickable {
-                            streakToDisplay = state.streakDays
-                            showWeeklyStreakDialog = true
+                            if (state.isPremium) {
+                                streakToDisplay = state.streakDays
+                                showWeeklyStreakDialog = true
+                            } else {
+                                com.creativeblisslabs.nitnemguktasteek.domain.billing.RevenueCatBillingManager.instance.showPaywall()
+                            }
                         }
                         .padding(horizontal = 4.dp, vertical = 2.dp)
                 ) {
@@ -460,13 +461,20 @@ Surface(
 
             Spacer(Modifier.width(6.dp))
 
-            // 4. Action Buttons (Search & Leaderboard)
+            // 4. Action Buttons (Leaderboard)
             Row(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Surface(
-                    onClick = { showLeaderboardDialog = true },
+                    onClick = {
+                        if (state.isPremium) {
+                            showLeaderboardDialog = true
+                        }
+                        else {
+                            com.creativeblisslabs.nitnemguktasteek.domain.billing.RevenueCatBillingManager.instance.showPaywall()
+                        }
+                    },
                     shape = CircleShape,
                     color = Accent.copy(alpha = 0.10f)
                 ) {
@@ -613,7 +621,8 @@ Surface(
         subtitle = "Paaths".translate(state.displayLanguage),
         icon = Icons.Default.AutoStories,
         type = AnalyticsCardType.Today,
-        progress = overallProgress
+        progress = overallProgress,
+        isPremium = state.isPremium
     )
 
     PremiumAnalyticsCard(
@@ -625,7 +634,8 @@ Surface(
         subtitle = "Time".translate(state.displayLanguage),
         icon = Icons.Default.Headphones,
         type = AnalyticsCardType.Listening,
-        progress = listeningProgress
+        progress = listeningProgress,
+        isPremium = state.isPremium
     )
 
     PremiumAnalyticsCard(
@@ -637,21 +647,19 @@ Surface(
         subtitle = "Days".translate(state.displayLanguage),
         icon = Icons.Default.LocalFireDepartment,
         type = AnalyticsCardType.Consistency,
-        progress = consistencyProgress
+        progress = consistencyProgress,
+        isPremium = state.isPremium
     )
 }
         }
-
-                // Right Column: Tab Switcher and Bani List
+// Right Column: Tab Switcher and Bani List
                 Column(
                     modifier = Modifier
                         .weight(0.52f)
                         .fillMaxHeight()
                 ) {
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
+                        modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.Start
                     ) {
                         Row(
@@ -663,8 +671,7 @@ Surface(
                             Column(
                                 modifier = Modifier
                                     .width(118.dp)
-                                    .clickable { selectedTab = 0 }
-                                    .padding(vertical = 2.dp),
+                                    .clickable { selectedTab = 0 },
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
                                 Text(
@@ -690,8 +697,7 @@ Surface(
                             Column(
                                 modifier = Modifier
                                     .width(118.dp)
-                                    .clickable { selectedTab = 1 }
-                                    .padding(vertical = 2.dp),
+                                    .clickable { selectedTab = 1 },
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
                                 Text(
@@ -725,13 +731,24 @@ Surface(
                             items = displayedBanis,
                             key = { bani -> bani.id }
                         ) { bani ->
+
                             val isCurrent = state.currentBani?.id == bani.id
-                            val playbackProgress = calculatePlaybackProgress(bani, state, isCurrent)
-                            val activeTrack = remember(bani.id, state.activeTrackId) {
+
+                            val playbackProgress = calculatePlaybackProgress(
+                                bani,
+                                state,
+                                isCurrent
+                            )
+
+                            val activeTrack = remember(
+                                bani.id,
+                                state.activeTrackId
+                            ) {
                                 val trackId = audioController.getActiveTrackId(bani.id)
                                 val custom = audioController.getCustomTracks(bani.id).firstOrNull { it.id == trackId }
                                 custom ?: com.creativeblisslabs.nitnemguktasteek.data.CuratedAudioCatalog.getTracksForBani(bani.id).firstOrNull { it.id == trackId } ?: bani.audio
                             }
+
                             val artistName = activeTrack?.artist ?: bani.audio?.artist
                             val hasAudioFile = activeTrack != null
                             val hasSyncedTiming = remember(activeTrack?.id, state.activeTrackId) {
@@ -747,16 +764,46 @@ Surface(
                                 hasAudioFile = hasAudioFile,
                                 displayLanguage = state.displayLanguage,
                                 onClick = {
+                                    println("HOME PLAY -> bani=${bani.id}")
+
                                     if (hasAudioFile) {
-                                        viewModel.selectExperienceTab(com.creativeblisslabs.nitnemguktasteek.app.models.ExperienceTab.Listen)
+                                        viewModel.selectExperienceTab(
+                                            com.creativeblisslabs.nitnemguktasteek.app.models.ExperienceTab.Listen
+                                        )
                                     } else {
-                                        viewModel.selectExperienceTab(com.creativeblisslabs.nitnemguktasteek.app.models.ExperienceTab.Read)
+                                        viewModel.selectExperienceTab(
+                                            com.creativeblisslabs.nitnemguktasteek.app.models.ExperienceTab.Read
+                                        )
                                     }
-                                    viewModel.selectBani(bani.id)
-                                    viewModel.selectTab(AppTab.Experience)
+
+                                    viewModel.selectBani(
+                                        bani.id
+                                    )
+
+                                    viewModel.selectTab(
+                                        AppTab.Experience
+                                    )
+                                },
+                                onInfoClick = {
+                                    viewModel.showBaniInfo(bani)
                                 }
                             )
                         }
+                    }
+
+                    val scope = rememberCoroutineScope()
+                    val infoSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+// In your screen:
+                    state.selectedInfoBani?.let { selectedBani ->
+                        BaniInfoBottomSheet(
+                            selectedBani = selectedBani,
+                            infoSheetState = infoSheetState,
+                            displayLanguage = state.displayLanguage,
+                            onDismiss = {
+                                viewModel.dismissBaniInfo()
+                            }
+                        )
                     }
                 }
             }
@@ -894,7 +941,8 @@ Surface(
             AnalyticsCardType.Today,
 
         progress =
-            overallProgress
+            overallProgress,
+        isPremium = state.isPremium
     )
 
     PremiumAnalyticsCard(
@@ -921,7 +969,8 @@ Surface(
             AnalyticsCardType.Listening,
 
         progress =
-            listeningProgress
+            listeningProgress,
+        isPremium = state.isPremium
     )
 
     PremiumAnalyticsCard(
@@ -948,7 +997,8 @@ Surface(
             AnalyticsCardType.Consistency,
 
         progress =
-            consistencyProgress
+            consistencyProgress,
+        isPremium = state.isPremium
     )
 }
         }
@@ -1169,74 +1219,70 @@ Surface(
          * BANI LIST
          */
 
-        items(
+                items(
+                    items = displayedBanis,
+                    key = { bani -> bani.id }
+                ) { bani ->
 
-            items = displayedBanis,
+                    val isCurrent = state.currentBani?.id == bani.id
 
-            key = { bani ->
-                bani.id
-            }
+                    val playbackProgress = calculatePlaybackProgress(
+                        bani,
+                        state,
+                        isCurrent
+                    )
 
-        ) { bani ->
-
-            val isCurrent =
-                state.currentBani?.id ==
-                    bani.id
-
-            val playbackProgress =
-                calculatePlaybackProgress(
-                    bani,
-                    state,
-                    isCurrent
-                )
-
-            val activeTrack = remember(
-                bani.id,
-                state.activeTrackId
-            ) {
-                val trackId = audioController.getActiveTrackId(bani.id)
-                val custom = audioController.getCustomTracks(bani.id).firstOrNull { it.id == trackId }
-                custom ?: com.creativeblisslabs.nitnemguktasteek.data.CuratedAudioCatalog.getTracksForBani(bani.id).firstOrNull { it.id == trackId } ?: bani.audio
-            }
-
-            val artistName = activeTrack?.artist ?: bani.audio?.artist
-            val hasAudioFile = activeTrack != null
-            val hasSyncedTiming = remember(activeTrack?.id, state.activeTrackId) {
-                activeTrack != null && audioController.hasTimingFile(bani.id, activeTrack.id)
-            }
-
-            BaniCard(
-                bani = bani,
-                selected = isCurrent,
-                progress = playbackProgress,
-                artistName = artistName,
-                hasSyncedTiming = hasSyncedTiming,
-                hasAudioFile = hasAudioFile,
-                displayLanguage = state.displayLanguage,
-                onClick = {
-                    println("HOME PLAY -> bani=${bani.id}")
-
-                    if (hasAudioFile) {
-                        viewModel.selectExperienceTab(
-                            com.creativeblisslabs.nitnemguktasteek.app.models.ExperienceTab.Listen
-                        )
-                    } else {
-                        viewModel.selectExperienceTab(
-                            com.creativeblisslabs.nitnemguktasteek.app.models.ExperienceTab.Read
-                        )
+                    val activeTrack = remember(
+                        bani.id,
+                        state.activeTrackId
+                    ) {
+                        val trackId = audioController.getActiveTrackId(bani.id)
+                        val custom = audioController.getCustomTracks(bani.id).firstOrNull { it.id == trackId }
+                        custom ?: com.creativeblisslabs.nitnemguktasteek.data.CuratedAudioCatalog.getTracksForBani(bani.id).firstOrNull { it.id == trackId } ?: bani.audio
                     }
 
-                    viewModel.selectBani(
-                        bani.id
-                    )
+                    val artistName = activeTrack?.artist ?: bani.audio?.artist
+                    val hasAudioFile = activeTrack != null
+                    val hasSyncedTiming = remember(activeTrack?.id, state.activeTrackId) {
+                        activeTrack != null && audioController.hasTimingFile(bani.id, activeTrack.id)
+                    }
 
-                    viewModel.selectTab(
-                        AppTab.Experience
+                    BaniCard(
+                        bani = bani,
+                        selected = isCurrent,
+                        progress = playbackProgress,
+                        artistName = artistName,
+                        hasSyncedTiming = hasSyncedTiming,
+                        hasAudioFile = hasAudioFile,
+                        displayLanguage = state.displayLanguage,
+                        onClick = {
+                            println("HOME PLAY -> bani=${bani.id}")
+
+                            if (hasAudioFile) {
+                                viewModel.selectExperienceTab(
+                                    com.creativeblisslabs.nitnemguktasteek.app.models.ExperienceTab.Listen
+                                )
+                            } else {
+                                viewModel.selectExperienceTab(
+                                    com.creativeblisslabs.nitnemguktasteek.app.models.ExperienceTab.Read
+                                )
+                            }
+
+                            viewModel.selectBani(
+                                bani.id
+                            )
+
+                            viewModel.selectTab(
+                                AppTab.Experience
+                            )
+                        },
+                        // ADD THIS:
+                        onInfoClick = {
+                            viewModel.showBaniInfo(bani) // or update your local `selectedInfoBani = bani` state
+                        }
                     )
                 }
-            )
-        }
-    }
+            }
 
     selectedSearchVerseLine?.let { line ->
         GurbaniMeaningSheet(
@@ -1268,154 +1314,18 @@ Surface(
         )
     }
 
-    if (selectedInfoBani != null) {
-        selectedInfoBani?.let { selectedBani ->
-        ModalBottomSheet(
-            onDismissRequest = {
-                selectedInfoBani = null
-            },
-            sheetState = infoSheetState,
-            shape = RoundedCornerShape(
-                topStart = 32.dp,
-                topEnd = 32.dp
-            ),
-            containerColor = SurfaceColor,
-            tonalElevation = 0.dp
-        ) {
-            Spacer(Modifier.height(12.dp))
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
-                    .padding(
-                        horizontal = 22.dp,
-                        vertical = 12.dp
-                    )
-            ) {
-                // Header
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    val theme = resolveBaniTheme(selectedBani.title)
-                    Box(
-                        modifier = Modifier
-                            .size(48.dp)
-                            .clip(CircleShape)
-                            .background(theme.accent.copy(alpha = 0.12f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = theme.icon,
-                            contentDescription = null,
-                            tint = theme.accent,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                    Spacer(Modifier.width(16.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = selectedBani.title.translate(state.displayLanguage),
-                            color = TextPrimary,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Spacer(Modifier.height(2.dp))
-                        Text(
-                            text = "Bani Information".translate(state.displayLanguage),
-                            color = TextPrimary.copy(alpha = 0.6f),
-                            fontSize = 12.sp
-                        )
-                    }
-                }
-
-                Spacer(Modifier.height(24.dp))
-
-                // Bani Details
-                BaniDetailItem(
-                    label = "Author".translate(state.displayLanguage),
-                    value = selectedBani.author.translate(state.displayLanguage),
-                    displayLanguage = state.displayLanguage
-                )
-                HorizontalDivider(color = TextPrimary.copy(alpha = 0.06f), modifier = Modifier.padding(vertical = 12.dp))
-
-                BaniDetailItem(
-                    label = "Source Ang".translate(state.displayLanguage),
-                    value = selectedBani.ang.translateAng(state.displayLanguage),
-                    displayLanguage = state.displayLanguage
-                )
-                HorizontalDivider(color = TextPrimary.copy(alpha = 0.06f), modifier = Modifier.padding(vertical = 12.dp))
-
-                BaniDetailItem(
-                    label = "Structure".translate(state.displayLanguage),
-                    value = selectedBani.structure.translate(state.displayLanguage),
-                    displayLanguage = state.displayLanguage
-                )
-                HorizontalDivider(color = TextPrimary.copy(alpha = 0.06f), modifier = Modifier.padding(vertical = 12.dp))
-
-                BaniDetailItem(
-                    label = "Estimated Time".translate(state.displayLanguage),
-                    value = "${selectedBani.estimatedMinutes} ${"minutes".translate(state.displayLanguage)}".translateDigits(state.displayLanguage),
-                    displayLanguage = state.displayLanguage
-                )
-
-                val baniTheme = remember(selectedBani.title) { resolveBaniTheme(selectedBani.title) }
-
-                if (baniTheme.about.isNotBlank()) {
-                    HorizontalDivider(color = TextPrimary.copy(alpha = 0.06f), modifier = Modifier.padding(vertical = 12.dp))
-                    Text(
-                        text = "About".translate(state.displayLanguage),
-                        color = Accent,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(Modifier.height(6.dp))
-                    Text(
-                        text = baniTheme.about.translate(state.displayLanguage),
-                        color = TextPrimary.copy(alpha = 0.8f),
-                        fontSize = 13.sp,
-                        lineHeight = 20.sp
-                    )
-                }
-
-                if (baniTheme.significance.isNotBlank()) {
-                    HorizontalDivider(color = TextPrimary.copy(alpha = 0.06f), modifier = Modifier.padding(vertical = 12.dp))
-                    Text(
-                        text = "Significance".translate(state.displayLanguage),
-                        color = Accent,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(Modifier.height(6.dp))
-                    Text(
-                        text = baniTheme.significance.translate(state.displayLanguage),
-                        color = TextPrimary.copy(alpha = 0.8f),
-                        fontSize = 13.sp,
-                        lineHeight = 20.sp
-                    )
-                }
-
-                selectedBani.source?.let { source ->
-
-                    HorizontalDivider(
-                        color = TextPrimary.copy(alpha = 0.06f),
-                        modifier = Modifier.padding(vertical = 12.dp)
-                    )
-
-                    BaniDetailItem(
-                        label = "Source".translate(state.displayLanguage),
-                        value = buildString {
-                            append(source.text)
-                        },
-                        displayLanguage = state.displayLanguage
-                    )
-                }
-
-                Spacer(Modifier.height(30.dp))
-                    }
-                }
-            }
-        }
+         val scope = rememberCoroutineScope()
+         val infoSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+         state.selectedInfoBani?.let { selectedBani ->
+             BaniInfoBottomSheet(
+                 selectedBani = selectedBani,
+                 infoSheetState = infoSheetState,
+                 displayLanguage = state.displayLanguage,
+                 onDismiss = {
+                     viewModel.dismissBaniInfo()
+                 }
+             )
+         }
     }
 } 
    // ── FULL-SCREEN INTERACTIVE MASCOT OVERLAY ──────────────────────────────

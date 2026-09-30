@@ -28,18 +28,6 @@ object TimingLoader {
             val cleanKey = timingKey.removePrefix("curated_")
             val cleanKeyUnderscore = cleanKey.replace('-', '_')
             val cleanKeyHyphen = cleanKey.replace('_', '-')
-            val baniIdPart = cleanKeyUnderscore.substringBefore("_hari_singh")
-                .substringBefore("_harinder_singh")
-                .substringBefore("_harshdeep_kaur")
-                .substringBefore("_jarnail_singh")
-                .substringBefore("_thakur_singh")
-                .substringBefore("_darshan_singh")
-                .substringBefore("_annie_ahluwalia")
-                .substringBefore("_hargun_kaur")
-                .substringBefore("_satvinder_singh")
-                .substringBefore("_ravinder_singh")
-                .substringBefore("_pishora_singh")
-                .substringBefore("_lakhwinder_singh")
 
             val remoteAssetTrack = com.creativeblisslabs.nitnemguktasteek.data.RemoteAssetCatalog.getTrackById(timingKey)
                 ?: com.creativeblisslabs.nitnemguktasteek.data.RemoteAssetCatalog.getTrackById("curated_$cleanKeyUnderscore")
@@ -49,21 +37,41 @@ object TimingLoader {
                     it.audioFileName.removeSuffix(".opus").removeSuffix(".mp3") == cleanKeyUnderscore
                 }
 
-            val candidateFileNames = mutableListOf<String>()
-            if (!remoteAssetTrack?.timingFileName.isNullOrBlank()) {
-                candidateFileNames.add(remoteAssetTrack!!.timingFileName!!)
-            }
-            candidateFileNames.add("${cleanKeyUnderscore}_timing.json")
-            candidateFileNames.add("${cleanKeyUnderscore}.json")
-            candidateFileNames.add("${cleanKeyHyphen}_timing.json")
-            candidateFileNames.add("${cleanKeyHyphen}.json")
-            candidateFileNames.add("${timingKey}_timing.json")
-            candidateFileNames.add("$timingKey.json")
+            val expectedArtistName = remoteAssetTrack?.artist?.removeSuffix(" Ji")?.substringAfter("Bhai ")?.substringAfter("Giani ")?.substringAfter("Master ")?.trim()
 
-            val isDefaultBaniTrack = cleanKeyUnderscore == baniIdPart || cleanKeyHyphen == baniIdPart.replace('_', '-') || timingKey == "default"
-            if (isDefaultBaniTrack) {
-                candidateFileNames.add("${baniIdPart}_timing.json")
-                candidateFileNames.add("${baniIdPart}.json")
+            val rawCandidateFileNames = mutableListOf<String>()
+            if (!remoteAssetTrack?.timingFileName.isNullOrBlank()) {
+                rawCandidateFileNames.add(remoteAssetTrack!!.timingFileName!!)
+            }
+            rawCandidateFileNames.add("${cleanKeyUnderscore}_timing.json")
+            rawCandidateFileNames.add("${cleanKeyUnderscore}.json")
+            rawCandidateFileNames.add("${cleanKeyHyphen}_timing.json")
+            rawCandidateFileNames.add("${cleanKeyHyphen}.json")
+            rawCandidateFileNames.add("${timingKey}_timing.json")
+            rawCandidateFileNames.add("$timingKey.json")
+
+            val isDefaultBaniTrack = remoteAssetTrack == null || remoteAssetTrack.isPrimaryNitnem || timingKey == "default" || expectedArtistName.isNullOrBlank()
+
+            val candidateFileNames = mutableListOf<String>()
+            if (!expectedArtistName.isNullOrBlank()) {
+                val artistSlug1 = expectedArtistName.lowercase().replace(" & ", "_").replace(" ", "_")
+                val artistSlug2 = expectedArtistName.lowercase().replace(" & ", "-").replace(" ", "-")
+                val artistSlug3 = expectedArtistName.lowercase().replace(" ", "")
+                for (name in rawCandidateFileNames) {
+                    if (name.lowercase().contains(artistSlug1) || 
+                        name.lowercase().contains(artistSlug2) ||
+                        name.lowercase().contains(artistSlug3)) {
+                        if (!candidateFileNames.contains(name)) {
+                            candidateFileNames.add(name)
+                        }
+                    }
+                }
+            } else {
+                for (name in rawCandidateFileNames) {
+                    if (!candidateFileNames.contains(name)) {
+                        candidateFileNames.add(name)
+                    }
+                }
             }
 
             /*
@@ -71,8 +79,7 @@ object TimingLoader {
              */
             val audioDir = File(context.filesDir, "audio")
             if (audioDir.exists() && audioDir.isDirectory) {
-                // Exact candidate match only
-                for (fileName in candidateFileNames.distinct()) {
+                for (fileName in candidateFileNames) {
                     val localFile = File(audioDir, fileName)
                     if (localFile.exists() && localFile.length() > 0) {
                         try {
@@ -91,7 +98,7 @@ object TimingLoader {
             /*
              * 2. CHECK ASSET FILE
              */
-            for (fileName in candidateFileNames.distinct()) {
+            for (fileName in candidateFileNames) {
                 val assetPath = "timing/$fileName"
                 val assetExists = try {
                     context.assets.open(assetPath).close()
@@ -126,12 +133,29 @@ object TimingLoader {
             remoteUrls.add("${timingBase}${cleanKeyUnderscore}.json")
             remoteUrls.add("${timingBase}${cleanKeyHyphen}_timing.json")
             remoteUrls.add("${timingBase}${timingKey}_timing.json")
-            if (isDefaultBaniTrack) {
-                remoteUrls.add("${timingBase}${baniIdPart}_timing.json")
-                remoteUrls.add("${timingBase}${baniIdPart}.json")
+
+            val finalRemoteUrls = mutableListOf<String>()
+            if (!expectedArtistName.isNullOrBlank()) {
+                val artistSlug1 = expectedArtistName.lowercase().replace(" & ", "_").replace(" ", "_")
+                val artistSlug2 = expectedArtistName.lowercase().replace(" & ", "-").replace(" ", "-")
+                val trackUrl = remoteAssetTrack?.rawTimingUrl()
+                for (url in remoteUrls) {
+                    if (url == trackUrl || url.lowercase().contains(artistSlug1) || url.lowercase().contains(artistSlug2)) {
+                        if (!finalRemoteUrls.contains(url)) {
+                            finalRemoteUrls.add(url)
+                        }
+                    }
+                }
+            } else {
+                for (url in remoteUrls) {
+                    if (!finalRemoteUrls.contains(url)) {
+                        finalRemoteUrls.add(url)
+                    }
+                }
             }
 
-            for (remoteTimingUrl in remoteUrls.filter { it.isNotBlank() }.distinct()) {
+            for (remoteTimingUrl in finalRemoteUrls) {
+                if (remoteTimingUrl.isBlank()) continue
                 try {
                     val connection = java.net.URL(remoteTimingUrl).openConnection() as java.net.HttpURLConnection
                     connection.connectTimeout = 8000
@@ -170,7 +194,7 @@ object TimingLoader {
             if (isDefaultBaniTrack) {
                 val normBaniId = com.creativeblisslabs.nitnemguktasteek.data.RemoteAssetCatalog.normalizeBaniId(cleanKeyHyphen)
                 val embeddedBani = com.creativeblisslabs.nitnemguktasteek.data.generated.GeneratedBaniCatalog.banis.firstOrNull { 
-                    it.id == normBaniId || it.id == cleanKeyHyphen || it.id == baniIdPart.replace('_', '-')
+                    it.id == normBaniId || it.id == cleanKeyHyphen
                 }
                 if (embeddedBani != null && embeddedBani.lines.any { it.startsAtMs > 0L || it.endsAtMs > 0L }) {
                     Log.d(TAG, "Using embedded line timings for default bani -> ${embeddedBani.id}")
@@ -193,21 +217,53 @@ object TimingLoader {
         context: Context,
         timingKey: String
     ): Boolean {
+        val cleanKey = timingKey.removePrefix("curated_")
+        val cleanKeyUnderscore = cleanKey.replace('-', '_')
+
         val remoteAssetTrack = com.creativeblisslabs.nitnemguktasteek.data.RemoteAssetCatalog.getTrackById(timingKey)
+            ?: com.creativeblisslabs.nitnemguktasteek.data.RemoteAssetCatalog.getTrackById("curated_$cleanKeyUnderscore")
             ?: com.creativeblisslabs.nitnemguktasteek.data.RemoteAssetCatalog.currentAssets.firstOrNull { 
                 it.id == timingKey || it.timingFileName?.removeSuffix(".json")?.removeSuffix("_timing") == timingKey || it.audioFileName.removeSuffix(".opus").removeSuffix(".mp3") == timingKey
             }
 
-        val candidateNames = listOfNotNull(
-            remoteAssetTrack?.timingFileName,
-            "${timingKey}_timing.json",
-            "$timingKey.json"
-        ).distinct()
+        val expectedArtistName = remoteAssetTrack?.artist?.removeSuffix(" Ji")?.substringAfter("Bhai ")?.substringAfter("Giani ")?.substringAfter("Master ")?.trim()
 
-        return candidateNames.any { fileName ->
-            val file = File(context.filesDir, "audio/$fileName")
-            file.exists() && file.length() > 0
+        val rawCandidateNames = mutableListOf<String>()
+        if (remoteAssetTrack?.timingFileName != null) {
+            rawCandidateNames.add(remoteAssetTrack.timingFileName!!)
         }
+        rawCandidateNames.add("${timingKey}_timing.json")
+        rawCandidateNames.add("$timingKey.json")
+
+        val candidateNames = mutableListOf<String>()
+        if (!expectedArtistName.isNullOrBlank()) {
+            val artistSlug1 = expectedArtistName.lowercase().replace(" & ", "_").replace(" ", "_")
+            val artistSlug2 = expectedArtistName.lowercase().replace(" & ", "-").replace(" ", "-")
+            val artistSlug3 = expectedArtistName.lowercase().replace(" ", "")
+            for (name in rawCandidateNames) {
+                if (name.lowercase().contains(artistSlug1) || 
+                    name.lowercase().contains(artistSlug2) ||
+                    name.lowercase().contains(artistSlug3)) {
+                    if (!candidateNames.contains(name)) {
+                        candidateNames.add(name)
+                    }
+                }
+            }
+        } else {
+            for (name in rawCandidateNames) {
+                if (!candidateNames.contains(name)) {
+                    candidateNames.add(name)
+                }
+            }
+        }
+
+        for (fileName in candidateNames) {
+            val file = File(context.filesDir, "audio/$fileName")
+            if (file.exists() && file.length() > 0) {
+                return true
+            }
+        }
+        return false
     }
 
     suspend fun downloadTimingFile(
@@ -218,10 +274,16 @@ object TimingLoader {
         Log.d(TAG, "Attempting to download timing file for key: $timingKey")
         return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
             try {
+                val cleanKey = timingKey.removePrefix("curated_")
+                val cleanKeyUnderscore = cleanKey.replace('-', '_')
+
                 val remoteAssetTrack = com.creativeblisslabs.nitnemguktasteek.data.RemoteAssetCatalog.getTrackById(timingKey)
+                    ?: com.creativeblisslabs.nitnemguktasteek.data.RemoteAssetCatalog.getTrackById("curated_$cleanKeyUnderscore")
                     ?: com.creativeblisslabs.nitnemguktasteek.data.RemoteAssetCatalog.currentAssets.firstOrNull { 
                         it.id == timingKey || it.timingFileName?.removeSuffix(".json")?.removeSuffix("_timing") == timingKey || it.audioFileName.removeSuffix(".opus").removeSuffix(".mp3") == timingKey
                     }
+
+                val expectedArtistName = remoteAssetTrack?.artist?.removeSuffix(" Ji")?.substringAfter("Bhai ")?.substringAfter("Giani ")?.substringAfter("Master ")?.trim()
 
                 if (remoteAssetTrack == null) {
                     Log.w(TAG, "No matching remote asset found for timingKey: $timingKey. Proceeding with fallback URLs.")
@@ -238,10 +300,33 @@ object TimingLoader {
                 remoteUrls.add("${timingBase}${timingKey}_timing.json")
                 remoteUrls.add("${timingBase}${timingKey}.json")
 
-                val cleanUrls = remoteUrls.filter { it.isNotBlank() }.distinct()
-                Log.d(TAG, "Potential URLs for $timingKey: $cleanUrls")
+                val finalUrls = mutableListOf<String>()
+                if (!expectedArtistName.isNullOrBlank()) {
+                    val artistSlug1 = expectedArtistName.lowercase().replace(" & ", "_").replace(" ", "_")
+                    val artistSlug2 = expectedArtistName.lowercase().replace(" & ", "-").replace(" ", "-")
+                    val artistSlug3 = expectedArtistName.lowercase().replace(" ", "")
+                    for (url in remoteUrls) {
+                        if (url.isBlank()) continue
+                        if (url == explicitUrl || 
+                            url == remoteAssetTrack?.rawTimingUrl() || 
+                            url.lowercase().contains(artistSlug1) || 
+                            url.lowercase().contains(artistSlug2) ||
+                            url.lowercase().contains(artistSlug3)) {
+                            if (!finalUrls.contains(url)) {
+                                finalUrls.add(url)
+                            }
+                        }
+                    }
+                } else {
+                    for (url in remoteUrls) {
+                        if (url.isNotBlank() && !finalUrls.contains(url)) {
+                            finalUrls.add(url)
+                        }
+                    }
+                }
+                Log.d(TAG, "Potential URLs for $timingKey: $finalUrls")
 
-                for (urlStr in cleanUrls) {
+                for (urlStr in finalUrls) {
                     try {
                         Log.v(TAG, "Downloading from: $urlStr")
                         val connection = java.net.URL(urlStr).openConnection() as java.net.HttpURLConnection

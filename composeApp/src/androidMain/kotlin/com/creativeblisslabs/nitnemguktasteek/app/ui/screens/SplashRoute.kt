@@ -47,12 +47,15 @@ fun SplashRoute(
     LaunchedEffect(Unit) {
         val prefs = AppPreferences(context)
         val completed = prefs.onboardingCompleted.first()
+        android.util.Log.d("SplashRoute", "Onboarding completed status: $completed")
         delay(1600) // Allow graceful Ek Onkar glow & aura animation
         isFadingOut = true
         delay(300) // Smooth 300ms alpha fade-out transition
         if (completed) {
+            android.util.Log.d("SplashRoute", "Navigating to Home")
             onOpenHome()
         } else {
+            android.util.Log.d("SplashRoute", "Navigating to Onboarding")
             onOpenOnboarding()
         }
     }

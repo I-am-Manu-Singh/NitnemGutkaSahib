@@ -109,9 +109,9 @@ import com.revenuecat.purchases.kmp.ui.revenuecatui.PaywallListener
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    onPaywallVisibilityChanged: (Boolean) -> Unit, 
     viewModel: NitnemViewModel,
     audioController: StreamAudioController,
+    onPaywallVisibilityChanged: (Boolean) -> Unit = {},
     initialCategory: SettingsCategory = SettingsCategory.Reading,
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -213,7 +213,6 @@ fun SettingsScreen(
     val billingManager = remember { com.creativeblisslabs.nitnemguktasteek.domain.billing.PremiumBillingManager.instance }
     val revenueCatBillingManager = remember { RevenueCatBillingManager.instance }
     val billingState by billingManager.billingState.collectAsState()
-    val shouldShowPaywall by revenueCatBillingManager.shouldShowPaywall.collectAsState()
     val isPremiumOrTrial = billingState.isPremium || billingState.isLifetimePatron || billingState.isTrialActive
     var showSevaModal by remember { mutableStateOf(false) }
 
@@ -249,19 +248,9 @@ fun SettingsScreen(
 
     var showSyncEditor by remember { mutableStateOf(false) }
     var syncEditorTrackId by remember { mutableStateOf<String?>(null) }
-    var isPaywallOpen by remember { mutableStateOf(false) }
-val autoHideTabs = setOf(AppTab.Experience, AppTab.Practice)
+    var isPaywallOpenState by remember { mutableStateOf(false) }
+    val autoHideTabs = setOf(com.creativeblisslabs.nitnemguktasteek.app.models.AppTab.Experience, com.creativeblisslabs.nitnemguktasteek.app.models.AppTab.Practice)
 
-    val shouldShowPaywall = viewModel.uiState.collectAsState().value.shouldShowPaywall 
-
-    // 2. The Bridge Effect (Tells the parent shell when the paywall opens/closes)
-    DisposableEffect(shouldShowPaywall) {
-        onPaywallVisibilityChanged(shouldShowPaywall)
-        onDispose {
-            // Safe check: If user leaves this tab entirely, restore chrome visibility
-            onPaywallVisibilityChanged(false)
-        }
-    }
 
     if (showSyncEditor) {
         val currentBani = selectedBaniForAudio ?: uiState.banis.firstOrNull()
@@ -679,18 +668,6 @@ Row(
             displayLanguage = uiState.displayLanguage,
             onDismiss = { showSevaModal = false }
         )
-    }
-   if (shouldShowPaywall) {
-        val paywallOptions = remember {
-            PaywallOptions(
-                dismissRequest = { 
-                    revenueCatBillingManager.dismissPaywall() 
-                }
-            ) {
-                shouldDisplayDismissButton = true
-            }
-        }
-        Paywall(options = paywallOptions)
     }
 
 activeLegalDoc?.let { docType ->
@@ -1702,7 +1679,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.settingsContent(
                    Row(
     modifier = Modifier
         .fillMaxWidth()
-        .padding(top = 4.dp, bottom = 6.dp),
+        .padding(top = 0.dp, bottom = 2.dp),
     horizontalArrangement = Arrangement.SpaceBetween,
     verticalAlignment = Alignment.CenterVertically
 ) {
@@ -1777,7 +1754,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.settingsContent(
             }
         ) {
             Row(
-                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(5.dp)
             ) {
@@ -1804,7 +1781,8 @@ if (isDownloadingAllCatalog) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(bottom = 8.dp),
-        shape = RoundedCornerShape(8.dp)
+        shape = RoundedCornerShape(8.dp),
+        color = Accent.copy(alpha = 0.12f),
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
@@ -2220,13 +2198,10 @@ if (isDownloadingAllCatalog) {
             }
         }
     }
-    // ABOUT CATEGORY
-    if (selectedCategory == SettingsCategory.About) {
-        item {
-            SettingsSectionCard(
-                title = "About".translate(uiState.displayLanguage),
-                icon = Icons.Default.Info
-            ) {
+// ABOUT CATEGORY
+if (selectedCategory == SettingsCategory.About) {
+    item {
+        SettingsSectionCard {
             Column(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -2258,7 +2233,7 @@ if (isDownloadingAllCatalog) {
                             verticalArrangement = Arrangement.spacedBy(3.dp)
                         ) {
                             Text(
-                                text = "Nitnem Gutka Steek",
+                                text = "Bani: Nitnem & Steek Companion",
                                 fontWeight = FontWeight.ExtraBold,
                                 fontSize = 20.sp,
                                 color = TextPrimary
@@ -2474,7 +2449,7 @@ if (isDownloadingAllCatalog) {
                         onClick = {
                             val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
                                 type = "text/plain"
-                                putExtra(android.content.Intent.EXTRA_SUBJECT, "Nitnem Gutka Steek App")
+                                putExtra(android.content.Intent.EXTRA_SUBJECT, "Bani: Nitnem & Steek Companion App")
                                 putExtra(
                                     android.content.Intent.EXTRA_TEXT,
                                     "Waheguru Ji Ka Khalsa, Waheguru Ji Ki Fateh! 🙏\n\nRead and listen to Nitnem Gurbani with translations, audio sync and beautiful themes: https://play.google.com/store/apps/details?id=com.creativeblisslabs.nitnemguktasteek"

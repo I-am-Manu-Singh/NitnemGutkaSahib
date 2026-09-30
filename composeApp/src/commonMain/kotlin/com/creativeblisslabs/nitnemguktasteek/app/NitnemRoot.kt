@@ -25,7 +25,7 @@ import com.creativeblisslabs.nitnemguktasteek.app.ui.components.AppNavigationRai
 import com.creativeblisslabs.nitnemguktasteek.app.ui.player.ThinMiniPlayer
 import com.creativeblisslabs.nitnemguktasteek.app.ui.screens.GurbaniExperienceScreen
 import com.creativeblisslabs.nitnemguktasteek.app.ui.screens.HomeScreen
-import com.creativeblisslabs.nitnemguktasteek.app.ui.screens.PracticeScreen
+import com.creativeblisslabs.nitnemguktasteek.app.ui.practice.PracticeScreen
 import com.creativeblisslabs.nitnemguktasteek.app.ui.screens.SettingsScreen
 import com.creativeblisslabs.nitnemguktasteek.app.ui.theme.*
 import com.creativeblisslabs.nitnemguktasteek.app.widget.rememberJourneyWidgetBridge
@@ -37,6 +37,8 @@ import androidx.compose.foundation.layout.WindowInsets
 import com.creativeblisslabs.nitnemguktasteek.utils.translate
 import com.creativeblisslabs.nitnemguktasteek.utils.rememberAuthLauncher
 import com.creativeblisslabs.nitnemguktasteek.domain.social.rememberFamilyLeaderboardRepository
+import com.revenuecat.purchases.kmp.ui.revenuecatui.Paywall
+import com.revenuecat.purchases.kmp.ui.revenuecatui.PaywallOptions
 import kotlinx.datetime.todayIn
 
 @Composable
@@ -141,8 +143,8 @@ fun NitnemRoot(
     // Auto-hide chrome (BottomBar + headers) when fullScreenReadingMode is enabled
     // and the user is on a reading/meditation tab.
     val autoHideTabs = setOf(AppTab.Experience, AppTab.Practice)
-  LaunchedEffect(uiState.selectedTab, uiState.fullScreenReadingMode, interactionTick, isPaywallOpen, isAssistantOpen) {
-    if (isPaywallOpen || isAssistantOpen) {
+  LaunchedEffect(uiState.selectedTab, uiState.fullScreenReadingMode, interactionTick, uiState.shouldShowPaywall, isAssistantOpen) {
+    if (uiState.shouldShowPaywall || isAssistantOpen) {
         showChrome = false // Instantly hide the bottom bar/nav rail if an overlay is open
     } else if (uiState.fullScreenReadingMode && uiState.selectedTab in autoHideTabs) {
         showChrome = true   
@@ -236,6 +238,8 @@ fun NitnemRoot(
                 viewModel.restoreFromCloudUserData(
                     xp = restoredProfile.totalXp,
                     streak = restoredProfile.streakDays,
+                    weeklyStreak = restoredProfile.weeklyStreak,
+                    monthlyStreak = restoredProfile.monthlyStreak,
                     completedBanisCount = restoredProfile.completedBanisCount,
                     completedToday = restoredProfile.completedBanisToday,
                     totalMinutes = restoredProfile.totalRecitationMinutes,
@@ -270,6 +274,8 @@ fun NitnemRoot(
                 level = kotlin.math.floor(kotlin.math.sqrt(uiState.totalXp.toDouble() / 50.0)).toInt().coerceAtLeast(1),
                 currentStreak = uiState.streakDays,
                 bestStreak = uiState.streakDays.coerceAtLeast(1),
+                weeklyStreak = uiState.weeklyCompleted,
+                monthlyStreak = uiState.monthlyConsistencyDays,
                 totalRecitationMinutes = uiState.totalListeningMinutes,
                 completedBanisCount = uiState.completedBanis.size,
                 completedBanisToday = uiState.completedBanis.toList(),
@@ -309,7 +315,6 @@ fun NitnemRoot(
     
     // Remember initial set to identify new completions correctly across initial load and runtime
     var previousCompletedBanis by remember { mutableStateOf<Set<String>?>(null) }
-    var isPaywallOpen by remember { mutableStateOf(false) }
     LaunchedEffect(
         uiState.completedBanis
     ) {
@@ -676,11 +681,7 @@ fun NitnemRoot(
         AppTab.Settings -> {
     SettingsScreen(
         viewModel = viewModel,
-        audioController = audioController,
-        // ADD THIS CALLBACK HERE:
-        onPaywallVisibilityChanged = { isOpen ->
-            isPaywallOpen = isOpen
-        }
+        audioController = audioController
     )
 }
             }
@@ -703,7 +704,7 @@ fun NitnemRoot(
                 AnimatedVisibility(
 
                     visible =
-                        uiState.miniPlayerVisible && uiState.selectedTab != AppTab.Practice && (!uiState.fullScreenReadingMode || showChrome) && !isAssistantOpen
+                        uiState.miniPlayerVisible && uiState.selectedTab != AppTab.Practice && (!uiState.fullScreenReadingMode || showChrome) && !isAssistantOpen && !uiState.shouldShowPaywall
                 ) {
 
                     val playerModifier = if (isLandscape) {
@@ -854,6 +855,17 @@ fun NitnemRoot(
                 displayLanguage = uiState.displayLanguage,
                 onDismiss = { globalStreakCelebrationDays = null }
             )
+        }
+
+        if (uiState.shouldShowPaywall) {
+            val paywallOptions = remember {
+                PaywallOptions(
+                    dismissRequest = {
+                        com.creativeblisslabs.nitnemguktasteek.domain.billing.RevenueCatBillingManager.instance.dismissPaywall()
+                    }
+                )
+            }
+            Paywall(options = paywallOptions)
         }
     }
 }

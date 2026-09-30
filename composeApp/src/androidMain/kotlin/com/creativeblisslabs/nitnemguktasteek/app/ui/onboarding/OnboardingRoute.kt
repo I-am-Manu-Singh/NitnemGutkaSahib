@@ -6,6 +6,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import androidx.lifecycle.ViewModel
 import kotlinx.coroutines.withContext
 import com.creativeblisslabs.nitnemguktasteek.app.models.DisplayLanguage
 import com.creativeblisslabs.nitnemguktasteek.app.notifications.PrayerReminderScheduler
@@ -18,7 +19,7 @@ import com.creativeblisslabs.nitnemguktasteek.data.preferences.SettingsRepositor
 
 @Composable
 fun OnboardingRoute(
-    viewModel: OnboardingViewModel = androidx.lifecycle.viewmodel.compose.viewModel(),
+   viewModel: OnboardingViewModel = androidx.lifecycle.viewmodel.compose.viewModel<OnboardingViewModel>(),
     onFinish: () -> Unit
 ) {
     val context = LocalContext.current

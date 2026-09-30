@@ -14,6 +14,8 @@ data class FamilyMemberProgress(
     val totalRecitationMinutes: Int = 0,
     val completedBanisCount: Int = 0,
     val completedBanisToday: List<String> = emptyList(),
+    val weeklyStreak: Int = 0,
+    val monthlyStreak: Int = 0,
     val quizScore: Int = 0,
     val badges: List<String> = emptyList(),
     val avatarMascotState: String = "",
