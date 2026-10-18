@@ -142,8 +142,8 @@ android {
         applicationId = "com.creativeblisslabs.nitnemguktasteek"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 2
-        versionName = "0.1.1"
+        versionCode = 7
+        versionName = "0.1.6"
         buildConfigField("String", "REVENUECAT_GOOGLE_API_KEY", "\"$revenueCatApiKey\"")
         buildConfigField("String", "SUPPORT_EMAIL", "\"creativeblisslabs@gmail.com\"")
         buildConfigField("String", "CONTACT_EMAIL", "\"creativeblisslabs@gmail.com\"")
@@ -169,6 +169,9 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+
+            ndk.debugSymbolLevel = "FULL"
+
             val keyPath = keystoreProperties.getProperty("RELEASE_KEYSTORE_PATH") ?: ""
             if (keyPath.isNotEmpty()) {
                 signingConfig = signingConfigs.getByName("release")

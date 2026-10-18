@@ -1,29 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
-
 <manifest xmlns:tools="http://schemas.android.com/tools"
     xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- INTERNET -->
-
+    <!-- EXPLICITLY REMOVE MERGED AD_ID PERMISSION -->
     <uses-permission
-        android:name="android.permission.INTERNET" />
+        android:name="com.google.android.gms.permission.AD_ID"
+        tools:node="remove" />
+
+    <!-- INTERNET -->
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <!-- NOTIFICATIONS -->
-
-    <uses-permission
-        android:name="android.permission.POST_NOTIFICATIONS" />
-
-    <uses-permission
-        android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- FOREGROUND AUDIO -->
-
-    <uses-permission
-        android:name="android.permission.FOREGROUND_SERVICE" />
-
-    <uses-permission
-        android:name=
-        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"
+        tools:ignore="ForegroundServicesPolicy" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
 
     <application
         android:name=".NitnemApplication"
@@ -35,7 +28,7 @@
         android:supportsRtl="true"
         android:networkSecurityConfig="@xml/network_security_config"
         android:theme="@style/AppTheme"
-        tools:targetApi="33">
+        tools:targetApi="36">
 
         <!-- MAIN ACTIVITY -->
 

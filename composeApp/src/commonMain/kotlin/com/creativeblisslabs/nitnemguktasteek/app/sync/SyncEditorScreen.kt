@@ -992,29 +992,27 @@ val timingMap = remember(timings.toList()) {
                         .combinedClickable(
                             onClick = {
                                 val currentMs = playback.positionMs
-                              val existingIndex =
-    timings.indexOfFirst {
-        it.id == line.id
-    }
+                                val existingIndex = timings.indexOfFirst {
+                                    it.id == line.id
+                                }
 
-if (existingIndex >= 0) {
+                                if (existingIndex >= 0) {
+                                    while (
+                                        timings.size > existingIndex + 1
+                                    ) {
+                                        timings.removeAt(timings.lastIndex) // Safe cross-Android implementation
+                                    }
 
-    while (
-        timings.size > existingIndex + 1
-    ) {
-        timings.removeLast()
-    }
-
-    timings.removeAt(existingIndex)
-}
+                                    timings.removeAt(existingIndex)
+                                }
 
                                 if (timings.isNotEmpty()) {
                                     val previous = timings.last()
                                     timings[timings.lastIndex] = previous.copy(
                                         endsAtMs =
-    currentMs.coerceAtLeast(
-        previous.startsAtMs + 50L
-    )
+                                        currentMs.coerceAtLeast(
+                                            previous.startsAtMs + 50L
+                                        )
                                     )
                                 }
 

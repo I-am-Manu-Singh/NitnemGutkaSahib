@@ -1,7 +1,7 @@
 # ੴ ਨਿਤਨੇਮ ਗੁਟਕਾ ਸਟੀਕ (Nitnem Gutka Steek)
 
 <p align="center">
-  <img src="playstore/icon_512.png" alt="Bani: Nitnem & Steek Companion Logo" width="128" height="128" style="border-radius: 20%;" />
+  <img src="composeApp/src/androidMain/res/drawable-nodpi/ic_launcher_playstore.png" alt="Bani: Nitnem & Steek Companion Logo" width="128" height="128" style="border-radius: 20%;" />
 </p>
 
 

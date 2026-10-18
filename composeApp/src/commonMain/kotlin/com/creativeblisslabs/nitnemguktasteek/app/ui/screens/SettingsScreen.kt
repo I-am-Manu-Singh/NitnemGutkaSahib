@@ -102,6 +102,7 @@ import com.creativeblisslabs.nitnemguktasteek.models.NitnemUiState
 import com.creativeblisslabs.nitnemguktasteek.utils.rememberAudioPicker
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.material3.TimePicker
+import androidx.compose.ui.graphics.vector.ImageVector
 import com.creativeblisslabs.nitnemguktasteek.domain.billing.RevenueCatBillingManager
 import com.revenuecat.purchases.kmp.ui.revenuecatui.Paywall
 import com.revenuecat.purchases.kmp.ui.revenuecatui.PaywallOptions
@@ -2238,9 +2239,10 @@ if (selectedCategory == SettingsCategory.About) {
                                 fontSize = 20.sp,
                                 color = TextPrimary
                             )
-                       
+
                             Text(
-                                text = "Version 1.0.0 • 100% Free & Ad-Free Forever".translate(uiState.displayLanguage),
+                                text = " • 100% Free & Ad-Free Forever"
+                                    .translate(uiState.displayLanguage),
                                 fontSize = 11.5.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Gold,
@@ -2262,12 +2264,12 @@ if (selectedCategory == SettingsCategory.About) {
                             color = Gold.copy(alpha = 0.15f)
                         )
 
-                        val socialLinks = listOf(
-                            Triple("Website", "https://creativeblisslabs.com", Icons.Default.Public),
-                            Triple("Instagram", "https://instagram.com/creativeblisslabs", Icons.Default.CameraAlt),
-                            Triple("YouTube", "https://youtube.com/@creativeblisslabs", Icons.Default.PlayCircle)
-                        )
-
+//                        val socialLinks = listOf(
+//                            Triple("Website", "https://creativeblisslabs.com", Icons.Default.Public),
+//                            Triple("Instagram", "https://instagram.com/creativeblisslabs", Icons.Default.CameraAlt),
+//                            Triple("YouTube", "https://youtube.com/@creativeblisslabs", Icons.Default.PlayCircle)
+//                        )
+                        val socialLinks = listOf<Triple<String, String, ImageVector>>()
                         Column(
                             modifier = Modifier.fillMaxWidth(),
                             verticalArrangement = Arrangement.spacedBy(12.dp),
